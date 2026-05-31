@@ -1,0 +1,118 @@
+User Story #3:
+As a borrower, I want to cancel a requested or approved reservation before the pickup time so that I am not held responsible for a tool I no longer need.
+
+Acceptance Criteria:
+
+Scenario 1: Cancel REQUESTED reservation
+Given a reservation is in REQUESTED state
+And the logged-in user is the borrower
+When the borrower cancels the reservation
+Then the reservation status becomes CANCELLED
+
+Scenario 2: Cancel APPROVED reservation
+Given a reservation is in APPROVED state
+And the logged-in user is the borrower
+When the borrower cancels the reservation
+Then the reservation status becomes CANCELLED
+
+Scenario 3: Cannot cancel PICKED_UP reservation (Edge Case 1)
+Given a reservation is in PICKED_UP state
+And the logged-in user is the borrower
+When the borrower attempts to cancel the reservation
+Then the system rejects the action
+And the reservation status remains PICKED_UP
+
+
+User Story #4:
+As a tool owner, I want to mark an approved reservation as picked up so that the system accurately tracks when the borrower takes possession of the tool.
+
+Acceptance Criteria:
+
+Scenario 1: Mark as picked up
+Given a reservation is in APPROVED state
+And the logged-in user is the owner of the tool
+When the owner marks the reservation as picked up
+Then the reservation status becomes PICKED_UP
+
+Scenario 2: Invalid status transition to picked up
+Given a reservation is in REQUESTED state
+And the logged-in user is the owner of the tool
+When the owner attempts to mark the reservation as picked up
+Then the system rejects the action
+And the reservation status remains REQUESTED
+
+
+User Story #5:
+As a tool owner, I want to mark a picked-up reservation as returned so that the tool becomes available for others to borrow again.
+
+Acceptance Criteria:
+
+Scenario 1: Mark as returned
+Given a reservation is in PICKED_UP state
+And the logged-in user is the owner of the tool
+When the owner marks the reservation as returned
+Then the reservation status becomes RETURNED
+
+Scenario 2: Non-owner cannot mark as returned
+Given a reservation is in PICKED_UP state
+And the logged-in user is the borrower
+When the user attempts to mark the reservation as returned
+Then the system rejects the action
+And the reservation status remains PICKED_UP
+
+
+User Story #6:
+As a user (borrower or owner), I want to leave a rating and review after a tool is returned so that other community members can build trust based on past lending history.
+
+Acceptance Criteria:
+
+Scenario 1: Submit a valid review
+Given a reservation is in RETURNED state
+And the logged-in user was either the borrower or owner for this reservation
+When the user submits a 1-5 star rating and text review
+Then the review is saved and associated with the other party's profile
+
+Scenario 2: Cannot review incomplete reservation
+Given a reservation is in CANCELLED or DENIED state
+When the user attempts to submit a review
+Then the system rejects the action
+
+
+User Story #7:
+As an admin, I want to deactivate a tool listing so that it is hidden from browsing without deleting its audit history.
+
+Acceptance Criteria:
+
+Scenario 1: Admin deactivates listing
+Given an active tool listing exists
+And the logged-in user is an admin
+When the admin deactivates the listing
+Then the listing is no longer visible in member search results
+And the listing retains its past reservation history in the database
+
+Scenario 2: Admin cannot deactivate a tool that is currently PICKED_UP
+Given an active tool listing exists
+And the tool has an active reservation in PICKED_UP state
+And the logged-in user is an admin
+When the admin attempts to deactivate the listing
+Then the system rejects the action
+And a message is shown indicating the tool cannot be deactivated while it is out on loan
+
+High-Level Use Case: Full Borrowing Lifecycle
+Actor: Borrower, Owner
+Description: 
+1. The Borrower searches for and selects an available tool.
+2. The Borrower requests the tool for a specific date range. (Status: REQUESTED). They must specify the start date and end date.
+3. The Owner receives a notification of the request.
+4. The Owner logs in and reviews the request details (Borrower name, dates).
+5. The Owner approves the request. (Status: APPROVED). A private message thread is initiated between them for coordination.
+6. At the agreed-upon time, the Borrower picks up the tool. The Owner updates the system. (Status: PICKED_UP).
+7. The Borrower uses the tool and returns it by the end date.
+8. The Owner confirms receipt and updates the system. (Status: RETURNED).
+9. Both the Borrower and Owner are prompted to leave a short rating/review for each other.
+
+Edge Case 2: Concurrent Overlapping Requests
+Given the tool has no approved or picked-up reservations for the requested dates
+When two borrowers submit a reservation request for overlapping date ranges at the exact same time
+Then the system processes requests sequentially
+And if the owner approves one request, the system automatically prevents approval (or denies) the conflicting request to enforce the strict "no overlapping APPROVED/PICKED_UP reservations" rule.

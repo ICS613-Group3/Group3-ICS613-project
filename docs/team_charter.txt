@@ -1,0 +1,45 @@
+https://www.google.com/search?q=what+is+React+front+end+for+a+project+with+fastAPI&rlz=1C2GCEA_enUS1199US1200&sca_esv=1fed64863c61f7e3&sxsrf=ANbL-n6w97OPbj1jepCofYSWXhBYLqbt0Q%3A1780086888467&source=hp&ei=aPgZatXdGeKi0PEP5PPzwAs&iflsig=AFdpzrgAAAAAahoGeGxchXxEPTuk3aDVmkVQ9lDjYZeW&ved=0ahUKEwjVsZ21rN-UAxViETQIHeT5HLgQ4dUDCCo&uact=5&oq=what+is+React+front+end+for+a+project+with+fastAPI&gs_lp=Egdnd3Mtd2l6IjJ3aGF0IGlzIFJlYWN0IGZyb250IGVuZCBmb3IgYSBwcm9qZWN0IHdpdGggZmFzdEFQSUiTngJQpxhYxJoCcAJ4AJABAJgBe6ABmiuqAQQ4LjQ0uAEDyAEA-AEBmAIboAKUFagCBcICERAAGNsFGJ4GGPAFGOoCGLQCwgIREAAYgAQYsQMYgwEYngYY8AXCAg4QABiABBixAxieBhjwBcICCxAAGIAEGJ4GGPAFwgIUEAAYgAQYigUYsQMYgwEYngYY8AXCAhEQABiABBiKBRiGAxieBhjwBZgDf5IHBDUuMjKgB_47sgcEMy4yMrgHkhXCBwYyNS4xLjHIBxSACAE&sclient=gws-wiz&aep=107&cs=1&mstk=AUtExfAPrqVj3EXsXVGcGD_3mRG7O7-df93ybRaE0q--EdyeqgihTea_FuTvxDD3IeN4cif8qC1gCR3qKiGLwJoepdHkErK3AZIKyiYk_Zu2r2EAZbsmaIRsrfyrytySqilQ0tNmgEyPggASnSpF5DlwDOOQxm6IpaeugaV1-5kk7aA3OWxh68I30nna0Xg_BnfFNOtAYViFLqngYdCeFESTkNqnmwBnJCdUvC7MiGjhl1i5M7F0Gcf8Nso9zQgqNuv6d7of9nXfTYAkRw&csuir=1&mtid=jvgZasuhNNmsm9cPndfIoQo&lns_mode=cvst&udm=50
+
+Team Charter / Team Contract
+Team Name: Group 3
+Project Name: Neighborhood Tool Sharing
+Course: ICS613
+Semester: Summer 2026
+
+1. Team PurposeThe team exists to practice rigorous collaborative software engineering methodologies, applying iteration, automated testing, and agile workflows to solve local community challenges. The project will deliver a secure web application enabling localized, high-trust peer-to-peer asset maximization.
+
+2. Project Scope and ObjectivesProject VisionA highly responsive web interface enabling trust-verified neighbors to optimize resource sharing, coordinate pickups, and track tool-lending histories securely.GoalsZero Double-Bookings: Ensure backend database validation intercepts overlapping schedules with a 100% success rate.High Test Coverage: Maintain automated tests covering state machine paths and operational permissions.Continuous Automation: Implement automated integration pipelines running on every individual Pull Request.Responsive Deliverables: Achieve structural usability across varying viewport sizes using a modular component framework.In ScopeAn invitation-gated customer authentication layer.An asynchronous tool indexing search catalog supporting pre-defined structural categories.An explicit multi-state request approval tracking machine.Persistent internal moderation utilities enabling administrative safety overrides.Out of ScopeExternal cloud-integrated imagery processing hosting servers.Production-grade live map geographic navigation location APIs.Public-facing credit transactional gateway monetization features.
+
+3. Team Members and Roles
+
+   Member 1: Rion Sawabe (Scrum Master / Backend Lead)
+             Primary Responsibilities: Managing Kanban tracking boards, backend FastAPI endpoints, database schema optimization.
+             Secondary Responsibilities: Managing local workstation configurations.
+
+   Member 2: To Be Assigned (Product Owner / Frontend Lead)
+             Primary Responsibilities: Requirements mapping, responsive interface designs, React Router views.
+             Secondary Responsibilities: Writing user interaction unit components.
+
+   Member 3: To Be Assigned (Data & Architecture Writer)
+             Primary Responsibilities: Pydantic structural validators, UML state mapping, data serialization.
+             Secondary Responsibilities: Documenting repository configurations.
+
+   Member 4: To Be Assigned (QA & Build Pipeline Lead)
+             Primary Responsibilities: Writing database automated script sequences, CI workflow testing.
+             Secondary Responsibilities: Validating layout responsive structures.
+
+4. Team Values
+    4.1: Engineering Accountability: Every individual takes absolute ownership of their assigned tasks and testing protocols.
+    4.2: Systematic Code Reviews: No peer directly passes changes into stable baselines without transparent group feedback.
+    4.3: Radical Transparency: Promptly surfacing structural blocks or schedule shifts during sprint checkpoints.
+    4.4: Constructive Respect: Keeping dialogue educational, empathetic, and solution-focused.
+
+5. Communication Plan
+   5.1: Quick team communication: Class Discord Server (Main hub for active chat, debugging, and task coordination)
+   5.2: Task tracking: GitHub Projects Kanban (Visualizes current work items, ownership, and blockage states)
+   5.3: Code repository: GitHub Main Branch (Strictly managed via protected merge policies)
+   5.4: Meeting notes: GitHub Wiki Files (Persistent storage for sprint records and architecture documentation)
+   5.5: Documentation and notes: Markdown Technical Documents (Kept inline inside development files for architectural design clarity)
+
+6. Working Agreements
+   6.1: Respond to critical development block alerts on the server within a maximum of 24 hours.Commit structural code increments early and consistently to avoid monolithic merges.Alert teammates immediately if an assigned deliverable timeline is slipping.Maintain clear, conversational context tags when logging issues or documentation notes.7. Decision-Making ProcessArchitectural Disputes: Resolved via data evaluation, led by the Technical Lead role.Scope Reductions: Decided collectively, keeping the course grading criteria as the absolute priority baseline.Schedule Exceptions: Managed by structural consensus, adjusting milestone expectations in the system.8. Development WorkflowBranch Isolation: Direct modifications to stable baselines are programmatically locked. Feature branches use strict descriptive schemas.Validation Protocol: Merging requires a passing continuous optimization report and one peer approval sign-off.Definition of Done: Code must pass validation checks, implement required test coverage, and render safely across multiple viewport scales.9. Quality StandardsInbound Structural Checks: Enforced via explicit input parsing layers to eliminate malformed persistence entries.State Integrity Protections: Programmatic validation blocks illogical operations or timeline cross-bookings.Interface Reliability: Ensuring seamless responsive restructuring without display fragmentation.10. Project ArtifactsStrict validation data validation schema configuration files.Automated sequence integration assessment script modules.UML state tracking flow visual representation layout charts.Structured documentation detailing installation and seeding routines.11. Conflict Resolution and AccountabilityFirst Escalation: Direct, calm clarifying text loop directly inside the assigned coordination logs.Second Escalation: Real-time voice alignment session focused on restructuring individual workload limits.Final Action: Surfacing performance metrics transparently during the structured course peer-evaluation windows.12. Risks and MitigationGit Conflict Blockages: Mitigated by breaking files into hyper-modular, independent sub-folders.Data Integrity Overlaps: Countered by embedding validation locks inside database isolation scripts.Design Scope Bloat: Prevented by utilizing layout component packages out-of-the-box.13. Milestones and TimelineInitial Charter & Specs (Target: Week 3) - All Members: Deliver base system flow maps and schema frameworks.Core Endpoints Operational (Target: Week 6) - Backend Developers: Lock validation paths and database structures.Interface Binding Complete (Target: Week 9) - Frontend Developers: Sync components to interactive responsive patterns.Final Suite Passing (Target: Week 12) - All Members: Verify mock operational data generation sequences.14. Team Commitment StatementWe, the members of this team, agree to contribute consistently, communicate professionally, and support one another in completing this project successfully. We understand that this course evaluates not only the final software product, but also the engineering process used to create it. We therefore commit to maintaining strong collaboration, clear documentation, responsible project management, and high standards of technical work throughout the semester.15. SignaturesRion Sawabe (Awaiting Digital Acknowledgment) - Date: May 29, 2026Member 2 (Awaiting Digital Acknowledgment) - Date: May 29, 2026Member 3 (Awaiting Digital Acknowledgment) - Date: May 29, 2026Member 4 (Awaiting Digital Acknowledgment) - Date: May 29, 2026
