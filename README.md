@@ -24,6 +24,7 @@ This is an ICS613 Group 3 project in Summer 2026. We will collaborate to create 
 - Nick Fairhart - QA/DevOps Lead/Backend development
 
 
+
 # Main branch protection rule
 
 The main branch is protected against direct pushing. At least 1 member should review and approve the pull request. 
@@ -47,8 +48,42 @@ Each assignee will change the task status when they start and when they complete
 
 # Technologies
 
-This section will be written later.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React |
+|  | TypeScript |
+|  | (will update by frontend lead) |
+| Backend (Service/API) | Python |
+|  | FastAPI |
+|  | SQLAlchemy (ORM) |
+|  | Pydantic (Data validation) |
+|  | JWT (JSON Web Tokens for user authentication) |
+| Database | PostgreSQL |
+|  | Docker Container (for PostgreSQL) |
+| Environment / Secrets | `.env` file (for DB passwords, API keys) |
+|  | python-dotenv (loads `.env` into the app) |
+| Testing | pytest |
+| Version Control | GitHub (branching, pull requests, code review) |
+| IDE | VS Code or PyCharm |
+
+*Will be modified later as needed after all use cases and user stories are composed.*
+
 
 ​
+
+# Architecture
+
+- **Paradigm:** Object-Oriented Programming (OOP)
+- **Pattern:** N-Tier architecture
+- **Code structure:** Repository / Service pattern
+  - **Repository layer** — talks to the database (SQLAlchemy)
+  - **Service layer** — holds business logic
+  - **API layer** — FastAPI routes call the services, never the repositories directly
+
+*Will be modified later as needed after all use cases and user stories are composed.*
+
+
+
+
 
 The README will be updated as the project progresses.
