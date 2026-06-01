@@ -52,7 +52,7 @@ Each assignee will change the task status when they start and when they complete
 |-------|------------|
 | Frontend | React |
 |  | TypeScript |
-|  | (will update by frontend lead) |
+|  | (will be updated by the frontend lead) |
 | Backend (Service/API) | Python |
 |  | FastAPI |
 |  | SQLAlchemy (ORM) |
