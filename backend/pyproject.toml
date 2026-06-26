@@ -1,0 +1,52 @@
+[project]
+name = "neighborhood-tool-sharing-backend"
+version = "0.1.0"
+description = "ICS 613 Group 3 backend for Neighborhood Tool Sharing"
+requires-python = ">=3.11,<3.14"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "ASYNC"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["src/app/tests"]
+pythonpath = ["src"]
+# Note: this project uses ``bcrypt`` directly, not ``passlib``. Do not
+# re-add a ``passlib`` filterwarning entry without first adding passlib
+# to requirements.txt.
+
+[[tool.mypy.overrides]]
+module = ["src.app.tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false

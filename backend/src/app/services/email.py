@@ -1,0 +1,108 @@
+"""Email sending abstraction.
+
+R1.A uses a thin abstraction. In development, MailHog captures all SMTP
+ traffic. In production, a real SMTP server is used. Tests can patch
+ `send_email` or `EmailService.send` directly.
+"""
+
+import smtplib
+from email.message import EmailMessage
+from typing import Protocol
+
+from app.config import get_settings
+
+
+class EmailBackend(Protocol):
+    """Protocol for email backends."""
+
+    def send(self, to_email: str, subject: str, body: str) -> None: ...
+
+
+class _MailHogBackend:
+    """Development backend that sends to MailHog."""
+
+    def send(self, to_email: str, subject: str, body: str) -> None:
+        settings = get_settings()
+        host = settings.smtp_host or "localhost"
+        port = settings.smtp_port or 1025
+        msg = EmailMessage()
+        msg["From"] = settings.smtp_from or "dev@example.com"
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+        with smtplib.SMTP(host, port) as server:
+            server.send_message(msg)
+
+
+class _SMTPBackend:
+    """Production SMTP backend."""
+
+    def send(self, to_email: str, subject: str, body: str) -> None:
+        settings = get_settings()
+        if not settings.smtp_host or not settings.smtp_user:
+            raise RuntimeError("SMTP is not configured")
+
+        msg = EmailMessage()
+        msg["From"] = settings.smtp_from or settings.smtp_user
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            if settings.smtp_tls:
+                server.starttls()
+            server.login(
+                settings.smtp_user,
+                settings.smtp_password.get_secret_value() if settings.smtp_password else "",
+            )
+            server.send_message(msg)
+
+
+class EmailService:
+    """Application email service."""
+
+    def __init__(self, backend: EmailBackend | None = None) -> None:
+        self._backend = backend or self._default_backend()
+
+    @staticmethod
+    def _default_backend() -> EmailBackend:
+        settings = get_settings()
+        if settings.smtp_host and settings.smtp_host not in ("localhost", "mailhog"):
+            return _SMTPBackend()
+        return _MailHogBackend()
+
+    def send(self, to_email: str, subject: str, body: str) -> None:
+        """Send an email, logging any failures without raising.
+
+        Email delivery is a best-effort side effect and must never break
+        the calling operation. The token is persisted in the database
+        regardless, so the user can complete verification/reset via the
+        database token even if the email fails to send.
+
+        Only network/SMTP errors are swallowed. Programmer errors
+        (``TypeError``, ``AttributeError``, …) are intentionally NOT
+        caught — they should fail loudly during development.
+        """
+        try:
+            self._backend.send(to_email, subject, body)
+        except (smtplib.SMTPException, OSError) as exc:
+            from app.core.logging import get_logger
+            get_logger(__name__).warning(
+                "Email send failed (to=%s subject=%s): %s",
+                to_email, subject, exc,
+            )
+
+    def send_verification_email(self, to_email: str, token: str) -> None:
+        subject = "Verify your email address"
+        body = f"Your verification token is: {token}\n\nUse it at /auth/verify-email"
+        self.send(to_email, subject, body)
+
+    def send_password_reset_email(self, to_email: str, token: str) -> None:
+        subject = "Reset your password"
+        body = f"Your password reset token is: {token}\n\nUse it at /auth/reset-password"
+        self.send(to_email, subject, body)
+
+    def send_invite_email(self, to_email: str, token: str) -> None:
+        subject = "You have been invited to join Neighborhood Tool Sharing"
+        body = f"Your invite token is: {token}\n\nRegister at /auth/register"
+        self.send(to_email, subject, body)
