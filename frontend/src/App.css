@@ -415,3 +415,172 @@ select {
   font-weight: 800;
   color: #2563eb;
 }
+
+/* Tool detail page uses a two-column layout: listing info + reservation request form. */
+.tool-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Main card for detailed tool listing information. */
+.tool-detail-card,
+.reservation-request-card,
+.empty-state-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.tool-detail-card {
+  overflow: hidden;
+}
+
+/* Large image on the detail page. Current demo uses placeholder images. */
+.detail-image {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.tool-detail-content,
+.reservation-request-card,
+.empty-state-card {
+  padding: 1.25rem;
+}
+
+/* Metadata grid for owner, condition, availability, and return time. */
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.detail-meta-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: #f8fafc;
+}
+
+.detail-meta-grid dt {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.detail-meta-grid dd {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Small information box for owner notes and request preview. */
+.info-panel {
+  margin-top: 1rem;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 1rem;
+}
+
+.info-panel h3 {
+  margin-top: 0;
+}
+
+.info-panel p {
+  margin-bottom: 0;
+}
+
+/* Reservation request form styles. */
+.reservation-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.reservation-form label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.reservation-form input,
+.reservation-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.reservation-form textarea {
+  resize: vertical;
+}
+
+.reservation-form button {
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.8rem 1rem;
+}
+
+.hst-note {
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.75rem;
+}
+
+.success-message {
+  margin-top: 1rem;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  padding: 0.85rem;
+}
+
+.request-preview {
+  background: #f8fafc;
+  border-left-color: #64748b;
+}
+
+.secondary-link {
+  align-self: start;
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  color: #2563eb;
+  font-weight: 800;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+}
+
+.narrow-link {
+  max-width: 240px;
+}
+
+/* Mobile layout: stack detail card and reservation form vertically. */
+@media (max-width: 900px) {
+  .tool-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-image {
+    height: 220px;
+  }
+}
