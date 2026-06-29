@@ -260,6 +260,20 @@ export const mockReservations: MockReservation[] = [
     role: 'owner',
     message: 'Returned on time.',
   },
+  {
+    id: 'reservation-5',
+    toolId: 'tool-5',
+    toolName: 'Hammer Set',
+    borrowerId: 'user-3',
+    borrowerName: 'Ivan Wu',
+    ownerId: 'user-1',
+    ownerName: 'Yafei Wang',
+    startDate: '2026-07-09',
+    endDate: '2026-07-10',
+    status: 'REQUESTED',
+    role: 'owner',
+    message: 'I need this hammer set for furniture assembly.',
+  },
 ];
 
 export const mockNotifications: MockNotification[] = [
@@ -282,3 +296,4 @@ export const mockNotifications: MockNotification[] = [
     createdAt: '2026-06-26 09:00 HST',
   },
 ];
+

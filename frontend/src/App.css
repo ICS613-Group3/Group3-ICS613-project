@@ -591,3 +591,179 @@ select {
   color: #475569;
   font-weight: 700;
 }
+
+/* Reservation workflow page styles. */
+.reservation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.reservation-card,
+.reservation-detail-card,
+.workflow-actions-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+}
+
+.reservation-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.reservation-card-header h2 {
+  margin-top: 0.25rem;
+}
+
+.workflow-status {
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-requested {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-denied {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-picked_up {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.status-returned {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reservation-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.reservation-meta-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.reservation-meta-grid dt {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.reservation-meta-grid dd {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.reservation-message {
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 0.85rem;
+}
+
+.reservation-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.workflow-action-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.action-button {
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 0.85rem 1rem;
+}
+
+.approve-button {
+  background: #2563eb;
+  color: white;
+}
+
+.danger-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.disabled-button {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.closed-workflow-message {
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 0.85rem;
+}
+
+.workflow-note {
+  margin-top: 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+.workflow-note h3 {
+  margin-top: 0;
+}
+
+.workflow-note ul {
+  margin-bottom: 0;
+  padding-left: 1.2rem;
+}
+
+@media (max-width: 900px) {
+  .reservation-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-card-header {
+    flex-direction: column;
+  }
+}
