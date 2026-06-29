@@ -584,3 +584,10 @@ select {
     height: 220px;
   }
 }
+
+/* Shows how many tools match the current Browse Tools filters. */
+.results-summary {
+  margin: 0 0 1rem;
+  color: #475569;
+  font-weight: 700;
+}

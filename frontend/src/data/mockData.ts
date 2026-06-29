@@ -6,14 +6,34 @@ export type ReservationStatus =
   | 'PICKED_UP'
   | 'RETURNED';
 
+/**
+ * ToolCategory
+ *
+ * These category values match Ivan's backend enum.
+ * Keep these values aligned with the backend API to avoid integration issues.
+ */
+export type ToolCategory =
+  | 'HAND_TOOLS'
+  | 'POWER_TOOLS'
+  | 'GARDEN_TOOLS'
+  | 'CLEANING_TOOLS'
+  | 'OUTDOOR_GEAR';
+
 export type ToolCondition = 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
 
-export type ToolCategory =
-  | 'Power Tools'
-  | 'Garden'
-  | 'Kitchen'
-  | 'Ladders'
-  | 'Other';
+/**
+ * categoryLabels
+ *
+ * Backend stores enum values such as POWER_TOOLS.
+ * Frontend displays user-friendly labels such as Power Tools.
+ */
+export const categoryLabels: Record<ToolCategory, string> = {
+  HAND_TOOLS: 'Hand Tools',
+  POWER_TOOLS: 'Power Tools',
+  GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools',
+  OUTDOOR_GEAR: 'Outdoor Gear',
+};
 
 export interface MockUser {
   id: string;
@@ -34,6 +54,8 @@ export interface MockTool {
   description: string;
   latestReturnTime: string;
   availability: string;
+  availableFrom: string;
+  availableTo: string;
   rating: number;
   imageUrl: string;
   notesForBorrowers: string;
@@ -97,7 +119,7 @@ export const mockTools: MockTool[] = [
   {
     id: 'tool-1',
     name: 'Cordless Drill',
-    category: 'Power Tools',
+    category: 'POWER_TOOLS',
     condition: 'Good',
     ownerId: 'user-2',
     ownerName: 'Rion Sawabe',
@@ -105,6 +127,8 @@ export const mockTools: MockTool[] = [
       '18V cordless drill with charger and extra battery. Good for small home projects.',
     latestReturnTime: '21:00',
     availability: 'Available July 1 - July 10',
+    availableFrom: '2026-07-01',
+    availableTo: '2026-07-10',
     rating: 4.8,
     imageUrl: 'https://placehold.co/600x400?text=Cordless+Drill',
     notesForBorrowers: 'Please return with the battery charged.',
@@ -112,14 +136,16 @@ export const mockTools: MockTool[] = [
   {
     id: 'tool-2',
     name: 'Garden Shovel',
-    category: 'Garden',
+    category: 'GARDEN_TOOLS',
     condition: 'Good',
     ownerId: 'user-3',
     ownerName: 'Ivan Wu',
     description:
       'Durable garden shovel for planting, digging, and yard work.',
     latestReturnTime: '18:00',
-    availability: 'Available this week',
+    availability: 'Available July 1 - July 20',
+    availableFrom: '2026-07-01',
+    availableTo: '2026-07-20',
     rating: 4.6,
     imageUrl: 'https://placehold.co/600x400?text=Garden+Shovel',
     notesForBorrowers: 'Please clean dirt off before returning.',
@@ -127,7 +153,7 @@ export const mockTools: MockTool[] = [
   {
     id: 'tool-3',
     name: 'Step Ladder',
-    category: 'Ladders',
+    category: 'OUTDOOR_GEAR',
     condition: 'Like New',
     ownerId: 'user-2',
     ownerName: 'Rion Sawabe',
@@ -135,6 +161,8 @@ export const mockTools: MockTool[] = [
       'Six-foot step ladder for indoor or outdoor use. Lightweight and easy to carry.',
     latestReturnTime: '20:00',
     availability: 'Available after July 5',
+    availableFrom: '2026-07-05',
+    availableTo: '2026-07-30',
     rating: 4.9,
     imageUrl: 'https://placehold.co/600x400?text=Step+Ladder',
     notesForBorrowers: 'Use on stable ground only.',
@@ -142,17 +170,36 @@ export const mockTools: MockTool[] = [
   {
     id: 'tool-4',
     name: 'Pressure Washer',
-    category: 'Power Tools',
+    category: 'CLEANING_TOOLS',
     condition: 'Fair',
     ownerId: 'user-3',
     ownerName: 'Ivan Wu',
     description:
       'Electric pressure washer for driveway, patio, and outdoor cleaning.',
     latestReturnTime: '17:30',
-    availability: 'Requested July 2 - July 4',
+    availability: 'Available July 8 - July 18',
+    availableFrom: '2026-07-08',
+    availableTo: '2026-07-18',
     rating: 4.4,
     imageUrl: 'https://placehold.co/600x400?text=Pressure+Washer',
     notesForBorrowers: 'Do not use with hot water.',
+  },
+  {
+    id: 'tool-5',
+    name: 'Hammer Set',
+    category: 'HAND_TOOLS',
+    condition: 'Like New',
+    ownerId: 'user-1',
+    ownerName: 'Yafei Wang',
+    description:
+      'Basic hammer set for small repairs, furniture assembly, and household projects.',
+    latestReturnTime: '19:00',
+    availability: 'Available July 1 - July 31',
+    availableFrom: '2026-07-01',
+    availableTo: '2026-07-31',
+    rating: 4.7,
+    imageUrl: 'https://placehold.co/600x400?text=Hammer+Set',
+    notesForBorrowers: 'Please return all pieces together.',
   },
 ];
 

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { mockTools } from '../data/mockData';
+import { categoryLabels, mockTools } from '../data/mockData';
 
 /**
  * ToolDetailPage
@@ -93,8 +93,10 @@ function ToolDetailPage() {
 
           <div className="tool-detail-content">
             <div className="tool-card-top">
-              <span className="status-badge">{tool.category}</span>
-              <span className="rating">? {tool.rating}</span>
+              <span className="status-badge">
+                {categoryLabels[tool.category]}
+              </span>
+              <span className="rating">Rating: {tool.rating}/5</span>
             </div>
 
             <h2>{tool.name}</h2>
