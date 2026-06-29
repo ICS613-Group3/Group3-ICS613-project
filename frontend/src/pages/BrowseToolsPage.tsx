@@ -1,192 +1,33 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  categoryLabels,
-  mockTools,
-  type ToolCategory,
-} from '../data/mockData';
+import { useSearchParams } from 'react-router-dom';
+import AvailableToolsPage from './AvailableToolsPage';
+import ReturnedToolsPage from './ReturnedToolsPage';
 
 /**
  * BrowseToolsPage
  *
- * This page displays all available tools using mock data.
- * Search, category, and date filters work locally for the R1 demo.
+ * This is now a small wrapper page.
  *
- * It also links to /tools/new so owners can create a mock tool listing.
+ * Purpose:
+ * - Keeps AppRoutes simple by using /tools for Browse Tools.
+ * - Decides which sub-page to show based on the URL query parameter.
+ *
+ * URL behavior:
+ * - /tools shows AvailableToolsPage.
+ * - /tools?view=returned shows ReturnedToolsPage.
+ *
+ * Add New Tool:
+ * - /tools/new is still handled by CreateToolPage in AppRoutes.
  */
 function BrowseToolsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<ToolCategory | ''>('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [searchParams] = useSearchParams();
 
-  const categoryOptions = Object.entries(categoryLabels) as Array<
-    [ToolCategory, string]
-  >;
+  const view = searchParams.get('view');
 
-  /**
-   * Filter mock tools by search text, backend-aligned category, and date range.
-   * Later, Ivan can replace this local filtering with backend API query params.
-   */
-  const filteredTools = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  if (view === 'returned') {
+    return <ReturnedToolsPage />;
+  }
 
-    return mockTools.filter((tool) => {
-      const categoryLabel = categoryLabels[tool.category];
-
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        tool.name.toLowerCase().includes(normalizedSearch) ||
-        tool.description.toLowerCase().includes(normalizedSearch) ||
-        tool.ownerName.toLowerCase().includes(normalizedSearch) ||
-        categoryLabel.toLowerCase().includes(normalizedSearch);
-
-      const matchesCategory =
-        categoryFilter === '' || tool.category === categoryFilter;
-
-      const selectedStartDate = startDate || endDate;
-      const selectedEndDate = endDate || startDate;
-
-      const matchesDateRange =
-        !selectedStartDate ||
-        !selectedEndDate ||
-        (tool.availableFrom <= selectedStartDate &&
-          tool.availableTo >= selectedEndDate);
-
-      return matchesSearch && matchesCategory && matchesDateRange;
-    });
-  }, [categoryFilter, endDate, searchTerm, startDate]);
-
-  /**
-   * Reset all filters so all mock tools are visible again.
-   */
-  const clearFilters = () => {
-    setSearchTerm('');
-    setCategoryFilter('');
-    setStartDate('');
-    setEndDate('');
-  };
-
-  return (
-    <section className="page-section">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Browse & Search</p>
-          <h1>Available Tools</h1>
-          <p className="page-description">
-            Search available neighborhood tools by keyword, backend-aligned
-            category, and HST date range.
-          </p>
-        </div>
-
-        <Link className="primary-link header-action-link" to="/tools/new">
-          Add New Tool
-        </Link>
-      </div>
-
-      <div className="filter-panel">
-        <input
-          type="text"
-          placeholder="Search by tool, owner, or keyword"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-        />
-
-        <select
-          value={categoryFilter}
-          onChange={(event) =>
-            setCategoryFilter(event.target.value as ToolCategory | '')
-          }
-        >
-          <option value="">All categories</option>
-          {categoryOptions.map(([categoryValue, label]) => (
-            <option key={categoryValue} value={categoryValue}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="date"
-          aria-label="Start date"
-          value={startDate}
-          onChange={(event) => setStartDate(event.target.value)}
-        />
-
-        <input
-          type="date"
-          aria-label="End date"
-          value={endDate}
-          onChange={(event) => setEndDate(event.target.value)}
-        />
-
-        <button type="button" onClick={clearFilters}>
-          Clear Filters
-        </button>
-      </div>
-
-      <p className="results-summary">
-        Showing {filteredTools.length} of {mockTools.length} tools.
-      </p>
-
-      {filteredTools.length === 0 ? (
-        <div className="empty-state-card">
-          <p className="eyebrow">No Results</p>
-          <h2>No tools match the current filters.</h2>
-          <p>Try clearing filters or searching for a different keyword.</p>
-          <button type="button" onClick={clearFilters}>
-            Clear Filters
-          </button>
-        </div>
-      ) : (
-        <div className="tool-grid">
-          {filteredTools.map((tool) => (
-            <article className="tool-card" key={tool.id}>
-              <img src={tool.imageUrl} alt={tool.name} className="tool-image" />
-
-              <div className="tool-card-body">
-                <div className="tool-card-top">
-                  <span className="status-badge">
-                    {categoryLabels[tool.category]}
-                  </span>
-                  <span className="rating">Rating: {tool.rating}/5</span>
-                </div>
-
-                <h2>{tool.name}</h2>
-                <p>{tool.description}</p>
-
-                <dl className="tool-meta">
-                  <div>
-                    <dt>Owner</dt>
-                    <dd>{tool.ownerName}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Condition</dt>
-                    <dd>{tool.condition}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Availability</dt>
-                    <dd>{tool.availability}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Latest return</dt>
-                    <dd>{tool.latestReturnTime} HST</dd>
-                  </div>
-                </dl>
-
-                <Link className="primary-link" to={`/tools/${tool.id}`}>
-                  View Details
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+  return <AvailableToolsPage />;
 }
 
 export default BrowseToolsPage;

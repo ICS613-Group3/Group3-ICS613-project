@@ -5,8 +5,16 @@ import { mockNotifications, mockReservations, mockTools } from '../data/mockData
  * DashboardPage
  *
  * This page is the main landing page after a member logs in.
- * For now, it uses mock data so the R1 frontend demo looks realistic
- * before the backend API is fully connected.
+ *
+ * Current R1 demo purpose:
+ * - Show quick summary counts.
+ * - Let the user go to Browse Tools.
+ * - Let the user go to Reservations.
+ * - Let the user go to Notifications.
+ *
+ * Note:
+ * The temporary "Review Demo" card was removed from the dashboard.
+ * The review workflow should be reached from returned reservations / Review Tools.
  */
 function DashboardPage() {
   // Count the number of mock tools so the dashboard can show a quick summary.
@@ -58,10 +66,10 @@ function DashboardPage() {
           <article className="dashboard-card">
             <h2>My Tools</h2>
             <p>
-              View available tools, browse listings, and later manage tools you
-              own.
+              View available tools, browse listings, create new tool listings,
+              and open tool detail pages.
             </p>
-            <span className="card-action">View tools ?</span>
+            <span className="card-action">View tools</span>
           </article>
         </Link>
 
@@ -72,7 +80,7 @@ function DashboardPage() {
               View borrower and owner reservation workflows with status badges
               such as REQUESTED, APPROVED, PICKED_UP, and RETURNED.
             </p>
-            <span className="card-action">View reservations ?</span>
+            <span className="card-action">View reservations</span>
           </article>
         </Link>
 
@@ -83,7 +91,7 @@ function DashboardPage() {
               Review reservation updates, approval notices, pickup changes, and
               return reminders.
             </p>
-            <span className="card-action">View notifications ?</span>
+            <span className="card-action">View notifications</span>
           </article>
         </Link>
       </div>

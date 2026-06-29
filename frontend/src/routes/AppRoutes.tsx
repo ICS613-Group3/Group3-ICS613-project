@@ -9,13 +9,27 @@ import NotFoundPage from '../pages/NotFoundPage';
 import RegisterPage from '../pages/RegisterPage';
 import ReservationDetailPage from '../pages/ReservationDetailPage';
 import ReservationsPage from '../pages/ReservationsPage';
+import ReviewPage from '../pages/ReviewPage';
 import ToolDetailPage from '../pages/ToolDetailPage';
 
 /**
  * AppRoutes
  *
  * This file controls the main frontend routes.
- * We added /tools/:toolId/edit for US9 Edit Tool Listing.
+ *
+ * Current R1 frontend routes include:
+ * - Dashboard
+ * - Browse Tools
+ * - Create Tool
+ * - Tool Detail
+ * - Edit Tool
+ * - Reservations Dashboard
+ * - Reservation Detail
+ * - US24 Review Page
+ *
+ * Note:
+ * These pages currently use mock frontend data.
+ * Backend API integration will be connected later.
  */
 function AppRoutes() {
   return (
@@ -38,6 +52,20 @@ function AppRoutes() {
         <Route
           path="/reservations/:reservationId"
           element={<ReservationDetailPage />}
+        />
+
+        {/* 
+          US24 Review route
+
+          Example:
+          /reservations/reservation-4/review
+
+          For the mock demo, reservation-4 is RETURNED,
+          so it should allow review submission.
+        */}
+        <Route
+          path="/reservations/:reservationId/review"
+          element={<ReviewPage />}
         />
 
         {/* Auth pages */}
