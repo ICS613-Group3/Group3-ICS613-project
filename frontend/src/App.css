@@ -847,3 +847,21 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+/* ================================
+   Tool Detail Header Action Buttons
+   Adds spacing between Edit Tool and Back buttons.
+   ================================ */
+
+.tool-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+  min-width: 220px;
+}
+
+.tool-detail-actions .primary-link,
+.tool-detail-actions .secondary-link {
+  text-align: center;
+}

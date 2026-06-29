@@ -9,8 +9,15 @@ import { categoryLabels, mockTools } from '../data/mockData';
  * Example route:
  * /tools/tool-1
  *
- * For R1 demo purposes, this page uses mock data instead of calling
- * the backend API. Later, mockTools can be replaced with a real API call.
+ * Current R1 behavior:
+ * - Uses mock data from src/data/mockData.ts.
+ * - Shows tool details.
+ * - Provides a mock reservation request form.
+ * - Provides a link to the US9 mock Edit Tool page.
+ *
+ * Future backend behavior:
+ * - Replace mockTools with a real API call.
+ * - Only show "Edit Tool Listing" when the logged-in user owns the tool.
  */
 function ToolDetailPage() {
   // Read the toolId from the route path: /tools/:toolId
@@ -61,6 +68,7 @@ function ToolDetailPage() {
           <p>
             The selected tool may no longer exist or the link may be incorrect.
           </p>
+
           <Link className="primary-link narrow-link" to="/tools">
             Back to Browse Tools
           </Link>
@@ -81,9 +89,29 @@ function ToolDetailPage() {
           </p>
         </div>
 
-        <Link className="secondary-link" to="/tools">
-          Back to Browse Tools
-        </Link>
+        <div className="header-actions tool-detail-actions">
+          {/*
+            US9 Edit Tool Listing button
+
+            This button gives the R1 demo a clear workflow:
+            Browse Tools -> Tool Detail -> Edit Tool Listing.
+
+            Current behavior:
+            - Opens the frontend mock edit page at /tools/:toolId/edit.
+            - Does not check real ownership yet.
+
+            Later backend/auth behavior:
+            - Only the actual tool owner should see this button.
+            - Backend should still enforce authorization even if the button is hidden.
+          */}
+          <Link className="primary-link" to={`/tools/${tool.id}/edit`}>
+            Edit Tool Listing
+          </Link>
+
+          <Link className="secondary-link" to="/tools">
+            Back to Browse Tools
+          </Link>
+        </div>
       </div>
 
       <div className="tool-detail-grid">

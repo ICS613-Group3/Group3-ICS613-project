@@ -3,6 +3,7 @@ import AppLayout from '../components/AppLayout';
 import BrowseToolsPage from '../pages/BrowseToolsPage';
 import CreateToolPage from '../pages/CreateToolPage';
 import DashboardPage from '../pages/DashboardPage';
+import EditToolPage from '../pages/EditToolPage';
 import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import RegisterPage from '../pages/RegisterPage';
@@ -10,18 +11,40 @@ import ReservationDetailPage from '../pages/ReservationDetailPage';
 import ReservationsPage from '../pages/ReservationsPage';
 import ToolDetailPage from '../pages/ToolDetailPage';
 
+/**
+ * AppRoutes
+ *
+ * This file controls the main frontend routes.
+ * We added /tools/:toolId/edit for US9 Edit Tool Listing.
+ */
 function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        {/* Default route sends users to the dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Main member pages */}
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/tools" element={<BrowseToolsPage />} />`r`n      <Route path="/tools/new" element={<CreateToolPage />} />
+        <Route path="/tools" element={<BrowseToolsPage />} />
+
+        {/* Tool listing workflow */}
+        <Route path="/tools/new" element={<CreateToolPage />} />
         <Route path="/tools/:toolId" element={<ToolDetailPage />} />
+        <Route path="/tools/:toolId/edit" element={<EditToolPage />} />
+
+        {/* Reservation workflow */}
         <Route path="/reservations" element={<ReservationsPage />} />
-        <Route path="/reservations/:reservationId" element={<ReservationDetailPage />} />
+        <Route
+          path="/reservations/:reservationId"
+          element={<ReservationDetailPage />}
+        />
+
+        {/* Auth pages */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+
+        {/* Fallback page */}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
@@ -29,4 +52,3 @@ function AppRoutes() {
 }
 
 export default AppRoutes;
-
