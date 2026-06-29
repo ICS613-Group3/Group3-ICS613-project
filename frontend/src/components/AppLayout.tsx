@@ -1,20 +1,54 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 /**
  * AppLayout
  *
- * This component controls the shared page layout:
- * - Top header
- * - Main navigation
+ * Shared layout for:
+ * - Header
+ * - Top navigation
  * - Page content through <Outlet />
  *
- * Update:
- * Browse Tools now has a hover dropdown menu:
- * - Available Tools
- * - Returned Tools
- * - Add New Tools
+ * Current R1 mock auth behavior:
+ * - If user is not logged in, show Login and Register.
+ * - If user is logged in, hide Login/Register and show Logout.
+ *
+ * Important:
+ * - This is frontend-only mock auth.
+ * - Later, Ivan's real AuthContext/backend auth can replace localStorage.
  */
 function AppLayout() {
+  const navigate = useNavigate();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    localStorage.getItem('mockAuthStatus') === 'logged-in',
+  );
+
+  /**
+   * Listen for mock login/register/logout changes.
+   * LoginPage and RegisterPage will dispatch this event after mock login.
+   */
+  useEffect(() => {
+    const syncMockAuth = () => {
+      setIsLoggedIn(localStorage.getItem('mockAuthStatus') === 'logged-in');
+    };
+
+    window.addEventListener('mock-auth-change', syncMockAuth);
+
+    return () => {
+      window.removeEventListener('mock-auth-change', syncMockAuth);
+    };
+  }, []);
+
+  /**
+   * Mock logout for R1 frontend demo.
+   */
+  const handleLogout = () => {
+    localStorage.removeItem('mockAuthStatus');
+    window.dispatchEvent(new Event('mock-auth-change'));
+    navigate('/login');
+  };
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -28,17 +62,6 @@ function AppLayout() {
             Dashboard
           </NavLink>
 
-          {/*
-            Browse Tools dropdown menu
-
-            Current R1 mock behavior:
-            - Available Tools opens the normal browse page.
-            - Returned Tools opens Browse Tools with the returned-tools filter.
-            - Add New Tools opens the US8 Create Tool page.
-
-            Later backend behavior:
-            - Returned Tools should load real returned reservations/tools from API.
-          */}
           <div className="nav-dropdown">
             <NavLink className="nav-link nav-dropdown-toggle" to="/tools">
               Browse Tools
@@ -63,13 +86,25 @@ function AppLayout() {
             Reservations
           </NavLink>
 
-          <NavLink className="nav-link" to="/login">
-            Login
+          <NavLink className="nav-link" to="/reviews/history">
+            Review History
           </NavLink>
 
-          <NavLink className="nav-link" to="/register">
-            Register
-          </NavLink>
+          {isLoggedIn ? (
+            <button className="nav-link nav-button" type="button" onClick={handleLogout}>
+              Logout
+            </button>
+          ) : (
+            <>
+              <NavLink className="nav-link" to="/login">
+                Login
+              </NavLink>
+
+              <NavLink className="nav-link" to="/register">
+                Register
+              </NavLink>
+            </>
+          )}
         </nav>
       </header>
 

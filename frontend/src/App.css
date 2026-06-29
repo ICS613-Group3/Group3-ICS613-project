@@ -1117,3 +1117,83 @@ select {
 .tool-card-body .primary-link + .returned-review-link {
   margin-top: 0.85rem;
 }
+
+/* ================================
+   Mock Auth Navigation
+   Makes Logout button match nav links.
+   ================================ */
+
+.nav-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* ================================
+   Login / Register Mock Auth Forms
+   ================================ */
+
+.auth-card {
+  display: grid;
+  gap: 1rem;
+  max-width: 440px;
+  padding: 1.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.auth-card label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.auth-card input {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.auth-submit-button {
+  border: none;
+  cursor: pointer;
+}
+
+.auth-helper-text {
+  margin: 0;
+  color: #64748b;
+}
+
+/* ================================
+   US25 Review History Page
+   ================================ */
+
+.review-history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.review-history-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.review-history-card h2 {
+  margin: 0;
+}
+
+.review-history-comment {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}

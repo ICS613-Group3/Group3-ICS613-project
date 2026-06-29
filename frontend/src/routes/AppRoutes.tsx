@@ -9,6 +9,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 import RegisterPage from '../pages/RegisterPage';
 import ReservationDetailPage from '../pages/ReservationDetailPage';
 import ReservationsPage from '../pages/ReservationsPage';
+import ReviewHistoryPage from '../pages/ReviewHistoryPage';
 import ReviewPage from '../pages/ReviewPage';
 import ToolDetailPage from '../pages/ToolDetailPage';
 
@@ -26,6 +27,7 @@ import ToolDetailPage from '../pages/ToolDetailPage';
  * - Reservations Dashboard
  * - Reservation Detail
  * - US24 Review Page
+ * - US25 Review History Page
  *
  * Note:
  * These pages currently use mock frontend data.
@@ -67,6 +69,16 @@ function AppRoutes() {
           path="/reservations/:reservationId/review"
           element={<ReviewPage />}
         />
+
+        {/* 
+          US25 Review History route
+
+          Example:
+          /reviews/history
+
+          Shows mock review history for completed/returned reservations.
+        */}
+        <Route path="/reviews/history" element={<ReviewHistoryPage />} />
 
         {/* Auth pages */}
         <Route path="/login" element={<LoginPage />} />
