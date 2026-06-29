@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
 import BrowseToolsPage from '../pages/BrowseToolsPage';
+import CreateToolPage from '../pages/CreateToolPage';
 import DashboardPage from '../pages/DashboardPage';
 import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -15,7 +16,7 @@ function AppRoutes() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/tools" element={<BrowseToolsPage />} />
+        <Route path="/tools" element={<BrowseToolsPage />} />`r`n      <Route path="/tools/new" element={<CreateToolPage />} />
         <Route path="/tools/:toolId" element={<ToolDetailPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="/reservations/:reservationId" element={<ReservationDetailPage />} />
@@ -28,3 +29,4 @@ function AppRoutes() {
 }
 
 export default AppRoutes;
+

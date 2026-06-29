@@ -767,3 +767,83 @@ select {
     flex-direction: column;
   }
 }
+
+/* Create Tool page form and preview styles. */
+.tool-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.tool-form-card,
+.tool-preview-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+}
+
+.tool-form-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.tool-form-card label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.tool-form-card input,
+.tool-form-card select,
+.tool-form-card textarea,
+.tool-form-card button {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  padding: 0.75rem;
+}
+
+.tool-form-card textarea {
+  resize: vertical;
+}
+
+.tool-form-card button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.tool-preview-image {
+  width: 100%;
+  height: 220px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.header-action-link {
+  align-self: start;
+  width: fit-content;
+}
+
+@media (max-width: 900px) {
+  .tool-form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

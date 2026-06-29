@@ -10,17 +10,13 @@ import {
  * BrowseToolsPage
  *
  * This page displays all available tools using mock data.
- * For R1 demo feedback, search and category filters now work locally.
- * Later, Ivan can replace this local filtering with backend API query params.
+ * Search, category, and date filters work locally for the R1 demo.
+ *
+ * It also links to /tools/new so owners can create a mock tool listing.
  */
 function BrowseToolsPage() {
-  // Search text entered by the user.
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Backend-aligned category enum selected by the user.
   const [categoryFilter, setCategoryFilter] = useState<ToolCategory | ''>('');
-
-  // Date filters are interpreted as HST calendar dates for the demo.
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -29,12 +25,8 @@ function BrowseToolsPage() {
   >;
 
   /**
-   * filteredTools
-   *
-   * This local filtering makes the demo interactive before backend integration.
-   * Search checks name, description, owner, and category label.
-   * Category uses backend enum values.
-   * Date filter checks whether the selected date range fits inside the mock availability window.
+   * Filter mock tools by search text, backend-aligned category, and date range.
+   * Later, Ivan can replace this local filtering with backend API query params.
    */
   const filteredTools = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -66,7 +58,7 @@ function BrowseToolsPage() {
   }, [categoryFilter, endDate, searchTerm, startDate]);
 
   /**
-   * Clears all filter controls and shows every mock tool again.
+   * Reset all filters so all mock tools are visible again.
    */
   const clearFilters = () => {
     setSearchTerm('');
@@ -86,6 +78,10 @@ function BrowseToolsPage() {
             category, and HST date range.
           </p>
         </div>
+
+        <Link className="primary-link header-action-link" to="/tools/new">
+          Add New Tool
+        </Link>
       </div>
 
       <div className="filter-panel">
@@ -164,14 +160,17 @@ function BrowseToolsPage() {
                     <dt>Owner</dt>
                     <dd>{tool.ownerName}</dd>
                   </div>
+
                   <div>
                     <dt>Condition</dt>
                     <dd>{tool.condition}</dd>
                   </div>
+
                   <div>
                     <dt>Availability</dt>
                     <dd>{tool.availability}</dd>
                   </div>
+
                   <div>
                     <dt>Latest return</dt>
                     <dd>{tool.latestReturnTime} HST</dd>
