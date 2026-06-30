@@ -109,6 +109,46 @@ class ReviewService:
 
         return reviews, total
 
+    async def list_my_reviews(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        role: str = "received",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Review], int]:
+        """R1.B US25 — list reviews for the current user, paginated.
+
+        ``role``:
+          - ``"received"`` (default): reviews left *for* this user.
+            "What others think of me."
+          - ``"given"``: reviews this user *left for* others.
+            "My review history."
+        """
+        if role not in ("given", "received"):
+            from app.core.exceptions import ValidationError
+            raise ValidationError("role must be 'given' or 'received'")
+
+        column = Review.reviewee_id if role == "received" else Review.reviewer_id
+
+        count_result = await db.execute(
+            select(func.count(Review.id)).where(column == user_id)
+        )
+        total = count_result.scalar() or 0
+
+        query = (
+            select(Review)
+            .where(column == user_id)
+            .order_by(Review.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await db.execute(query)
+        reviews = list(result.scalars().all())
+
+        return reviews, total
+
     async def get_review_for_reservation(
         self,
         db: AsyncSession,

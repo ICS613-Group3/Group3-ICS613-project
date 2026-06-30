@@ -21,6 +21,7 @@ from app.models.photo import Photo
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
+from app.services.admin import AdminService
 from app.services.photo_storage import MAX_PHOTOS_PER_TOOL, PhotoStorageService
 
 if TYPE_CHECKING:
@@ -252,6 +253,57 @@ class ToolService:
 
         return tools, total
 
+    async def list_all_tools(
+        self,
+        db: AsyncSession,
+        *,
+        include_active: bool = True,
+        include_inactive: bool = True,
+        category: ToolCategory | None = None,
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Tool], int]:
+        """List all tools (admin view). Includes inactive and active, excludes deleted."""
+        conditions = [Tool.deleted_at.is_(None)]
+        if include_active and not include_inactive:
+            conditions.append(Tool.is_active.is_(True))
+        elif include_inactive and not include_active:
+            conditions.append(Tool.is_active.is_(False))
+
+        base_where = and_(*conditions)
+
+        count_query = select(func.count(Tool.id)).where(base_where)
+        query = select(Tool).where(base_where)
+
+        if category is not None:
+            query = query.where(Tool.category == category)
+            count_query = count_query.where(Tool.category == category)
+
+        if search:
+            search_term = f"%{search}%"
+            search_filter = or_(
+                Tool.name.ilike(search_term),
+                Tool.description.ilike(search_term),
+            )
+            query = query.where(search_filter)
+            count_query = count_query.where(search_filter)
+
+        count_result = await db.execute(count_query)
+        total = count_result.scalar() or 0
+
+        query = (
+            query
+            .options(selectinload(Tool.photos), selectinload(Tool.owner))
+            .order_by(Tool.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await db.execute(query)
+        tools = list(result.scalars().unique())
+
+        return tools, total
+
     # ------------------------------------------------------------------
     # Update
     #
@@ -381,6 +433,18 @@ class ToolService:
 
         db.add(tool)
         await db.flush()
+
+        # R1.C checklist: every deactivate (owner OR admin) is audit-logged.
+        actor_role = "admin" if actor.is_admin else "owner"
+        await AdminService().record_tool_deactivation(
+            db,
+            actor=actor,
+            tool_id=tool.id,
+            reason=reason,
+            actor_role=actor_role,
+        )
+        await db.flush()
+
         await db.refresh(tool, ["photos", "owner"])
         return tool
 
@@ -406,6 +470,15 @@ class ToolService:
 
         db.add(tool)
         await db.flush()
+
+        # R1.C checklist: every reactivate is audit-logged.
+        await AdminService().record_tool_reactivation(
+            db,
+            admin=admin,
+            tool_id=tool.id,
+        )
+        await db.flush()
+
         await db.refresh(tool, ["photos", "owner"])
         return tool
 

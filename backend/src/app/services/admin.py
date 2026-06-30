@@ -159,6 +159,67 @@ class AdminService:
         await db.flush()
 
     # ------------------------------------------------------------------
+    # Tool moderation (R1.C audit log coverage)
+    # ------------------------------------------------------------------
+    async def record_tool_deactivation(
+        self,
+        db: AsyncSession,
+        *,
+        actor: User,
+        tool_id: uuid.UUID,
+        reason: str,
+        actor_role: str,
+    ) -> AdminAuditLog:
+        """Audit-log a tool deactivation (owner or admin)."""
+        return await self._audit(
+            db,
+            actor_id=actor.id,
+            action_type="TOOL_DEACTIVATED",
+            target_type="tool",
+            target_id=tool_id,
+            reason=reason,
+            metadata_={"actor_role": actor_role},
+        )
+
+    async def record_tool_reactivation(
+        self,
+        db: AsyncSession,
+        *,
+        admin: User,
+        tool_id: uuid.UUID,
+    ) -> AdminAuditLog:
+        """Audit-log a tool reactivation (admin only)."""
+        return await self._audit(
+            db,
+            actor_id=admin.id,
+            action_type="TOOL_REACTIVATED",
+            target_type="tool",
+            target_id=tool_id,
+            reason="Admin reactivation",
+            metadata_={"actor_role": "admin"},
+        )
+
+    async def record_reservation_force_return(
+        self,
+        db: AsyncSession,
+        *,
+        admin: User,
+        reservation_id: uuid.UUID,
+        reason: str,
+        tool_id: uuid.UUID,
+    ) -> AdminAuditLog:
+        """Audit-log an admin force-return of a reservation."""
+        return await self._audit(
+            db,
+            actor_id=admin.id,
+            action_type="RESERVATION_FORCE_RETURN",
+            target_type="reservation",
+            target_id=reservation_id,
+            reason=reason,
+            metadata_={"tool_id": str(tool_id)},
+        )
+
+    # ------------------------------------------------------------------
     # Audit log queries
     # ------------------------------------------------------------------
     async def list_audit_log(
@@ -207,6 +268,7 @@ class AdminService:
         target_type: str,
         target_id: uuid.UUID,
         reason: str,
+        metadata_: dict | None = None,
     ) -> AdminAuditLog:
         """Insert an immutable audit log entry."""
         entry = AdminAuditLog(
@@ -215,6 +277,7 @@ class AdminService:
             target_type=target_type,
             target_id=target_id,
             reason=reason,
+            metadata_=metadata_,
         )
         db.add(entry)
         return entry

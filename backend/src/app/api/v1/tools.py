@@ -104,6 +104,43 @@ async def list_my_tools(
     )
 
 
+@router.get("/admin/all", response_model=PaginatedResponse[ToolResponse])
+async def admin_list_all_tools(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(get_current_admin_user)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    category: Annotated[str | None, Query(description="Filter by tool category")] = None,
+    search: Annotated[str | None, Query(description="Search by name or description")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> PaginatedResponse[ToolResponse]:
+    """Admin-only: list all tool listings (active and inactive), with filters."""
+    include_active = True
+    include_inactive = True
+    if status_filter == "active":
+        include_inactive = False
+    elif status_filter == "inactive":
+        include_active = False
+
+    cat_enum = ToolCategory(category) if category else None
+
+    service = ToolService()
+    tools, total = await service.list_all_tools(
+        db,
+        include_active=include_active,
+        include_inactive=include_inactive,
+        category=cat_enum,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
+    items = [ToolResponse.model_validate(t) for t in tools]
+    pages = max(1, (total + page_size - 1) // page_size)
+    return PaginatedResponse(
+        items=items, total=total, page=page, page_size=page_size, pages=pages
+    )
+
+
 @router.get("/{tool_id}", response_model=ToolResponse)
 async def get_tool(
     tool_id: uuid.UUID,

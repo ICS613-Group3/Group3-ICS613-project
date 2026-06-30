@@ -77,6 +77,13 @@ class AuthService:
         self.email_service.send_invite_email(token.email, token.token)
         return token
 
+    async def list_invites(self, db: AsyncSession) -> list[InviteToken]:
+        """List all invite tokens, newest first (admin-only)."""
+        result = await db.execute(
+            select(InviteToken).order_by(InviteToken.created_at.desc())
+        )
+        return list(result.scalars().all())
+
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------

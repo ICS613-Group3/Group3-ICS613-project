@@ -32,6 +32,17 @@ from app.services.auth import AuthService
 router = APIRouter()
 
 
+@router.get("/invites", response_model=list[InviteResponse])
+async def list_invites(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin_user: Annotated[User, Depends(get_current_admin_user)],
+) -> list[InviteResponse]:
+    """Admin-only: list all invite tokens (newest first)."""
+    service = AuthService()
+    invites = await service.list_invites(db)
+    return [InviteResponse.model_validate(inv) for inv in invites]
+
+
 @router.post("/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
 async def create_invite(
     request_data: InviteCreate,

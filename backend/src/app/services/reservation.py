@@ -18,6 +18,7 @@ from app.models.enums import CancellerType, NotificationType, ReservationState
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
+from app.services.admin import AdminService
 from app.services.notification import NotificationService
 
 
@@ -195,7 +196,17 @@ class ReservationService:
         self._require_owner(reservation, owner)
         self._require_state(reservation, ReservationState.REQUESTED)
 
-        # Re-check overlap in case another reservation was approved in the meantime
+        # Defense-in-depth: the GiST EXCLUDE constraint on the table already
+        # prevents two active reservations (REQUESTED, APPROVED, or PICKED_UP)
+        # from having overlapping date ranges at INSERT time.  However, the
+        # constraint is checked at flush, not at the application level, so a
+        # race condition is theoretically possible if two owners (in a
+        # multi-owner scenario) or concurrent requests approve different
+        # non-overlapping-but-adjacent reservations and one extends its dates
+        # before flush.  This application-side check provides a clearer error
+        # message than a raw IntegrityError and guards against any future
+        # code path that might temporarily bypass the constraint (e.g. a raw
+        # SQL update).  It is intentionally retained.
         overlapping = await self._check_overlap(
             db, reservation.tool_id, reservation.start_date, reservation.end_date, exclude_id=reservation.id
         )
@@ -274,8 +285,10 @@ class ReservationService:
         if not is_borrower and not is_owner:
             raise PermissionDeniedError("You are not a party to this reservation")
 
-        # Owner cannot cancel REQUESTED (use deny instead)
-        if is_owner and not is_borrower and reservation.state == ReservationState.REQUESTED:
+        # Owner cannot cancel REQUESTED (use deny instead).
+        # Note: create_reservation() blocks a user from reserving their own
+        # tool, so is_borrower and is_owner can never both be true here.
+        if is_owner and reservation.state == ReservationState.REQUESTED:
             raise ConflictError(
                 "Use the deny endpoint to decline a REQUESTED reservation"
             )
@@ -409,6 +422,16 @@ class ReservationService:
             tool.updated_at = datetime.now(UTC)
             db.add(tool)
 
+            # R1.C checklist: the auto-deactivation triggered by a damage
+            # report is also audit-logged so the trail is complete.
+            await AdminService().record_tool_deactivation(
+                db,
+                actor=owner,
+                tool_id=tool.id,
+                reason=tool.deactivation_reason or "Damage reported",
+                actor_role="damage_report",
+            )
+
             # Increment the owner's damage counter atomically. A read-modify-write
             # (``counter = counter + 1``) loses increments under concurrent calls;
             # the SQL ``SET col = col + 1`` is a single statement and atomic at
@@ -425,7 +448,10 @@ class ReservationService:
             )
             await db.refresh(owner)
 
-            # Auto-cancel pending reservations
+            # Auto-cancel pending reservations.
+            # Materialize the scalar result into a list once — SQLAlchemy
+            # ScalarResult is a single-use iterator, so calling .all() a
+            # second time silently returns an empty list.
             pending = await db.execute(
                 select(Reservation).where(
                     Reservation.tool_id == tool.id,
@@ -435,15 +461,14 @@ class ReservationService:
                     Reservation.id != reservation.id,
                 )
             )
+            pending_reservations = list(pending.scalars().all())
             now = datetime.now(UTC)
-            cancelled_reservation_ids: list[str] = []
-            for r in pending.scalars().all():
+            for r in pending_reservations:
                 r.state = ReservationState.CANCELLED
                 r.cancelled_by_type = CancellerType.OWNER.value
                 r.cancelled_reason = "Tool deactivated due to damage report"
                 r.updated_at = now
                 db.add(r)
-                cancelled_reservation_ids.append(str(r.id))
 
             # Notify the borrower of the original (RETURNED) reservation
             await NotificationService().create(
@@ -458,7 +483,7 @@ class ReservationService:
                 payload={"reservation_id": str(reservation.id), "tool_id": str(tool.id)},
             )
             # Notify the borrowers whose reservations were auto-cancelled
-            for r in pending.scalars().all():
+            for r in pending_reservations:
                 await NotificationService().create(
                     db,
                     user_id=r.borrower_id,
@@ -495,6 +520,16 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
+        # R1.C: audit-log the admin escalation action.
+        await AdminService().record_reservation_force_return(
+            db,
+            admin=admin,
+            reservation_id=reservation.id,
+            reason=reason,
+            tool_id=reservation.tool_id,
+        )
+        await db.flush()
+
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
@@ -502,6 +537,19 @@ class ReservationService:
             title="Tool force-returned by admin",
             body=(
                 f"An admin force-returned the tool from reservation {reservation.id}. "
+                f"Reason: {reason}"
+            ),
+            payload={"reservation_id": str(reservation.id), "actor_id": str(admin.id)},
+        )
+        # Notify the tool owner as well — they are the affected party who
+        # likely reported the dispute and need to know it was resolved.
+        await NotificationService().create(
+            db,
+            user_id=reservation.tool.owner_id,
+            type_=NotificationType.RESERVATION_RETURNED,
+            title="Your tool was force-returned by admin",
+            body=(
+                f"An admin force-returned your tool from reservation {reservation.id}. "
                 f"Reason: {reason}"
             ),
             payload={"reservation_id": str(reservation.id), "actor_id": str(admin.id)},

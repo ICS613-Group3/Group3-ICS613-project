@@ -3,13 +3,14 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_member, get_db
 from app.core.exceptions import NotFoundError
 from app.models.review import Review
 from app.models.user import User
+from app.schemas.common import PaginatedResponse
 from app.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
 from app.services.review import ReviewService
 
@@ -54,6 +55,43 @@ async def get_reviews_for_reservation(
     service = ReviewService()
     reviews = await service.get_review_for_reservation(db, reservation_id=reservation_id)
     return [ReviewResponse.model_validate(r) for r in reviews]
+
+
+# ── My review history (R1.B US25) ────────────────────────────────────────
+
+
+@router.get(
+    "/users/me/reviews",
+    response_model=PaginatedResponse[ReviewResponse],
+)
+async def list_my_reviews(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_member)],
+    role: Annotated[
+        str,
+        Query(description="'received' (default) or 'given'", pattern="^(given|received)$"),
+    ] = "received",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> PaginatedResponse[ReviewResponse]:
+    """List the current user's review history (R1.B US25).
+
+    ``role=received`` (default): reviews others have left for you.
+    ``role=given``: reviews you have left for others.
+    """
+    service = ReviewService()
+    reviews, total = await service.list_my_reviews(
+        db,
+        user_id=current_user.id,
+        role=role,
+        page=page,
+        page_size=page_size,
+    )
+    items = [ReviewResponse.model_validate(r) for r in reviews]
+    pages = max(1, (total + page_size - 1) // page_size)
+    return PaginatedResponse(
+        items=items, total=total, page=page, page_size=page_size, pages=pages
+    )
 
 
 # ── Update / Delete ────────────────────────────────────────────────────

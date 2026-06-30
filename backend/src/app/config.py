@@ -191,7 +191,7 @@ class Settings(BaseSettings):
     # block credential stuffing and email-bombing, loose on refresh so
     # active users don't trip it.
     rate_limit_login_per_minute: int = Field(
-        default=5,
+        default=50,
         ge=1,
         description=(
             "Max login attempts per client IP per minute. "
@@ -199,7 +199,7 @@ class Settings(BaseSettings):
         ),
     )
     rate_limit_forgot_password_per_minute: int = Field(
-        default=3,
+        default=50,
         ge=1,
         description=(
             "Max forgot-password requests per client IP per minute. "
@@ -207,7 +207,7 @@ class Settings(BaseSettings):
         ),
     )
     rate_limit_resend_verification_per_minute: int = Field(
-        default=3,
+        default=50,
         ge=1,
         description=(
             "Max resend-verification requests per client IP per minute. "
@@ -215,7 +215,7 @@ class Settings(BaseSettings):
         ),
     )
     rate_limit_register_per_hour: int = Field(
-        default=5,
+        default=50,
         ge=1,
         description=(
             "Max registration attempts per client IP per hour. "

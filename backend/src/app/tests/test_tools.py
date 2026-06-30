@@ -3,9 +3,11 @@
 import uuid
 from io import BytesIO
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
+from app.models.admin_audit_log import AdminAuditLog
 from app.models.enums import ToolCategory, ToolCondition
 from app.tests.factories import AdminFactory, ToolFactory, UserFactory
 
@@ -992,3 +994,217 @@ class TestAddPhotosResponseShape:
         assert body["photos"][0]["url"].startswith("/uploads/")
         assert body["photos"][0]["url"].endswith(".jpg")
 
+
+
+class TestToolModerationAuditLog:
+    """R1.C: every owner/admin tool deactivate + admin reactivate is
+    recorded in ``admin_audit_log`` with the right actor_role metadata.
+
+    These tests protect the R1.C verification checklist item
+    "Audit-log rows are inserted on every admin/owner deactivate
+    and reactivate".
+    """
+
+    async def test_owner_deactivate_writes_audit_entry(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """POST /api/v1/tools/{id}/deactivate by owner → TOOL_DEACTIVATED audit row."""
+        owner = await UserFactory.create_async(db_session)
+        tool = await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="OwnerAuditTest"
+        )
+        token = create_access_token(owner.id)
+
+        response = await client.post(
+            f"/api/v1/tools/{tool.id}/deactivate",
+            json={"reason": "vacation"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(AdminAuditLog).where(
+                AdminAuditLog.target_id == tool.id,
+                AdminAuditLog.action_type == "TOOL_DEACTIVATED",
+            )
+        )
+        entry = result.scalar_one()
+        assert entry.reason == "vacation"
+        assert entry.target_type == "tool"
+        assert entry.actor_id == owner.id
+        assert entry.metadata_ == {"actor_role": "owner"}
+
+    async def test_admin_deactivate_writes_audit_entry(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """Admin deactivating a tool → TOOL_DEACTIVATED with actor_role=admin."""
+        owner = await UserFactory.create_async(db_session)
+        admin = await AdminFactory.create_async(db_session)
+        tool = await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="AdminDeactAudit"
+        )
+        token = create_access_token(admin.id)
+
+        response = await client.post(
+            f"/api/v1/tools/{tool.id}/deactivate",
+            json={"reason": "policy violation"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(AdminAuditLog).where(
+                AdminAuditLog.target_id == tool.id,
+                AdminAuditLog.action_type == "TOOL_DEACTIVATED",
+            )
+        )
+        entry = result.scalar_one()
+        assert entry.actor_id == admin.id
+        assert entry.metadata_ == {"actor_role": "admin"}
+
+    async def test_admin_reactivate_writes_audit_entry(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """POST /api/v1/tools/{id}/reactivate → TOOL_REACTIVATED audit row."""
+        owner = await UserFactory.create_async(db_session)
+        admin = await AdminFactory.create_async(db_session)
+        # Tool starts active so the owner can deactivate it, then admin
+        # reactivates. The two transitions are what we want to audit.
+        tool = await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="ReactivateAudit", is_active=True
+        )
+        admin_token = create_access_token(admin.id)
+        owner_token = create_access_token(owner.id)
+
+        # Owner deactivates (allowed since they own the tool).
+        deact_response = await client.post(
+            f"/api/v1/tools/{tool.id}/deactivate",
+            json={"reason": "temp"},
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert deact_response.status_code == 200, deact_response.text
+
+        # Admin reactivates.
+        response = await client.post(
+            f"/api/v1/tools/{tool.id}/reactivate",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(AdminAuditLog)
+            .where(AdminAuditLog.target_id == tool.id)
+            .order_by(AdminAuditLog.created_at.desc())
+        )
+        entries = list(result.scalars().all())
+        assert len(entries) == 2, f"Expected 2 audit entries, got {len(entries)}"
+        # Newest entry is the reactivate.
+        assert entries[0].action_type == "TOOL_REACTIVATED"
+        assert entries[0].actor_id == admin.id
+        assert entries[0].metadata_ == {"actor_role": "admin"}
+        # Previous entry is the deactivate.
+        assert entries[1].action_type == "TOOL_DEACTIVATED"
+
+
+class TestAdminListAllTools:
+    """GET /api/v1/tools/admin/all — admin-only listing of all tools."""
+
+    async def test_admin_can_list_all_tools(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """Admin sees all tools across all owners, active and inactive."""
+        admin = await AdminFactory.create_async(db_session)
+        owner1 = await UserFactory.create_async(db_session)
+        owner2 = await UserFactory.create_async(db_session)
+
+        await ToolFactory.create_async(
+            db_session, owner_id=owner1.id, name="Active Drill", is_active=True
+        )
+        await ToolFactory.create_async(
+            db_session, owner_id=owner2.id, name="Inactive Saw", is_active=False
+        )
+
+        response = await client.get(
+            "/api/v1/tools/admin/all",
+            headers=_bearer(admin),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        names = {t["name"] for t in data["items"]}
+        assert "Active Drill" in names
+        assert "Inactive Saw" in names
+        assert data["total"] >= 2
+
+    async def test_non_admin_cannot_list_all_tools(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """Non-admin users receive 403."""
+        user = await UserFactory.create_async(db_session)
+
+        response = await client.get(
+            "/api/v1/tools/admin/all",
+            headers=_bearer(user),
+        )
+
+        assert response.status_code == 403
+
+    async def test_filter_inactive_only(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """Status filter 'inactive' returns only deactivated tools."""
+        admin = await AdminFactory.create_async(db_session)
+        owner = await UserFactory.create_async(db_session)
+
+        await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="Active One", is_active=True
+        )
+        await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="Inactive One", is_active=False
+        )
+
+        response = await client.get(
+            "/api/v1/tools/admin/all?status=inactive",
+            headers=_bearer(admin),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        names = {t["name"] for t in data["items"]}
+        assert "Inactive One" in names
+        assert "Active One" not in names
+
+    async def test_filter_by_category(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """Category filter works on admin listing endpoint."""
+        admin = await AdminFactory.create_async(db_session)
+        owner = await UserFactory.create_async(db_session)
+
+        await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="Drill",
+            category=ToolCategory.POWER_TOOLS, is_active=True
+        )
+        await ToolFactory.create_async(
+            db_session, owner_id=owner.id, name="Rake",
+            category=ToolCategory.GARDEN_TOOLS, is_active=True
+        )
+
+        response = await client.get(
+            "/api/v1/tools/admin/all?category=POWER_TOOLS",
+            headers=_bearer(admin),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        names = {t["name"] for t in data["items"]}
+        assert "Drill" in names
+        assert "Rake" not in names

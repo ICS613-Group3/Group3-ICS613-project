@@ -6,6 +6,7 @@ R1.A uses a thin abstraction. In development, MailHog captures all SMTP
 """
 
 import smtplib
+import ssl
 from email.message import EmailMessage
 from typing import Protocol
 
@@ -35,7 +36,12 @@ class _MailHogBackend:
 
 
 class _SMTPBackend:
-    """Production SMTP backend."""
+    """Production SMTP backend.
+
+    Auto-detects the connection method:
+    - Port 465 → implicit SSL (SMTP_SSL).
+    - Port 587 (or any other) → STARTTLS (SMTP + starttls if enabled).
+    """
 
     def send(self, to_email: str, subject: str, body: str) -> None:
         settings = get_settings()
@@ -48,14 +54,26 @@ class _SMTPBackend:
         msg["Subject"] = subject
         msg.set_content(body)
 
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            if settings.smtp_tls:
-                server.starttls()
-            server.login(
-                settings.smtp_user,
-                settings.smtp_password.get_secret_value() if settings.smtp_password else "",
-            )
-            server.send_message(msg)
+        port = settings.smtp_port
+        if port == 465:
+            # Implicit SSL — wrap the connection from the start.
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(settings.smtp_host, port, context=context) as server:
+                server.login(
+                    settings.smtp_user,
+                    settings.smtp_password.get_secret_value() if settings.smtp_password else "",
+                )
+                server.send_message(msg)
+        else:
+            # STARTTLS — plain connection, upgrade if configured.
+            with smtplib.SMTP(settings.smtp_host, port) as server:
+                if settings.smtp_tls:
+                    server.starttls()
+                server.login(
+                    settings.smtp_user,
+                    settings.smtp_password.get_secret_value() if settings.smtp_password else "",
+                )
+                server.send_message(msg)
 
 
 class EmailService:

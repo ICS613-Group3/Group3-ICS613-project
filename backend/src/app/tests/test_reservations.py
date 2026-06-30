@@ -1196,3 +1196,224 @@ class TestCancellerTypeConstraint:
         res.cancelled_by_type = "ghost"
         with pytest.raises(IntegrityError):
             await db_session.flush()
+
+
+# ── Audit Log Coverage for Reservation Moderation ─────────────────────────
+
+
+class TestReservationModerationAuditLog:
+    """R1.C: the audit log captures the side-effect tool deactivation
+    triggered by ``mark-damaged`` and the admin escalation via
+    ``admin-force-return``. Without these rows, the R1.C checklist
+    item "Audit-log rows are inserted on every admin/owner
+    deactivate and reactivate" would silently fail for these paths.
+    """
+
+    async def test_mark_damaged_creates_audit_entry(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """A damage report that auto-deactivates the tool also writes
+        a TOOL_DEACTIVATED row in the admin audit log."""
+        owner = await UserFactory.create_async(db_session, email=_make_email())
+        owner_token = create_access_token(owner.id)
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
+        borrower = await UserFactory.create_async(db_session, email=_make_email())
+        borrower_token = create_access_token(borrower.id)
+
+        from datetime import UTC, datetime, timedelta
+
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower.id,
+            state=ReservationState.RETURNED,
+        )
+        # Backdate returned_at so we are inside the 7-day damage window
+        # but have a clear timestamp for the audit row ordering.
+        reservation.returned_at = datetime.now(UTC) - timedelta(days=1)
+        db_session.add(reservation)
+        await db_session.flush()
+
+        response = await client.post(
+            f"/api/v1/reservations/{reservation.id}/mark-damaged",
+            json={"description": "Hammer head came loose during use"},
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert response.status_code == 200
+
+        from sqlalchemy import select
+
+        from app.models.admin_audit_log import AdminAuditLog
+
+        result = await db_session.execute(
+            select(AdminAuditLog).where(
+                AdminAuditLog.target_id == tool.id,
+                AdminAuditLog.action_type == "TOOL_DEACTIVATED",
+            )
+        )
+        entry = result.scalar_one()
+        assert entry.target_type == "tool"
+        assert entry.actor_id == owner.id
+        assert entry.metadata_ == {"actor_role": "damage_report"}
+        assert "Damage reported" in entry.reason
+
+    async def test_admin_force_return_creates_audit_entry(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """Admin force-return → RESERVATION_FORCE_RETURN audit row."""
+        owner = await UserFactory.create_async(db_session, email=_make_email())
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
+        borrower = await UserFactory.create_async(db_session, email=_make_email())
+        admin = await AdminFactory.create_async(db_session)
+        admin_token = create_access_token(admin.id)
+
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower.id,
+            state=ReservationState.PICKED_UP,
+        )
+
+        response = await client.post(
+            f"/api/v1/reservations/{reservation.id}/admin-force-return",
+            json={"reason": "Borrower disappeared, dispute resolved"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+
+        from sqlalchemy import select
+
+        from app.models.admin_audit_log import AdminAuditLog
+
+        result = await db_session.execute(
+            select(AdminAuditLog).where(
+                AdminAuditLog.target_id == reservation.id,
+                AdminAuditLog.action_type == "RESERVATION_FORCE_RETURN",
+            )
+        )
+        entry = result.scalar_one()
+        assert entry.target_type == "reservation"
+        assert entry.actor_id == admin.id
+        assert entry.reason == "Borrower disappeared, dispute resolved"
+        assert entry.metadata_ == {"tool_id": str(tool.id)}
+
+
+# ── PR #126 Review Fixes ──────────────────────────────────────────────────
+
+
+class TestMarkDamagedAutoCancelNotifications:
+    """Regression: mark_damaged() previously called pending.scalars().all()
+    twice on the same SQLAlchemy Result object. The second call returned an
+    empty list, so borrowers whose pending reservations were auto-cancelled
+    never received a notification. This test sets up two pending reservations
+    on the same tool and verifies both borrowers are notified after a damage
+    report deactivates the tool.
+    """
+
+    async def test_auto_cancelled_borrowers_get_notifications(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        from sqlalchemy import select
+
+        from app.models.notification import Notification
+        from app.models.enums import NotificationType
+
+        owner = await UserFactory.create_async(db_session, email=_make_email())
+        owner_token = create_access_token(owner.id)
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
+
+        # Primary borrower — has the RETURNED reservation that will be damage-reported
+        borrower1 = await UserFactory.create_async(db_session, email=_make_email())
+        reservation1 = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower1.id,
+            state=ReservationState.RETURNED,
+            returned_at=datetime.now(UTC) - timedelta(days=1),
+        )
+
+        # Second borrower — has a REQUESTED reservation that should be auto-cancelled
+        borrower2 = await UserFactory.create_async(db_session, email=_make_email())
+        reservation2 = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower2.id,
+            state=ReservationState.REQUESTED,
+            start_date=date.today() + timedelta(days=30),
+            end_date=date.today() + timedelta(days=35),
+        )
+
+        response = await client.post(
+            f"/api/v1/reservations/{reservation1.id}/mark-damaged",
+            json={"description": "Blade snapped"},
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert response.status_code == 200, f"Unexpected: {response.json()}"
+
+        # borrower2's reservation should be CANCELLED
+        await db_session.flush()
+        await db_session.refresh(reservation2)
+        assert reservation2.state == ReservationState.CANCELLED, (
+            f"Expected CANCELLED, got {reservation2.state}"
+        )
+
+        # borrower2 should have a RESERVATION_CANCELLED notification
+        notif_result = await db_session.execute(
+            select(Notification).where(
+                Notification.user_id == borrower2.id,
+                Notification.type == NotificationType.RESERVATION_CANCELLED,
+            )
+        )
+        notifs = notif_result.scalars().all()
+        assert len(notifs) >= 1, (
+            "borrower2 should have received a RESERVATION_CANCELLED notification "
+            "after the tool was deactivated by the damage report"
+        )
+
+
+class TestForceReturnOwnerNotification:
+    """Regression: force_return() previously only notified the borrower, not
+    the tool owner. The owner is the affected party who likely reported the
+    dispute and should be notified when it is resolved.
+    """
+
+    async def test_owner_receives_notification_on_force_return(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        from sqlalchemy import select
+
+        from app.models.notification import Notification
+        from app.models.enums import NotificationType
+
+        owner = await UserFactory.create_async(db_session, email=_make_email())
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
+        borrower = await UserFactory.create_async(db_session, email=_make_email())
+        admin = await AdminFactory.create_async(db_session)
+        admin_token = create_access_token(admin.id)
+
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower.id,
+            state=ReservationState.PICKED_UP,
+        )
+
+        response = await client.post(
+            f"/api/v1/reservations/{reservation.id}/admin-force-return",
+            json={"reason": "Borrower unresponsive"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200, f"Unexpected: {response.json()}"
+
+        # Owner should have a RESERVATION_RETURNED notification
+        owner_notifs = await db_session.execute(
+            select(Notification).where(
+                Notification.user_id == owner.id,
+                Notification.type == NotificationType.RESERVATION_RETURNED,
+            )
+        )
+        owner_notif_list = owner_notifs.scalars().all()
+        assert len(owner_notif_list) >= 1, (
+            "Tool owner should receive a notification when their tool is "
+            "force-returned by an admin"
+        )

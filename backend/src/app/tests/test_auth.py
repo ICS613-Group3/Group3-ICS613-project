@@ -60,6 +60,69 @@ class TestCreateInvite:
         assert response.status_code == 403
 
 
+class TestListInvites:
+    """GET /api/v1/auth/invites — admin-only invite listing."""
+
+    async def test_admin_can_list_invites(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        admin = await AdminFactory.create_async(db_session)
+        await InviteFactory.create_async(db_session, created_by=admin.id)
+        await InviteFactory.create_async(db_session, created_by=admin.id)
+        token = create_access_token(admin.id)
+
+        response = await client.get(
+            "/api/v1/auth/invites",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) >= 2
+        assert "token" in data[0]
+        assert "email" in data[0]
+        assert "status" in data[0]
+
+    async def test_non_admin_cannot_list_invites(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        user = await UserFactory.create_async(db_session)
+        token = create_access_token(user.id)
+
+        response = await client.get(
+            "/api/v1/auth/invites",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+
+    async def test_list_invites_newest_first(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        admin = await AdminFactory.create_async(db_session)
+        first = await InviteFactory.create_async(db_session, created_by=admin.id)
+        second = await InviteFactory.create_async(db_session, created_by=admin.id)
+        token = create_access_token(admin.id)
+
+        response = await client.get(
+            "/api/v1/auth/invites",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Newest first: second invite should appear before first
+        ids = [item["id"] for item in data]
+        assert ids.index(str(second.id)) < ids.index(str(first.id))
+
+
 class TestRegister:
     async def test_register_with_valid_invite(
         self,
