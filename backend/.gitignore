@@ -69,6 +69,9 @@ dmypy.json
 # ruff
 .ruff_cache/
 
+# Local working drafts — never committed.
+_local_drafts/
+
 # AI / agent tooling state — local to each machine, not for committing.
 # .omo/ holds OhMyOpenCode session continuation files.
 # .codegraph/ holds a local SQLite index rebuilt on demand.
