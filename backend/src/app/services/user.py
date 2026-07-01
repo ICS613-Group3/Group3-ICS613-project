@@ -37,13 +37,18 @@ class UserService:
         return result.scalar_one_or_none()
 
     async def get_by_email(self, db: AsyncSession, email: str) -> User | None:
-        """Fetch an *active* user by email address.
+        """Fetch a *non-deleted* user by email address.
 
-        Soft-deleted users (status=DELETED, deleted_at IS NOT NULL) are
-        excluded. Callers that need the deleted row (e.g. an audit path)
+        Soft-deleted users (deleted_at IS NOT NULL) are excluded.
+        Callers that need the deleted row (e.g. an audit path)
         can use ``db.get(User, uuid.UUID(...))`` directly. Filtering at
         the service layer prevents every caller from forgetting the
         ``deleted_at IS NULL`` clause.
+
+        Note: this returns users of any status (ACTIVE, EMAIL_PENDING,
+        SUSPENDED) — it only excludes soft-deleted rows. Callers that
+        need to enforce an active-status-only lookup should use
+        ``require_user_status`` or check ``user.status`` after the call.
         """
         result = await db.execute(
             select(User).where(

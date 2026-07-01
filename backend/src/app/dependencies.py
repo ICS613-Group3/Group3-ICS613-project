@@ -62,7 +62,7 @@ async def get_current_user(
     return user
 
 
-async def require_user_status(*allowed_statuses: str) -> Callable:
+def require_user_status(*allowed_statuses: str) -> Callable:
     """Return a dependency that enforces one or more user statuses."""
 
     async def _checker(

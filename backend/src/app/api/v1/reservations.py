@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_current_member, get_db
-from app.core.exceptions import PermissionDeniedError
+from app.core.exceptions import PermissionDeniedError, parse_enum_or_raise
 from app.models.enums import ReservationState
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
@@ -54,7 +54,7 @@ async def list_reservations(
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ReservationResponse]:
     """List reservations for the current user."""
-    state_enum = ReservationState(state) if state else None
+    state_enum = ReservationState(parse_enum_or_raise(state, ReservationState, "state")) if state else None
     service = ReservationService()
     reservations, total = await service.list_reservations(
         db,

@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     # Scheduler
     disable_scheduler: bool = Field(
         default=False,
-        description="If true, the APScheduler background jobs will not start (env: TOOLSHARING_DISABLE_SCHEDULER).",
+        description="If true, the APScheduler background jobs will not start (env: DISABLE_SCHEDULER).",
     )
     # Scheduler timing (in days). All defaults match the previous hard-coded
     # constants in ``services/scheduler.py`` so existing behavior is preserved.

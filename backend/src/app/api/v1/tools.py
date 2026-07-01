@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_current_member, get_db
-from app.core.exceptions import PermissionDeniedError
+from app.core.exceptions import PermissionDeniedError, parse_enum_or_raise
 from app.models.enums import ToolCategory, ToolCondition
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
@@ -39,8 +39,8 @@ async def create_tool(
         owner=current_user,
         name=name,
         description=description,
-        category=ToolCategory(category),
-        condition=ToolCondition(condition),
+        category=ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")),
+        condition=ToolCondition(parse_enum_or_raise(condition, ToolCondition, "condition")),
         photos=photos,
     )
     return ToolResponse.model_validate(tool)
@@ -65,7 +65,7 @@ async def list_tools(
     """
     from datetime import date
 
-    cat_enum = ToolCategory(category) if category else None
+    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
     start = date.fromisoformat(available_start) if available_start else None
     end = date.fromisoformat(available_end) if available_end else None
 
@@ -124,7 +124,7 @@ async def admin_list_all_tools(
     elif status_filter == "inactive":
         include_active = False
 
-    cat_enum = ToolCategory(category) if category else None
+    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
 
     service = ToolService()
     tools, total = await service.list_all_tools(

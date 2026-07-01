@@ -47,7 +47,7 @@ class SchedulerService:
     def start(self) -> None:
         """Start the scheduler if not disabled."""
         if self._disabled:
-            logger.info("Scheduler disabled via TOOLSHARING_DISABLE_SCHEDULER")
+            logger.info("Scheduler disabled via DISABLE_SCHEDULER")
             return
         self.scheduler.add_job(
             self.auto_cancel_overdue_pickups,

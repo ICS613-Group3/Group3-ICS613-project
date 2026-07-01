@@ -4,6 +4,7 @@ All domain errors inherit from AppError. The API layer maps these to
 appropriate HTTP status codes via exception handlers in app.main.
 """
 
+from enum import Enum
 from typing import Any
 
 
@@ -73,3 +74,20 @@ class TooManyRequestsError(AppError):
     """
 
     pass
+
+
+def parse_enum_or_raise(value: str, enum_cls: type[Enum], field_name: str) -> str:
+    """Parse a string into an enum value, or raise ``ValidationError`` (422).
+
+    Catches ``ValueError`` from enum constructors (e.g. ``ToolCategory("bad")``)
+    and re-raises as the project's ``ValidationError`` so the API returns a
+    consistent 422 with valid-values hint instead of a raw 500.
+    """
+    try:
+        enum_cls(value)  # validate; caller casts again for the actual enum instance
+    except ValueError:
+        valid = ", ".join(e.value for e in enum_cls)
+        raise ValidationError(
+            f"Invalid {field_name}: '{value}'. Valid values: {valid}"
+        )
+    return value

@@ -38,16 +38,17 @@ def _get_limiter(name: str, max_requests: int, window_seconds: int) -> RateLimit
 
 
 def _client_key(request: Request) -> str:
-    """Return the rate-limit key for a request, preferring trusted proxy headers.
+    """Return the rate-limit key for a request (client connection IP).
 
-    In production behind a reverse proxy, the proxy's forwarded-for header
-    carries the real client IP. We trust the leftmost entry (set by the
-    edge load balancer). For dev / direct uvicorn, ``request.client.host``
-    is used.
+    Always uses ``request.client.host`` — the actual TCP connection address.
+    We intentionally do NOT trust the ``X-Forwarded-For`` header because any
+    client can send it, which would allow bypassing rate limits by rotating
+    fake IPs.
+
+    When deployed behind a trusted reverse proxy (nginx, Cloudflare, etc.),
+    start uvicorn with ``--proxy-headers`` so ``request.client.host`` already
+    reflects the real client IP from the proxy's trusted forwarded header.
     """
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 
