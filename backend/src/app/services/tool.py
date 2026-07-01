@@ -157,10 +157,16 @@ class ToolService:
         search: str | None = None,
         available_start: date | None = None,
         available_end: date | None = None,
+        exclude_owner_id: uuid.UUID | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[Tool], int]:
-        """List active tools with optional filters and pagination."""
+        """List active tools with optional filters and pagination.
+
+        When ``exclude_owner_id`` is provided, tools owned by that user
+        are filtered out so members never see their own listings in
+        browse/search results.
+        """
         query = select(Tool).where(
             Tool.is_active.is_(True),
             Tool.deleted_at.is_(None),
@@ -169,6 +175,10 @@ class ToolService:
             Tool.is_active.is_(True),
             Tool.deleted_at.is_(None),
         )
+
+        if exclude_owner_id is not None:
+            query = query.where(Tool.owner_id != exclude_owner_id)
+            count_query = count_query.where(Tool.owner_id != exclude_owner_id)
 
         if category is not None:
             query = query.where(Tool.category == category)

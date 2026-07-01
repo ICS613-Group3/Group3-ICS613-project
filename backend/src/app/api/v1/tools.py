@@ -50,10 +50,7 @@ async def create_tool(
 @router.get("", response_model=PaginatedResponse[ToolResponse])
 async def list_tools(
     db: Annotated[AsyncSession, Depends(get_db)],
-    # Any authenticated member can browse active tools (read-only,
-    # no per-user filtering). The dependency enforces auth; the result
-    # is intentionally the same for any logged-in user.
-    _current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member)],
     category: Annotated[str | None, Query(description="Filter by tool category")] = None,
     search: Annotated[str | None, Query(description="Search by name or description")] = None,
     available_start: Annotated[str | None, Query(description="Availability start date (YYYY-MM-DD)")] = None,
@@ -61,7 +58,11 @@ async def list_tools(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ToolResponse]:
-    """List active tools with optional filters."""
+    """List active tools with optional filters.
+
+    Excludes tools owned by the current user so members never see
+    their own listings in browse/search results.
+    """
     from datetime import date
 
     cat_enum = ToolCategory(category) if category else None
@@ -75,6 +76,7 @@ async def list_tools(
         search=search,
         available_start=start,
         available_end=end,
+        exclude_owner_id=current_user.id,
         page=page,
         page_size=page_size,
     )

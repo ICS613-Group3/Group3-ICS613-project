@@ -145,12 +145,13 @@ class TestListTools:
         client,
         db_session: AsyncSession,
     ) -> None:
-        """Listing returns paginated active tools."""
-        user = await UserFactory.create_async(db_session)
+        """Listing returns paginated active tools, excluding the browsing user's own."""
+        owner = await UserFactory.create_async(db_session)
+        browser = await UserFactory.create_async(db_session)
         for i in range(5):
             await ToolFactory.create_async(
                 db_session,
-                owner_id=user.id,
+                owner_id=owner.id,
                 name=f"Public Tool {i}",
                 category=ToolCategory.HAND_TOOLS,
                 is_active=True,
@@ -158,7 +159,7 @@ class TestListTools:
 
         response = await client.get(
             "/api/v1/tools?page=1&page_size=3",
-            headers=_bearer(user),
+            headers=_bearer(browser),
         )
 
         assert response.status_code == 200
@@ -173,8 +174,8 @@ class TestListTools:
         assert "id" in first
         assert "owner_id" in first
         assert "owner" in first
-        assert first["owner"]["id"] == str(user.id)
-        assert first["owner"]["full_name"] == user.full_name
+        assert first["owner"]["id"] == str(owner.id)
+        assert first["owner"]["full_name"] == owner.full_name
         assert "name" in first
         assert "photos" in first
 
@@ -183,18 +184,19 @@ class TestListTools:
         client,
         db_session: AsyncSession,
     ) -> None:
-        """Filter tools by category."""
-        user = await UserFactory.create_async(db_session)
+        """Filter tools by category; browsing user's own tools are excluded."""
+        owner = await UserFactory.create_async(db_session)
+        browser = await UserFactory.create_async(db_session)
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Drill",
             category=ToolCategory.POWER_TOOLS,
             is_active=True,
         )
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Rake",
             category=ToolCategory.GARDEN_TOOLS,
             is_active=True,
@@ -202,7 +204,7 @@ class TestListTools:
 
         response = await client.get(
             "/api/v1/tools?category=POWER_TOOLS",
-            headers=_bearer(user),
+            headers=_bearer(browser),
         )
 
         assert response.status_code == 200
@@ -215,11 +217,12 @@ class TestListTools:
         client,
         db_session: AsyncSession,
     ) -> None:
-        """Search tools by name or description."""
-        user = await UserFactory.create_async(db_session)
+        """Search tools by name or description; browsing user's own tools are excluded."""
+        owner = await UserFactory.create_async(db_session)
+        browser = await UserFactory.create_async(db_session)
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Electric Saw",
             description="Cuts wood cleanly",
             category=ToolCategory.POWER_TOOLS,
@@ -227,7 +230,7 @@ class TestListTools:
         )
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Garden Shovel",
             description="Digs holes easily",
             category=ToolCategory.GARDEN_TOOLS,
@@ -236,7 +239,7 @@ class TestListTools:
 
         response = await client.get(
             "/api/v1/tools?search=saw",
-            headers=_bearer(user),
+            headers=_bearer(browser),
         )
 
         assert response.status_code == 200
@@ -247,7 +250,7 @@ class TestListTools:
         # Search in description
         response2 = await client.get(
             "/api/v1/tools?search=digs",
-            headers=_bearer(user),
+            headers=_bearer(browser),
         )
         assert response2.status_code == 200
         data2 = response2.json()
@@ -259,24 +262,25 @@ class TestListTools:
         client,
         db_session: AsyncSession,
     ) -> None:
-        """List tools only returns active listings."""
-        user = await UserFactory.create_async(db_session)
+        """List tools only returns active listings (browsing user's own are excluded regardless)."""
+        owner = await UserFactory.create_async(db_session)
+        browser = await UserFactory.create_async(db_session)
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Active Tool",
             is_active=True,
         )
         await ToolFactory.create_async(
             db_session,
-            owner_id=user.id,
+            owner_id=owner.id,
             name="Inactive Tool",
             is_active=False,
         )
 
         response = await client.get(
             "/api/v1/tools",
-            headers=_bearer(user),
+            headers=_bearer(browser),
         )
 
         assert response.status_code == 200
@@ -284,6 +288,41 @@ class TestListTools:
         names = [t["name"] for t in data["items"]]
         assert "Active Tool" in names
         assert "Inactive Tool" not in names
+
+    async def test_list_tools_excludes_browsing_users_own_tools(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """Browse endpoint excludes tools owned by the browsing user."""
+        owner = await UserFactory.create_async(db_session)
+        await ToolFactory.create_async(
+            db_session,
+            owner_id=owner.id,
+            name="Owner's Drill",
+            is_active=True,
+        )
+        # Another user's tool should appear
+        other = await UserFactory.create_async(db_session)
+        await ToolFactory.create_async(
+            db_session,
+            owner_id=other.id,
+            name="Other's Hammer",
+            is_active=True,
+        )
+
+        response = await client.get(
+            "/api/v1/tools",
+            headers=_bearer(owner),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        names = [t["name"] for t in data["items"]]
+        # Owner's own tool is excluded; other user's tool appears
+        assert "Owner's Drill" not in names
+        assert "Other's Hammer" in names
+        assert data["total"] == 1
 
     async def test_list_tools_requires_auth(
         self,
