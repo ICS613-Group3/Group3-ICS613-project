@@ -1,0 +1,34 @@
+# Project name overrides the auto-generated prefix.
+# Container name will be: tool-share-db-1.
+name: tool-share
+
+# Why no `backend` service here? The FastAPI app runs on the host via
+# `python run.py` (see Backend_Setup.md § 11), not in a container. Two reasons:
+#   1. Hot-reload on the host is faster than a container volume mount.
+#   2. It avoids two uvicorn processes fighting for port 8000.
+# The app still talks to the database via DATABASE_URL=localhost:5432
+# (see backend/.env).
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: ics613user
+      POSTGRES_PASSWORD: ics613password
+      POSTGRES_DB: toolsharing
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts run once on first boot, after the dev DB is created.
+      # They create the test DB so pytest can connect to a separate database.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ics613user -d toolsharing"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

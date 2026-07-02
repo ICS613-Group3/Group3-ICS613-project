@@ -1,0 +1,1237 @@
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: #f4f6f8;
+  color: #1f2937;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.nav-link,
+.button-link,
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #2563eb;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 700;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-link.active,
+.button-link:hover,
+button:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.app-main {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.page-card,
+.info-card,
+.tool-card {
+  border: 1px solid #d1d5db;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 8%);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  max-width: 520px;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #9ca3af;
+  border-radius: 0.55rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.tool-thumbnail,
+.tool-photo-large {
+  display: grid;
+  place-items: center;
+  border: 2px dashed #9ca3af;
+  border-radius: 0.8rem;
+  background: #f9fafb;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.tool-thumbnail {
+  min-height: 140px;
+  margin-bottom: 1rem;
+}
+
+.tool-photo-large {
+  min-height: 260px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin: 0.35rem 0;
+  padding: 0.3rem 0.65rem;
+}
+
+.workflow-row,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.helper-text {
+  color: #4b5563;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 760px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .filter-row,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-section {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4f46e5;
+}
+
+.page-description {
+  max-width: 720px;
+  color: #475569;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.filter-panel input,
+.filter-panel select,
+.filter-panel button {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 0 0.75rem;
+  font: inherit;
+}
+
+.filter-panel button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.tool-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.tool-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.tool-card-body {
+  padding: 1rem;
+}
+
+.tool-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rating {
+  font-weight: 700;
+  color: #92400e;
+}
+
+.tool-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.tool-card p {
+  color: #475569;
+}
+
+.tool-meta {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.tool-meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.4rem;
+}
+
+.tool-meta dt {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.tool-meta dd {
+  margin: 0;
+  text-align: right;
+}
+
+.primary-link {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 800px) {
+  .filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .page-section {
+    padding: 1rem;
+  }
+}
+
+/* Dashboard summary cards show quick counts from mock data. */
+.dashboard-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: white;
+  padding: 1rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.summary-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.summary-label {
+  color: #475569;
+  font-weight: 700;
+}
+
+/* Dashboard cards are clickable links, but styled like cards. */
+.dashboard-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.dashboard-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-card {
+  height: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  padding: 1.25rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  border-color: #2563eb;
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.15);
+}
+
+.dashboard-card h2 {
+  margin-top: 0;
+}
+
+.dashboard-card p {
+  color: #475569;
+}
+
+.card-action {
+  display: inline-flex;
+  margin-top: 0.75rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+/* Tool detail page uses a two-column layout: listing info + reservation request form. */
+.tool-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Main card for detailed tool listing information. */
+.tool-detail-card,
+.reservation-request-card,
+.empty-state-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.tool-detail-card {
+  overflow: hidden;
+}
+
+/* Detail page image — constrained, full image visible, no cropping. */
+.detail-image {
+  width: 100%;
+  max-width: 360px;
+  max-height: 300px;
+  object-fit: contain;
+  background: #f1f5f9;
+  display: block;
+  margin: 1rem auto;
+  border-radius: 12px;
+}
+
+.tool-detail-content,
+.reservation-request-card,
+.empty-state-card {
+  padding: 1.25rem;
+}
+
+/* Metadata grid for owner, condition, availability, and return time. */
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.detail-meta-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: #f8fafc;
+}
+
+.detail-meta-grid dt {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.detail-meta-grid dd {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Small information box for owner notes and request preview. */
+.info-panel {
+  margin-top: 1rem;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 1rem;
+}
+
+.info-panel h3 {
+  margin-top: 0;
+}
+
+.info-panel p {
+  margin-bottom: 0;
+}
+
+/* Reservation request form styles. */
+.reservation-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.reservation-form label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.reservation-form input,
+.reservation-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.reservation-form textarea {
+  resize: vertical;
+}
+
+.reservation-form button {
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.8rem 1rem;
+}
+
+.hst-note {
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.75rem;
+}
+
+.success-message {
+  margin-top: 1rem;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  padding: 0.85rem;
+}
+
+.request-preview {
+  background: #f8fafc;
+  border-left-color: #64748b;
+}
+
+.secondary-link {
+  align-self: start;
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  color: #2563eb;
+  font-weight: 800;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+}
+
+.narrow-link {
+  max-width: 240px;
+}
+
+/* Mobile layout: stack detail card and reservation form vertically. */
+@media (max-width: 900px) {
+  .tool-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-image {
+    height: 220px;
+  }
+}
+
+/* Shows how many tools match the current Browse Tools filters. */
+.results-summary {
+  margin: 0 0 1rem;
+  color: #475569;
+  font-weight: 700;
+}
+
+/* Reservation workflow page styles. */
+.reservation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.reservation-card,
+.reservation-detail-card,
+.workflow-actions-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+}
+
+.reservation-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.reservation-card-header h2 {
+  margin-top: 0.25rem;
+}
+
+.workflow-status {
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-requested {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-denied {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-picked_up {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.status-returned {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reservation-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.reservation-meta-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.reservation-meta-grid dt {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.reservation-meta-grid dd {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.reservation-message {
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 0.85rem;
+}
+
+.reservation-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.workflow-action-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.action-button {
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 0.85rem 1rem;
+}
+
+.approve-button {
+  background: #2563eb;
+  color: white;
+}
+
+.danger-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.disabled-button {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.closed-workflow-message {
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 0.85rem;
+}
+
+.workflow-note {
+  margin-top: 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+.workflow-note h3 {
+  margin-top: 0;
+}
+
+.workflow-note ul {
+  margin-bottom: 0;
+  padding-left: 1.2rem;
+}
+
+@media (max-width: 900px) {
+  .reservation-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-card-header {
+    flex-direction: column;
+  }
+}
+
+/* Create Tool page form and preview styles. */
+.tool-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.tool-form-card,
+.tool-preview-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
+}
+
+.tool-form-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.tool-form-card label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.tool-form-card input,
+.tool-form-card select,
+.tool-form-card textarea,
+.tool-form-card button {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  padding: 0.75rem;
+}
+
+.tool-form-card textarea {
+  resize: vertical;
+}
+
+.tool-form-card button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.tool-preview-image {
+  width: 100%;
+  height: 220px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.header-action-link {
+  align-self: start;
+  width: fit-content;
+}
+
+@media (max-width: 900px) {
+  .tool-form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================================
+   Tool Detail Header Action Buttons
+   Adds spacing between Edit Tool and Back buttons.
+   ================================ */
+
+.tool-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+  min-width: 220px;
+}
+
+.tool-detail-actions .primary-link,
+.tool-detail-actions .secondary-link {
+  text-align: center;
+}
+
+/* ================================
+   US24 Review Page Styles
+   Supports mock review form and live review preview.
+   ================================ */
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.review-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.review-card label {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  font-weight: 700;
+}
+
+.review-card select,
+.review-card textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.review-card select:disabled,
+.review-card textarea:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.review-summary {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.review-summary p {
+  margin: 0;
+}
+
+.review-preview-card {
+  position: sticky;
+  top: 1rem;
+}
+
+.review-comment-preview {
+  min-height: 110px;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #334155;
+}
+
+@media (max-width: 820px) {
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .review-preview-card {
+    position: static;
+  }
+}
+
+/* ================================
+   Browse Tools Header + Tool Menu
+   Supports Available Tools, Returned Tools, and Add New Tools dropdown.
+   ================================ */
+
+.browse-tools-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.browse-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.browse-toolbar {
+  margin: 1rem 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.tool-menu-label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 700;
+  max-width: 260px;
+  width: 100%;
+}
+
+.tool-menu-label select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+  background: #ffffff;
+}
+
+.tool-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 760px) {
+  .browse-tools-header {
+    flex-direction: column;
+  }
+
+  .browse-header-actions {
+    width: 100%;
+  }
+
+  .browse-header-actions .primary-link,
+  .browse-header-actions .secondary-link {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ================================
+   Top Navigation Browse Tools Dropdown
+   Shows Available Tools, Returned Tools, and Add New Tools on hover.
+   ================================ */
+
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.nav-dropdown-toggle::after {
+  content: " ?";
+  font-size: 0.8rem;
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  min-width: 190px;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+  z-index: 20;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.nav-dropdown-item {
+  display: block;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nav-dropdown-item:hover {
+  background: #eff6ff;
+}
+
+/* ================================
+   Fix Browse Tools Dropdown Arrow
+   Uses CSS triangle instead of special character to avoid ? encoding issue.
+   ================================ */
+
+.nav-dropdown-toggle::after {
+  content: "";
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+}
+
+/* Returned Tools review button spacing */
+.returned-review-link {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+/* Returned Tools review button spacing */
+.returned-review-link {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+/* Returned Tools review button spacing */
+.returned-review-link {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+/* ================================
+   Returned Tools Button Fix
+   Prevents "Review This Tool" from overlapping with "View Details".
+   ================================ */
+
+.tool-card-body .primary-link {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tool-card-body .returned-review-link {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.9rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.tool-card-body .primary-link + .returned-review-link {
+  margin-top: 0.85rem;
+}
+
+/* ================================
+   Mock Auth Navigation
+   Makes Logout button match nav links.
+   ================================ */
+
+.nav-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* ================================
+   Login / Register Mock Auth Forms
+   ================================ */
+
+.auth-card {
+  display: grid;
+  gap: 1rem;
+  max-width: 440px;
+  padding: 1.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.auth-card label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.auth-card input {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.auth-submit-button {
+  border: none;
+  cursor: pointer;
+}
+
+.auth-helper-text {
+  margin: 0;
+  color: #64748b;
+}
+
+/* ================================
+   US25 Review History Page
+   ================================ */
+
+.review-history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.review-history-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.review-history-card h2 {
+  margin: 0;
+}
+
+.review-history-comment {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Overdue indicator (US18 polish) — red banner on PICKED_UP
+   reservations where today > end_date */
+.overdue-banner {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0.75rem 0;
+}
+
+.overdue-warning-text {
+  color: #991b1b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.status-badge-inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tool-deactivation-reason {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 6px;
+}

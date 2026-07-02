@@ -1,0 +1,30 @@
+Quick setup on Windows (after copy):
+
+    Backend:
+    powershell
+    cd backend
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+
+    Then start PostgreSQL however you like — easiest is Docker Desktop:
+    powershell
+    docker compose up -d
+
+    Then seed and run:
+    powershell
+    set SEED_PASSWORD=devpass123
+    python scripts\seed_dev.py
+    python run.py --port 8000
+
+
+    Frontend:
+    powershell
+    cd frontend
+    npm install
+    npm run dev       # dev mode with hot reload → http://localhost:5173
+    OR use the pre-built dist/:
+    npx serve dist    # static server on a different port (configure CORS)
+
+
+    Note: The pre-built frontend/dist/ is already compiled and points API calls to localhost:8000 via the Vite proxy. If you just want to preview the app without rebuilding, you can copy dist/ and serve it from the backend (or a static server). But during development, use npm run dev for hot reload — just make sure the backend is running on port 8000.
