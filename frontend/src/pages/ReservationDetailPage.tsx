@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   mockReservations,
@@ -15,7 +15,14 @@ import {
  * APPROVED -> PICKED_UP
  * PICKED_UP -> RETURNED
  *
- * Later, Ivan can connect each button to the backend API endpoints.
+ * PR #131 review fix:
+ * - When a reservation reaches RETURNED status, show a real "Leave Review"
+ *   link instead of a disabled "Leave Review Coming Next" button.
+ *
+ * Later backend behavior:
+ * - Ivan can connect each action button to backend API endpoints.
+ * - The review link can stay the same because it already matches the route:
+ *   /reservations/:reservationId/review
  */
 function ReservationDetailPage() {
   // Read reservationId from the route path: /reservations/:reservationId
@@ -26,7 +33,12 @@ function ReservationDetailPage() {
     (mockReservation) => mockReservation.id === reservationId,
   );
 
-  // Local status state lets the demo update status without backend persistence.
+  /**
+   * Local status state lets the demo update status without backend persistence.
+   *
+   * If the reservation exists, start with the mock reservation status.
+   * If the reservation does not exist, fall back to REQUESTED.
+   */
   const [currentStatus, setCurrentStatus] = useState<ReservationStatus>(
     reservation?.status ?? 'REQUESTED',
   );
@@ -36,6 +48,9 @@ function ReservationDetailPage() {
 
   /**
    * Converts backend-style status values into readable text.
+   *
+   * Example:
+   * PICKED_UP -> PICKED UP
    */
   const formatStatus = (status: ReservationStatus) => {
     return status.replace('_', ' ');
@@ -43,7 +58,9 @@ function ReservationDetailPage() {
 
   /**
    * Updates local status for the mock demo.
-   * This simulates a backend response.
+   *
+   * This simulates a backend response for the R1 frontend demo.
+   * A page refresh will reset the status back to the original mock data.
    */
   const handleStatusChange = (
     nextStatus: ReservationStatus,
@@ -53,7 +70,11 @@ function ReservationDetailPage() {
     setActionMessage(message);
   };
 
-  // Friendly error page for an invalid reservation ID.
+  /**
+   * Friendly error page for an invalid reservation ID.
+   *
+   * This prevents the app from crashing if a user opens a bad URL.
+   */
   if (!reservation) {
     return (
       <section className="page-section">
@@ -71,11 +92,13 @@ function ReservationDetailPage() {
     );
   }
 
+  // Determine which mock role this reservation is using for demo actions.
   const isBorrower = reservation.role === 'borrower';
   const isOwner = reservation.role === 'owner';
 
   return (
     <section className="page-section">
+      {/* Page header */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Reservation Detail</p>
@@ -86,13 +109,17 @@ function ReservationDetailPage() {
           </p>
         </div>
 
+        {/* Back link to the reservation list */}
         <Link className="secondary-link" to="/reservations">
           Back to Reservations
         </Link>
       </div>
 
+      {/* Main reservation detail layout */}
       <div className="reservation-detail-grid">
+        {/* Reservation information card */}
         <article className="reservation-detail-card">
+          {/* Reservation title and status */}
           <div className="reservation-card-header">
             <div>
               <p className="eyebrow">
@@ -108,6 +135,7 @@ function ReservationDetailPage() {
             </span>
           </div>
 
+          {/* Reservation metadata */}
           <dl className="reservation-meta-grid detail-meta-grid">
             <div>
               <dt>Borrower</dt>
@@ -144,6 +172,7 @@ function ReservationDetailPage() {
             </div>
           </dl>
 
+          {/* Optional borrower request message */}
           {reservation.message && (
             <div className="info-panel">
               <h3>Request Message</h3>
@@ -151,6 +180,7 @@ function ReservationDetailPage() {
             </div>
           )}
 
+          {/* Success/status message after mock action */}
           {actionMessage && (
             <div className="success-message" role="status">
               {actionMessage}
@@ -158,6 +188,7 @@ function ReservationDetailPage() {
           )}
         </article>
 
+        {/* Workflow action panel */}
         <aside className="workflow-actions-card">
           <p className="eyebrow">Workflow Actions</p>
           <h2>Available Actions</h2>
@@ -166,7 +197,9 @@ function ReservationDetailPage() {
             this page only. A page refresh will reset the mock data.
           </p>
 
+          {/* Workflow buttons change based on status and role */}
           <div className="workflow-action-list">
+            {/* Owner can approve or deny REQUESTED reservations */}
             {currentStatus === 'REQUESTED' && isOwner && (
               <>
                 <button
@@ -197,6 +230,7 @@ function ReservationDetailPage() {
               </>
             )}
 
+            {/* Borrower can cancel REQUESTED reservations */}
             {currentStatus === 'REQUESTED' && isBorrower && (
               <button
                 type="button"
@@ -212,6 +246,7 @@ function ReservationDetailPage() {
               </button>
             )}
 
+            {/* Borrower can confirm pickup or cancel before pickup when APPROVED */}
             {currentStatus === 'APPROVED' && isBorrower && (
               <>
                 <button
@@ -242,6 +277,7 @@ function ReservationDetailPage() {
               </>
             )}
 
+            {/* Owner can cancel an APPROVED reservation */}
             {currentStatus === 'APPROVED' && isOwner && (
               <button
                 type="button"
@@ -257,6 +293,7 @@ function ReservationDetailPage() {
               </button>
             )}
 
+            {/* Borrower can confirm return when PICKED_UP */}
             {currentStatus === 'PICKED_UP' && isBorrower && (
               <button
                 type="button"
@@ -272,12 +309,17 @@ function ReservationDetailPage() {
               </button>
             )}
 
+            {/* PR #131 review fix: RETURNED reservations now link to ReviewPage */}
             {currentStatus === 'RETURNED' && (
-              <button type="button" className="action-button disabled-button">
-                Leave Review Coming Next
-              </button>
+              <Link
+                className="action-button approve-button workflow-review-link"
+                to={`/reservations/${reservation.id}/review`}
+              >
+                Leave Review
+              </Link>
             )}
 
+            {/* Closed states show a message instead of action buttons */}
             {(currentStatus === 'DENIED' || currentStatus === 'CANCELLED') && (
               <p className="closed-workflow-message">
                 This reservation is closed. No further action is available.
@@ -285,12 +327,14 @@ function ReservationDetailPage() {
             )}
           </div>
 
+          {/* R1 story coverage note */}
           <div className="workflow-note">
             <h3>R1 stories covered</h3>
             <ul>
               <li>US14 Owner Approve / Deny</li>
               <li>US17 Borrower Confirm Pickup</li>
               <li>US20 Borrower Confirm Return</li>
+              <li>US24 Leave Rating / Review after return</li>
             </ul>
           </div>
         </aside>

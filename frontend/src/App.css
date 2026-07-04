@@ -1197,3 +1197,58 @@ select {
   color: #475569;
   line-height: 1.5;
 }
+
+/* ================================
+   Final Nav + Logout Override
+   Purpose:
+   - Makes Logout match other nav tabs.
+   - Keeps Logout as a button because it performs an action.
+   - Keeps member nav visually consistent after adding Notifications.
+   ================================ */
+
+/* Keep nav items aligned and wrapped on small screens. */
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Make Logout button use the same visual style as nav links. */
+.nav-button.nav-link {
+  border: 1px solid #2563eb;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Make Logout hover match other nav items. */
+.nav-button.nav-link:hover,
+.nav-button.nav-link:focus {
+  background: #2563eb;
+  color: #ffffff;
+  outline: none;
+}
+
+/* Keep active nav links visually clear. */
+.nav-link.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* ================================
+   Reservation Detail Review Link
+   Purpose:
+   - Makes the "Leave Review" link look like the workflow action buttons.
+   - Used when a reservation reaches RETURNED status.
+   ================================ */
+
+.workflow-review-link {
+  text-align: center;
+  text-decoration: none;
+}
