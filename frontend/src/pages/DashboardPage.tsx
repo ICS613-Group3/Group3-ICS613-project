@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
 import { mockNotifications, mockReservations, mockTools } from '../data/mockData';
 
 /**
@@ -12,11 +14,50 @@ import { mockNotifications, mockReservations, mockTools } from '../data/mockData
  * - Let the user go to Reservations.
  * - Let the user go to Notifications.
  *
+ * Task 4 notification behavior:
+ * - Unread notification count updates when NotificationsPage marks items read.
+ *
  * Note:
  * The temporary "Review Demo" card was removed from the dashboard.
  * The review workflow should be reached from returned reservations / Review Tools.
  */
 function DashboardPage() {
+  // localStorage key used by NotificationsPage for frontend-only read state.
+  const notificationReadStateKey = 'mockNotificationReadState';
+
+  /**
+   * getStoredNotificationReadState
+   *
+   * Reads notification read state from localStorage.
+   */
+  function getStoredNotificationReadState() {
+    const storedValue = localStorage.getItem(notificationReadStateKey);
+
+    if (!storedValue) {
+      return {} as Record<string, boolean>;
+    }
+
+    try {
+      return JSON.parse(storedValue) as Record<string, boolean>;
+    } catch {
+      return {} as Record<string, boolean>;
+    }
+  }
+
+  /**
+   * getUnreadNotificationCount
+   *
+   * Counts unread notifications using mock data plus localStorage override.
+   */
+  function getUnreadNotificationCount() {
+    const storedReadState = getStoredNotificationReadState();
+
+    return mockNotifications.filter((notification) => {
+      const isRead = storedReadState[notification.id] ?? notification.read;
+      return !isRead;
+    }).length;
+  }
+
   // Count the number of mock tools so the dashboard can show a quick summary.
   const totalTools = mockTools.length;
 
@@ -24,9 +65,36 @@ function DashboardPage() {
   const totalReservations = mockReservations.length;
 
   // Count unread notifications for the notification card.
-  const unreadNotifications = mockNotifications.filter(
-    (notification) => !notification.read,
-  ).length;
+  const [unreadNotifications, setUnreadNotifications] = useState(
+    getUnreadNotificationCount,
+  );
+
+  /**
+   * Keep unread notification count synced with NotificationsPage.
+   */
+  useEffect(() => {
+    const syncUnreadNotifications = () => {
+      setUnreadNotifications(getUnreadNotificationCount());
+    };
+
+    // Listen for same-tab notification updates.
+    window.addEventListener('mock-notifications-change', syncUnreadNotifications);
+
+    // Listen for localStorage changes from another tab.
+    window.addEventListener('storage', syncUnreadNotifications);
+
+    // Update once when dashboard loads.
+    syncUnreadNotifications();
+
+    // Clean up listeners when dashboard unmounts.
+    return () => {
+      window.removeEventListener(
+        'mock-notifications-change',
+        syncUnreadNotifications,
+      );
+      window.removeEventListener('storage', syncUnreadNotifications);
+    };
+  }, []);
 
   return (
     <section className="page-section">
@@ -54,7 +122,7 @@ function DashboardPage() {
           <span className="summary-label">Mock Reservations</span>
         </article>
 
-        <article className="summary-card">
+        <article className="summary-card notification-unread-summary">
           <span className="summary-number">{unreadNotifications}</span>
           <span className="summary-label">Unread Notifications</span>
         </article>
@@ -91,7 +159,10 @@ function DashboardPage() {
               Review reservation updates, approval notices, pickup changes, and
               return reminders.
             </p>
-            <span className="card-action">View notifications</span>
+            <span className="card-action">
+              View notifications
+              {unreadNotifications > 0 ? ` (${unreadNotifications} unread)` : ''}
+            </span>
           </article>
         </Link>
       </div>

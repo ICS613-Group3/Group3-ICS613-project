@@ -2307,3 +2307,252 @@ select {
   margin: 0;
   font-weight: 700;
 }
+
+/* ================================
+   Task 4 Improved Notification UI
+   Purpose:
+   - Improves /notifications page.
+   - Adds unread badge in nav.
+   - Adds notification filters, read/unread badges, and action buttons.
+   ================================ */
+
+/* Notifications nav label wraps text and badge together. */
+.notification-nav-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Small unread count badge in top navigation. */
+.nav-notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 0 0.35rem;
+}
+
+/* Summary grid for notification counts. */
+.notification-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Makes unread notification summary stand out. */
+.notification-unread-summary .summary-number {
+  color: #dc2626;
+}
+
+/* Toolbar holding filters and bulk actions. */
+.notification-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+/* Filter button group. */
+.notification-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* Bulk action button group. */
+.notification-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* Filter tab buttons. */
+.notification-filter-button {
+  border: 1px solid #2563eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.6rem 0.9rem;
+}
+
+/* Active filter tab. */
+.notification-filter-button.active,
+.notification-filter-button:hover,
+.notification-filter-button:focus {
+  background: #2563eb;
+  color: #ffffff;
+  outline: none;
+}
+
+/* Notification list layout. */
+.notification-list {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Notification card base style. */
+.notification-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Unread notification card emphasis. */
+.notification-card-unread {
+  border-left: 5px solid #2563eb;
+}
+
+/* Read notification card style. */
+.notification-card-read {
+  opacity: 0.82;
+}
+
+/* Notification card header. */
+.notification-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Notification card title spacing. */
+.notification-card-header h2 {
+  margin: 0.5rem 0 0;
+}
+
+/* Notification type badge base style. */
+.notification-type-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.65rem;
+  text-transform: uppercase;
+}
+
+/* Reservation update type badge. */
+.notification-type-reservation-update {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Owner action type badge. */
+.notification-type-owner-action {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Pickup reminder type badge. */
+.notification-type-pickup-reminder {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+/* Return reminder type badge. */
+.notification-type-return-reminder {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* Read/unread status badge. */
+.notification-read-status {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Unread status badge. */
+.notification-read-status.unread {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Read status badge. */
+.notification-read-status.read {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Notification message text. */
+.notification-message {
+  margin: 0;
+  color: #334155;
+  line-height: 1.5;
+}
+
+/* Footer with timestamp and actions. */
+.notification-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Notification card action buttons/links. */
+.notification-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* Make notification action links fit content instead of full width. */
+.notification-card-actions .secondary-link {
+  width: fit-content;
+}
+
+/* Disabled secondary button style. */
+.secondary-button:disabled {
+  background: #e5e7eb;
+  border-color: #cbd5e1;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Mobile notification layout. */
+@media (max-width: 760px) {
+  .notification-toolbar,
+  .notification-card-header,
+  .notification-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-action-group,
+  .notification-filter-group,
+  .notification-card-actions {
+    width: 100%;
+  }
+
+  .notification-card-actions .secondary-link,
+  .notification-card-actions .secondary-button {
+    width: 100%;
+  }
+}

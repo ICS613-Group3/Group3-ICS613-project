@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
+import { mockNotifications } from '../data/mockData';
+
 /**
  * AppLayout
  *
@@ -13,8 +15,12 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
  * - If user is not logged in, show only Login and Register.
  * - If user is logged in, show member navigation and Logout.
  *
+ * Task 4 notification behavior:
+ * - Shows unread notification count beside the Notifications nav link.
+ * - Listens for localStorage changes from NotificationsPage.
+ *
  * Important:
- * - This is frontend-only mock auth.
+ * - This is frontend-only mock auth and mock notification behavior.
  * - Later, real AuthContext/backend auth can replace localStorage.
  */
 function AppLayout() {
@@ -24,6 +30,44 @@ function AppLayout() {
   // localStorage key used by LoginPage and RegisterPage for mock auth.
   const mockAuthKey = 'mockAuthStatus';
 
+  // localStorage key used by NotificationsPage for frontend-only read state.
+  const notificationReadStateKey = 'mockNotificationReadState';
+
+  /**
+   * getStoredNotificationReadState
+   *
+   * Reads frontend-only notification read state from localStorage.
+   */
+  function getStoredNotificationReadState() {
+    const storedValue = localStorage.getItem(notificationReadStateKey);
+
+    if (!storedValue) {
+      return {} as Record<string, boolean>;
+    }
+
+    try {
+      return JSON.parse(storedValue) as Record<string, boolean>;
+    } catch {
+      return {} as Record<string, boolean>;
+    }
+  }
+
+  /**
+   * getUnreadNotificationCount
+   *
+   * Calculates unread notification count using:
+   * - mockData.ts default read values
+   * - localStorage override from NotificationsPage
+   */
+  function getUnreadNotificationCount() {
+    const storedReadState = getStoredNotificationReadState();
+
+    return mockNotifications.filter((notification) => {
+      const isRead = storedReadState[notification.id] ?? notification.read;
+      return !isRead;
+    }).length;
+  }
+
   /**
    * Mock login state.
    *
@@ -32,6 +76,11 @@ function AppLayout() {
    */
   const [isLoggedIn, setIsLoggedIn] = useState(
     () => localStorage.getItem(mockAuthKey) === 'logged-in',
+  );
+
+  // Store unread notification count for the nav badge.
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(
+    getUnreadNotificationCount,
   );
 
   /**
@@ -57,6 +106,36 @@ function AppLayout() {
     return () => {
       window.removeEventListener('mock-auth-change', syncMockAuth);
       window.removeEventListener('storage', syncMockAuth);
+    };
+  }, []);
+
+  /**
+   * Listen for notification read/unread changes.
+   *
+   * NotificationsPage dispatches "mock-notifications-change"
+   * after marking notifications read or resetting the demo.
+   */
+  useEffect(() => {
+    const syncNotificationCount = () => {
+      setUnreadNotificationCount(getUnreadNotificationCount());
+    };
+
+    // Listen for same-tab notification changes.
+    window.addEventListener('mock-notifications-change', syncNotificationCount);
+
+    // Listen for localStorage changes from another tab.
+    window.addEventListener('storage', syncNotificationCount);
+
+    // Set the latest count when layout mounts.
+    syncNotificationCount();
+
+    // Clean up listeners when layout unmounts.
+    return () => {
+      window.removeEventListener(
+        'mock-notifications-change',
+        syncNotificationCount,
+      );
+      window.removeEventListener('storage', syncNotificationCount);
     };
   }, []);
 
@@ -132,9 +211,16 @@ function AppLayout() {
                 Review History
               </NavLink>
 
-              {/* Notifications link. */}
+              {/* Notifications link with unread badge. */}
               <NavLink className={getNavLinkClass} to="/notifications">
-                Notifications
+                <span className="notification-nav-label">
+                  Notifications
+                  {unreadNotificationCount > 0 && (
+                    <span className="nav-notification-badge">
+                      {unreadNotificationCount}
+                    </span>
+                  )}
+                </span>
               </NavLink>
 
               {/* Profile edit link for frontend issue #102. */}
