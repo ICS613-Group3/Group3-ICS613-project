@@ -1839,3 +1839,120 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+/* ================================
+   US10 Delete / Deactivate Tool Listing UI
+   Purpose:
+   - Supports US10 Delete or Deactivate a Tool Listing.
+   - Shows listing status, owner-only warnings, active-reservation block,
+     deactivate reason form, and delete confirmation controls.
+   ================================ */
+
+/* Listing state banner at the top of the Edit Tool page. */
+.listing-state-banner {
+  display: block;
+  margin-bottom: 1rem;
+  border-radius: 14px;
+  padding: 1rem;
+  font-weight: 800;
+}
+
+/* ACTIVE mock listing status. */
+.listing-state-active {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* DEACTIVATED mock listing status. */
+.listing-state-deactivated {
+  border: 1px solid #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+/* DELETED mock listing status. */
+.listing-state-deleted {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* Warning panel for blocked edit or owner-only messages. */
+.warning-panel {
+  margin-bottom: 1rem;
+  border-left: 4px solid #f59e0b;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #78350f;
+  padding: 1rem;
+}
+
+/* Danger zone card inside the preview column. */
+.tool-danger-zone {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  background: #fff7f7;
+  padding: 1rem;
+}
+
+/* Keeps the danger zone heading tight. */
+.tool-danger-zone h2 {
+  margin: 0;
+}
+
+/* Deactivate form layout. */
+.deactivate-listing-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+/* Deactivation textarea style. */
+.deactivate-listing-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+  resize: vertical;
+}
+
+/* Delete confirmation section. */
+.delete-listing-box {
+  display: grid;
+  gap: 0.8rem;
+  border-top: 1px solid #fecaca;
+  padding-top: 1rem;
+}
+
+/* Delete confirmation label layout. */
+.delete-listing-box label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 800;
+}
+
+/* Delete confirmation input. */
+.delete-listing-box input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+/* Improve dangerous action disabled state for US10. */
+.danger-action-button:disabled {
+  background: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Keep active reservation block readable inside the tool danger zone. */
+.tool-danger-zone .active-reservation-block {
+  margin: 0;
+}
