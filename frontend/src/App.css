@@ -2206,3 +2206,104 @@ select {
     flex-direction: column;
   }
 }
+
+/* ================================
+   US18 Overdue / Auto-Cancel Notice UI
+   Purpose:
+   - Supports US18 Auto-Cancel Overdue Pickup.
+   - Shows overdue pickup indicators on reservation cards.
+   - Shows detailed auto-cancel notice on reservation detail page.
+   - This is frontend-only display behavior for the R1 demo.
+   ================================ */
+
+/* Page-level explanation for US18 demo rule. */
+.auto-cancel-page-note {
+  border: 1px solid #fbbf24;
+  border-radius: 16px;
+  background: #fffbeb;
+  color: #78350f;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+}
+
+/* Keep US18 page note heading spacing clean. */
+.auto-cancel-page-note h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* Overdue summary card number uses danger color. */
+.overdue-summary-card .summary-number {
+  color: #dc2626;
+}
+
+/* Card-level pickup grace notice. */
+.pickup-grace-notice {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  margin: 1rem 0;
+  padding: 0.85rem;
+}
+
+/* Card-level overdue pickup notice. */
+.overdue-pickup-notice {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+  margin: 1rem 0;
+  padding: 0.85rem;
+}
+
+/* Keep notice text compact. */
+.pickup-grace-notice p,
+.overdue-pickup-notice p {
+  margin: 0;
+}
+
+/* Detail-level auto-cancel panel. */
+.auto-cancel-detail-panel {
+  display: grid;
+  gap: 0.75rem;
+  border-radius: 14px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+/* Detail panel for grace-period state. */
+.auto-cancel-detail-panel.grace {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Detail panel for overdue state. */
+.auto-cancel-detail-panel.overdue {
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* Detail panel heading spacing. */
+.auto-cancel-detail-panel h3 {
+  margin: 0;
+}
+
+/* Detail panel list spacing. */
+.auto-cancel-detail-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+/* Detail panel paragraph spacing. */
+.auto-cancel-detail-panel p {
+  margin: 0;
+  font-weight: 700;
+}

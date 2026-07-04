@@ -1,9 +1,94 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   mockReservations,
+  type MockReservation,
   type ReservationStatus,
 } from '../data/mockData';
+
+/**
+ * US18 frontend demo constants.
+ *
+ * pickupGraceDays:
+ * - R1 plan uses a 3-day grace period for pickup.
+ *
+ * mockTodayHst:
+ * - Fixed HST demo date so the overdue notice is visible during the demo.
+ * - Backend/Celery will later use the real HST date.
+ */
+const pickupGraceDays = 3;
+const mockTodayHst = '2026-07-08';
+
+/**
+ * addDaysToDateString
+ *
+ * Adds days to a YYYY-MM-DD date string and returns YYYY-MM-DD.
+ * Uses UTC internally to keep output stable across browsers.
+ */
+function addDaysToDateString(dateString: string, daysToAdd: number) {
+  const date = new Date(`${dateString}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + daysToAdd);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * getDateDifferenceInDays
+ *
+ * Returns the number of calendar days between two YYYY-MM-DD dates.
+ */
+function getDateDifferenceInDays(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+  return Math.floor((end.getTime() - start.getTime()) / millisecondsPerDay);
+}
+
+/**
+ * getPickupAutoCancelInfo
+ *
+ * US18 frontend helper.
+ *
+ * Rule for mock demo:
+ * - Only APPROVED reservations can become overdue for pickup.
+ * - Pickup must be confirmed within 3 days after the reservation start date.
+ * - If the grace deadline passed, show an overdue/auto-cancel notice.
+ *
+ * Important:
+ * - This does not run a real scheduled job.
+ * - Backend/Celery will later perform the actual auto-cancel.
+ */
+function getPickupAutoCancelInfo(
+  reservation: MockReservation,
+  currentStatus: ReservationStatus,
+) {
+  if (currentStatus !== 'APPROVED') {
+    return null;
+  }
+
+  const graceDeadline = addDaysToDateString(
+    reservation.startDate,
+    pickupGraceDays,
+  );
+
+  const autoCancelDate = addDaysToDateString(
+    reservation.startDate,
+    pickupGraceDays + 1,
+  );
+
+  const isOverdue = mockTodayHst > graceDeadline;
+  const daysPastGrace = Math.max(
+    0,
+    getDateDifferenceInDays(graceDeadline, mockTodayHst),
+  );
+
+  return {
+    graceDeadline,
+    autoCancelDate,
+    isOverdue,
+    daysPastGrace,
+  };
+}
 
 /**
  * ReservationDetailPage
@@ -19,10 +104,16 @@ import {
  * - When a reservation reaches RETURNED status, show a real "Leave Review"
  *   link instead of a disabled "Leave Review Coming Next" button.
  *
+ * US18 added:
+ * - Shows overdue pickup indicator.
+ * - Shows detailed auto-cancel notice.
+ * - Provides a mock auto-cancel action for demo purposes only.
+ *
  * Later backend behavior:
  * - Ivan can connect each action button to backend API endpoints.
  * - The review link can stay the same because it already matches the route:
  *   /reservations/:reservationId/review
+ * - Celery/backend job can perform the real US18 auto-cancel.
  */
 function ReservationDetailPage() {
   // Read reservationId from the route path: /reservations/:reservationId
@@ -95,6 +186,9 @@ function ReservationDetailPage() {
   // Determine which mock role this reservation is using for demo actions.
   const isBorrower = reservation.role === 'borrower';
   const isOwner = reservation.role === 'owner';
+
+  // US18 auto-cancel notice information for this reservation.
+  const autoCancelInfo = getPickupAutoCancelInfo(reservation, currentStatus);
 
   return (
     <section className="page-section">
@@ -171,6 +265,45 @@ function ReservationDetailPage() {
               </dd>
             </div>
           </dl>
+
+          {/* US18 detailed auto-cancel notice. */}
+          {autoCancelInfo && (
+            <section
+              className={
+                autoCancelInfo.isOverdue
+                  ? 'auto-cancel-detail-panel overdue'
+                  : 'auto-cancel-detail-panel grace'
+              }
+            >
+              <p className="eyebrow">US18 Auto-Cancel Overdue Pickup</p>
+
+              <h3>
+                {autoCancelInfo.isOverdue
+                  ? 'Pickup is overdue'
+                  : 'Pickup is still within grace period'}
+              </h3>
+
+              <ul>
+                <li>Mock today: {mockTodayHst} HST</li>
+                <li>Reservation start date: {reservation.startDate}</li>
+                <li>Pickup grace deadline: {autoCancelInfo.graceDeadline} HST</li>
+                <li>Auto-cancel evaluation date: {autoCancelInfo.autoCancelDate} HST</li>
+              </ul>
+
+              {autoCancelInfo.isOverdue ? (
+                <p>
+                  Pickup was not confirmed within the {pickupGraceDays}-day
+                  grace period. The real backend job would auto-cancel this
+                  reservation and free the tool dates.
+                </p>
+              ) : (
+                <p>
+                  Pickup is not overdue yet. The borrower can still confirm
+                  pickup before the grace deadline.
+                </p>
+              )}
+            </section>
+          )}
 
           {/* Optional borrower request message */}
           {reservation.message && (
@@ -293,6 +426,22 @@ function ReservationDetailPage() {
               </button>
             )}
 
+            {/* US18 mock auto-cancel action for overdue APPROVED reservation. */}
+            {autoCancelInfo?.isOverdue && (
+              <button
+                type="button"
+                className="action-button danger-button"
+                onClick={() =>
+                  handleStatusChange(
+                    'CANCELLED',
+                    'Mock US18 auto-cancel applied. Status changed to CANCELLED and tool dates would be freed by backend logic.',
+                  )
+                }
+              >
+                Mock Auto-Cancel Overdue Pickup
+              </button>
+            )}
+
             {/* Borrower can confirm return when PICKED_UP */}
             {currentStatus === 'PICKED_UP' && isBorrower && (
               <button
@@ -333,6 +482,7 @@ function ReservationDetailPage() {
             <ul>
               <li>US14 Owner Approve / Deny</li>
               <li>US17 Borrower Confirm Pickup</li>
+              <li>US18 Auto-Cancel Overdue Pickup</li>
               <li>US20 Borrower Confirm Return</li>
               <li>US24 Leave Rating / Review after return</li>
             </ul>
