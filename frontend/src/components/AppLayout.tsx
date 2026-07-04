@@ -140,6 +140,11 @@ function AppLayout() {
                 Notifications
               </NavLink>
 
+              {/* Admin invite management link for frontend issues #62, #63, and #64 */}
+              <NavLink className={getNavLinkClass} to="/admin/invites">
+                Admin Invites
+              </NavLink>
+
               {/* Logout action button styled like a nav tab */}
               <button
                 className="nav-link nav-button"

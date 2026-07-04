@@ -13,6 +13,8 @@ import ReservationsPage from '../pages/ReservationsPage';
 import ReviewHistoryPage from '../pages/ReviewHistoryPage';
 import ReviewPage from '../pages/ReviewPage';
 import ToolDetailPage from '../pages/ToolDetailPage';
+// Import the Admin Invites page for frontend issues #62, #63, and #64.
+import AdminInvitesPage from '../pages/AdminInvitesPage';
 
 /**
  * AppRoutes
@@ -60,6 +62,9 @@ function AppRoutes() {
 
         {/* Notification center route to prevent Dashboard card 404 */}
         <Route path="/notifications" element={<NotificationsPage />} />
+
+        {/* Admin invite management route for frontend issues #62, #63, and #64 */}
+        <Route path="/admin/invites" element={<AdminInvitesPage />} />
 
         {/* Mock authentication routes for R1 frontend demo */}
         <Route path="/login" element={<LoginPage />} />

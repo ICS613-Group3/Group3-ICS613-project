@@ -1252,3 +1252,337 @@ select {
   text-align: center;
   text-decoration: none;
 }
+
+/* ================================
+   Admin Invite Page Styles
+   Purpose:
+   - Supports frontend issue #62: Create Invite New Member UI.
+   - Supports frontend issue #63: Create Invite Management Page.
+   - Supports frontend issue #64: Show account-already-exists message.
+   - Styles the admin invite form, summary cards, status badges, and invite table.
+   ================================ */
+
+/* 
+   Invite summary grid.
+   This lays out the Sent, Used, Expired, and Revoked summary cards.
+*/
+.invite-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 
+   Summary card.
+   Each card shows one invite count, such as Sent or Used.
+*/
+.summary-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* 
+   Summary card number.
+   Makes the count number large and easy to read.
+*/
+.summary-card strong {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #2563eb;
+  margin-bottom: 0.25rem;
+}
+
+/* 
+   Summary card label.
+   Styles labels like Sent, Used, Expired, and Revoked.
+*/
+.summary-card span {
+  color: #475569;
+  font-weight: 700;
+}
+
+/* 
+   Shared card style.
+   Used by the Invite New Member form and the All Invites table.
+*/
+.form-card,
+.table-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* 
+   Form title spacing.
+   Keeps the Invite New Member title aligned with the form content.
+*/
+.form-card h2,
+.table-card h2 {
+  margin-top: 0;
+}
+
+/* 
+   Invite form label.
+   Makes the email label bold and stacked above the input.
+*/
+.form-card label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+/* 
+   Invite email input.
+   Keeps the admin invite email field consistent with other form inputs.
+*/
+.form-card input {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+  margin-bottom: 1rem;
+}
+
+/* 
+   Primary button.
+   Used for the Send Invite button.
+*/
+.primary-button {
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 0.8rem 1rem;
+}
+
+/* 
+   Primary button hover.
+   Gives feedback when the admin hovers over Send Invite.
+*/
+.primary-button:hover,
+.primary-button:focus {
+  background: #1d4ed8;
+  color: #ffffff;
+  outline: none;
+}
+
+/* 
+   Secondary button.
+   Used for smaller actions like Revoke.
+*/
+.secondary-button {
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.65rem 0.9rem;
+}
+
+/* 
+   Secondary button hover.
+   Gives feedback when hovering over table action buttons.
+*/
+.secondary-button:hover,
+.secondary-button:focus {
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+}
+
+/* 
+   Danger button.
+   Used for the Revoke invite action.
+*/
+.danger-button {
+  border-color: #991b1b;
+  color: #991b1b;
+}
+
+/* 
+   Danger button hover.
+   Keeps revoke action visually clear as a risky action.
+*/
+.danger-button:hover,
+.danger-button:focus {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* 
+   Form error message.
+   Used for invalid email, duplicate active invite, and account-already-exists messages.
+*/
+.form-error {
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 800;
+  padding: 0.85rem;
+}
+
+/* 
+   Form success message.
+   Used after sending or revoking an invite.
+*/
+.form-success {
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  padding: 0.85rem;
+}
+
+/* 
+   Responsive table wrapper.
+   Allows the invite table to scroll horizontally on small screens.
+*/
+.responsive-table-wrapper {
+  overflow-x: auto;
+}
+
+/* 
+   Invite management table.
+   Shows invite email, token, status, created date, registered member, and action.
+*/
+.invite-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 
+   Invite table header and cell spacing.
+   Keeps the table clean and readable.
+*/
+.invite-table th,
+.invite-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.85rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* 
+   Invite table header.
+   Makes table column names stand out.
+*/
+.invite-table th {
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* 
+   Invite token display.
+   Makes mock invite tokens look like technical codes.
+*/
+.invite-table code {
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.45rem;
+}
+
+/* 
+   Shared invite status badge.
+   Used by sent, used, expired, and revoked statuses.
+*/
+.invite-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* 
+   Sent invite status.
+   Means the invite was created and can still be used or revoked.
+*/
+.invite-status-sent {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* 
+   Used invite status.
+   Means the invited user already registered with this invite.
+*/
+.invite-status-used {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* 
+   Expired invite status.
+   Means the invite is no longer valid because time expired.
+*/
+.invite-status-expired {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* 
+   Revoked invite status.
+   Means the admin manually disabled the invite.
+*/
+.invite-status-revoked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* 
+   Muted helper text.
+   Used for table cells like "No action" and the demo note.
+*/
+.muted-text,
+.demo-note {
+  color: #64748b;
+}
+
+/* 
+   Demo note.
+   Explains that the invite page is currently frontend mock behavior.
+*/
+.demo-note {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* 
+   Mobile table adjustment.
+   Keeps table text readable on smaller screens.
+*/
+@media (max-width: 760px) {
+  .invite-table th,
+  .invite-table td {
+    padding: 0.65rem;
+    font-size: 0.9rem;
+  }
+}
