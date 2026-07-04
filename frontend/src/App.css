@@ -1956,3 +1956,253 @@ select {
 .tool-danger-zone .active-reservation-block {
   margin: 0;
 }
+
+
+/* ================================
+   US11 Admin Listing Controls UI
+   Purpose:
+   - Supports US11 admin listing management.
+   - Shows listing status, deactivate/reactivate controls,
+     active reservation warnings, PICKED_UP block messages,
+     and mock audit log preview.
+   ================================ */
+
+/* Summary grid for admin listing counts. */
+.admin-listing-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Search and status filter panel. */
+.admin-listing-filter-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.4fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+/* Labels in the admin filter panel. */
+.admin-listing-filter-panel label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 800;
+}
+
+/* Inputs and selects in the admin filter panel. */
+.admin-listing-filter-panel input,
+.admin-listing-filter-panel select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+/* Grid of admin listing cards. */
+.admin-listings-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+/* One admin listing card. */
+.admin-listing-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Header for each admin listing card. */
+.admin-listing-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Keep card title spacing clean. */
+.admin-listing-card-header h2 {
+  margin: 0;
+}
+
+/* Admin listing status badge. */
+.admin-listing-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0.35rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Active listing badge. */
+.admin-listing-status-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* Deactivated listing badge. */
+.admin-listing-status-deactivated {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Metadata grid for listing information. */
+.admin-listing-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+/* Metadata cards. */
+.admin-listing-meta-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+/* Metadata label. */
+.admin-listing-meta-grid dt {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+/* Metadata value. */
+.admin-listing-meta-grid dd {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Reservation warning panel inside listing cards. */
+.admin-reservation-warning {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid #fbbf24;
+  border-radius: 14px;
+  background: #fffbeb;
+  color: #78350f;
+  padding: 1rem;
+}
+
+/* Reservation list spacing. */
+.admin-reservation-warning ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+/* PICKED_UP block message. */
+.picked-up-block-message {
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 800;
+  margin: 0;
+  padding: 0.75rem;
+}
+
+/* Auto-cancel note for REQUESTED / APPROVED reservations. */
+.auto-cancel-note {
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 800;
+  margin: 0;
+  padding: 0.75rem;
+}
+
+/* Last action / reason panel. */
+.admin-last-action {
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 1rem;
+}
+
+/* Last action paragraph spacing. */
+.admin-last-action p {
+  margin: 0.35rem 0;
+}
+
+/* Last action timestamp. */
+.admin-last-action span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+/* Admin action area. */
+.admin-listing-actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+/* Deactivation reason label. */
+.admin-listing-actions label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 800;
+}
+
+/* Deactivation reason textarea. */
+.admin-listing-actions textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+  resize: vertical;
+}
+
+/* Button row for admin actions. */
+.admin-listing-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Make admin action links match buttons better. */
+.admin-listing-button-row .secondary-link {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Audit log preview card. */
+.admin-audit-log-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Mobile admin listing layout. */
+@media (max-width: 900px) {
+  .admin-listing-filter-panel,
+  .admin-listing-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-listing-card-header {
+    flex-direction: column;
+  }
+}

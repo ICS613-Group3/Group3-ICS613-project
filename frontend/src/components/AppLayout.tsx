@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 /**
@@ -152,6 +152,11 @@ function AppLayout() {
                 Admin Invites
               </NavLink>
 
+              {/* US11 admin listing controls link. */}
+              <NavLink className={getNavLinkClass} to="/admin/listings">
+                Admin Listings
+              </NavLink>
+
               {/* Logout action button styled like a nav tab. */}
               <button
                 className="nav-link nav-button"
@@ -186,4 +191,3 @@ function AppLayout() {
 }
 
 export default AppLayout;
-

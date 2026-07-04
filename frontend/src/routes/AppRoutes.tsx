@@ -1,10 +1,11 @@
-﻿import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Import shared layout wrapper.
 import AppLayout from '../components/AppLayout';
 
 // Import admin pages.
 import AdminInvitesPage from '../pages/AdminInvitesPage';
+import AdminListingsPage from '../pages/AdminListingsPage';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -44,6 +45,7 @@ import ToolDetailPage from '../pages/ToolDetailPage';
  *
  * Frontend issue coverage:
  * - #62, #63, #64: Admin invite management page.
+ * - US11: Admin listing management page with deactivate/reactivate controls.
  * - #74, #77, #79, #83, #85, #89, #91, #93, #110: Auth recovery and verification.
  * - #95, #97, #98, #99, #100: Profile setup validation and protected route behavior.
  * - #102: Edit profile page.
@@ -97,6 +99,9 @@ function AppRoutes() {
 
         {/* Admin invite management route for frontend issues #62, #63, and #64. */}
         <Route path="/admin/invites" element={<AdminInvitesPage />} />
+
+        {/* US11 admin listing controls route. */}
+        <Route path="/admin/listings" element={<AdminListingsPage />} />
 
         {/* Mock authentication routes for R1 frontend demo. */}
         <Route path="/login" element={<LoginPage />} />
