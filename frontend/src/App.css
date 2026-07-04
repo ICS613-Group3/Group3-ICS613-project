@@ -2556,3 +2556,155 @@ select {
     width: 100%;
   }
 }
+
+/* ================================
+   Task 5 HST Labels + Conflict Messages
+   Purpose:
+   - Makes HST date/time rules clearer.
+   - Shows frontend reservation conflict information.
+   - Prepares UI wording for future backend 409 Conflict responses.
+   ================================ */
+
+/* HST helper panel on tool detail pages. */
+.hst-helper-panel {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+/* Keep HST helper text compact. */
+.hst-helper-panel p {
+  margin: 0;
+}
+
+/* Conflict explanation panel in reservation request form. */
+.reservation-conflict-info-panel {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid #fbbf24;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #78350f;
+  margin: 1rem 0;
+  padding: 0.85rem;
+}
+
+/* Keep conflict panel text compact. */
+.reservation-conflict-info-panel p {
+  margin: 0;
+}
+
+/* Style inline backend status code text. */
+.reservation-conflict-info-panel code {
+  color: #92400e;
+  font-weight: 900;
+}
+
+/* Active reservation list shown under the reservation form. */
+.active-date-conflict-list {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 0.85rem;
+}
+
+/* Active conflict list spacing. */
+.active-date-conflict-list ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+/* Make reservation form error messages easier to see. */
+.reservation-form .form-error {
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 800;
+  padding: 0.75rem;
+}
+
+/* Make reservation form success messages easier to see. */
+.reservation-form .success-message {
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  padding: 0.75rem;
+}
+
+/* ================================
+   Task 5 Tool Detail Header Layout Fix
+   Purpose:
+   - Fixes Edit Tool Listing / Back to Browse Tools overlap.
+   - Keeps header action buttons stacked cleanly on desktop.
+   - Keeps buttons full-width and readable on smaller screens.
+   ================================ */
+
+/* Header action container for Tool Detail page buttons. */
+.page-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-width: 220px;
+}
+
+/* Make header action links consistent and prevent overlap. */
+.page-header-actions .primary-link,
+.page-header-actions .secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 260px;
+  min-height: 44px;
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Keep category badge and rating separated on Tool Detail card. */
+.tool-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+/* Push rating to the right when there is room. */
+.tool-detail-title-row .tool-rating {
+  margin-left: auto;
+}
+
+/* Mobile/tablet layout for Tool Detail header buttons. */
+@media (max-width: 900px) {
+  .page-header {
+    align-items: stretch;
+  }
+
+  .page-header-actions {
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page-header-actions .primary-link,
+  .page-header-actions .secondary-link {
+    max-width: none;
+    width: 100%;
+  }
+
+  .tool-detail-title-row .tool-rating {
+    margin-left: 0;
+  }
+}
