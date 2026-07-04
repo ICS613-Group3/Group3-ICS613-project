@@ -13,6 +13,9 @@ import RegisterPage from '../pages/RegisterPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
 
+// Import account deletion page for frontend issues #105 and #107.
+import AccountDeletionPage from '../pages/AccountDeletionPage';
+
 // Import profile pages for frontend issues #95, #97, #98, #99, #100, and #102.
 import EditProfilePage from '../pages/EditProfilePage';
 import ProfileSetupPage from '../pages/ProfileSetupPage';
@@ -44,6 +47,8 @@ import ToolDetailPage from '../pages/ToolDetailPage';
  * - #74, #77, #79, #83, #85, #89, #91, #93, #110: Auth recovery and verification.
  * - #95, #97, #98, #99, #100: Profile setup validation and protected route behavior.
  * - #102: Edit profile page.
+ * - #105: Account deletion UI.
+ * - #107: Active reservation block message for account deletion.
  *
  * Future backend behavior:
  * - Protected routes and real auth can be added around these routes.
@@ -63,6 +68,9 @@ function AppRoutes() {
         {/* Profile setup and edit profile routes. */}
         <Route path="/profile/setup" element={<ProfileSetupPage />} />
         <Route path="/profile/edit" element={<EditProfilePage />} />
+
+        {/* Account deletion route for frontend issues #105 and #107. */}
+        <Route path="/account/delete" element={<AccountDeletionPage />} />
 
         {/* Tool browsing and tool management routes. */}
         <Route path="/tools" element={<BrowseToolsPage />} />

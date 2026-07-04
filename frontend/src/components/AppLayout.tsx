@@ -142,6 +142,11 @@ function AppLayout() {
                 Profile
               </NavLink>
 
+              {/* Account deletion link for frontend issues #105 and #107. */}
+              <NavLink className={getNavLinkClass} to="/account/delete">
+                Delete Account
+              </NavLink>
+
               {/* Admin invite management link for frontend issues #62, #63, and #64. */}
               <NavLink className={getNavLinkClass} to="/admin/invites">
                 Admin Invites
@@ -181,3 +186,4 @@ function AppLayout() {
 }
 
 export default AppLayout;
+
