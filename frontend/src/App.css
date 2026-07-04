@@ -1586,3 +1586,97 @@ select {
     font-size: 0.9rem;
   }
 }
+/* ================================
+   Profile Setup + Edit Profile Styles
+   Purpose:
+   - Supports frontend issues #95, #97, #98, #99, #100, and #102.
+   - Styles profile setup form, edit profile form, and profile preview card.
+   ================================ */
+
+/* Two-column profile layout: form on left, preview on right. */
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Shared profile card style for setup form, edit form, and preview card. */
+.profile-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* Keeps profile card titles aligned cleanly. */
+.profile-card h2 {
+  margin: 0;
+}
+
+/* Label layout for profile fields. */
+.profile-card label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 800;
+}
+
+/* Inputs and textarea inside profile cards. */
+.profile-card input,
+.profile-card textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+/* Allows user to resize bio text vertically only. */
+.profile-card textarea {
+  resize: vertical;
+}
+
+/* Profile preview card stays visible while editing on larger screens. */
+.profile-preview-card {
+  position: sticky;
+  top: 1rem;
+}
+
+/* Mock profile avatar preview. */
+.profile-avatar-preview {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+/* Profile preview name spacing. */
+.profile-preview-card h3 {
+  margin: 0;
+}
+
+/* Profile preview paragraph style. */
+.profile-preview-card p {
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Mobile layout stacks form and preview vertically. */
+@media (max-width: 820px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-preview-card {
+    position: static;
+  }
+}

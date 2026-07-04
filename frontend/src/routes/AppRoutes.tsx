@@ -13,6 +13,10 @@ import RegisterPage from '../pages/RegisterPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
 
+// Import profile pages for frontend issues #95, #97, #98, #99, #100, and #102.
+import EditProfilePage from '../pages/EditProfilePage';
+import ProfileSetupPage from '../pages/ProfileSetupPage';
+
 // Import main app pages.
 import BrowseToolsPage from '../pages/BrowseToolsPage';
 import CreateToolPage from '../pages/CreateToolPage';
@@ -35,11 +39,11 @@ import ToolDetailPage from '../pages/ToolDetailPage';
  * - Uses mock frontend pages and mock data.
  * - Keeps the route structure close to the planned app architecture.
  *
- * New frontend issue coverage:
+ * Frontend issue coverage:
  * - #62, #63, #64: Admin invite management page.
- * - #77, #79: Verify email page and resend verification email UI.
- * - #89: Forgot password / reset password request UI.
- * - #91, #93: Create new password page and invalid reset-token message.
+ * - #74, #77, #79, #83, #85, #89, #91, #93, #110: Auth recovery and verification.
+ * - #95, #97, #98, #99, #100: Profile setup validation and protected route behavior.
+ * - #102: Edit profile page.
  *
  * Future backend behavior:
  * - Protected routes and real auth can be added around these routes.
@@ -55,6 +59,10 @@ function AppRoutes() {
 
         {/* Main member dashboard route. */}
         <Route path="/dashboard" element={<DashboardPage />} />
+
+        {/* Profile setup and edit profile routes. */}
+        <Route path="/profile/setup" element={<ProfileSetupPage />} />
+        <Route path="/profile/edit" element={<EditProfilePage />} />
 
         {/* Tool browsing and tool management routes. */}
         <Route path="/tools" element={<BrowseToolsPage />} />

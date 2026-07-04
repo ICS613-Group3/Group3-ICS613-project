@@ -15,7 +15,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
  *
  * Important:
  * - This is frontend-only mock auth.
- * - Later, Ivan's real AuthContext/backend auth can replace localStorage.
+ * - Later, real AuthContext/backend auth can replace localStorage.
  */
 function AppLayout() {
   // React Router navigation for redirecting after mock logout.
@@ -83,39 +83,36 @@ function AppLayout() {
 
   return (
     <div className="app-shell">
-      {/* App header with project title and top navigation */}
+      {/* App header with project title and top navigation. */}
       <header className="app-header">
-        {/* Project branding */}
+        {/* Project branding. */}
         <div>
           <p className="eyebrow">ICS 613 Group 3</p>
           <h1>Neighborhood Tool Sharing</h1>
         </div>
 
-        {/* Top navigation */}
+        {/* Top navigation. */}
         <nav className="app-nav" aria-label="Main navigation">
           {isLoggedIn ? (
             <>
-              {/* Member dashboard link */}
+              {/* Member dashboard link. */}
               <NavLink className={getNavLinkClass} to="/dashboard">
                 Dashboard
               </NavLink>
 
-              {/* Browse Tools dropdown */}
+              {/* Browse Tools dropdown. */}
               <div className="nav-dropdown">
                 <NavLink className="nav-link nav-dropdown-toggle" to="/tools">
                   Browse Tools
                 </NavLink>
 
-                {/* Tool-related dropdown links */}
+                {/* Tool-related dropdown links. */}
                 <div className="nav-dropdown-menu">
                   <NavLink className="nav-dropdown-item" to="/tools">
                     Available Tools
                   </NavLink>
 
-                  <NavLink
-                    className="nav-dropdown-item"
-                    to="/tools?view=returned"
-                  >
+                  <NavLink className="nav-dropdown-item" to="/tools?view=returned">
                     Returned Tools
                   </NavLink>
 
@@ -125,27 +122,32 @@ function AppLayout() {
                 </div>
               </div>
 
-              {/* Reservation workflow link */}
+              {/* Reservation workflow link. */}
               <NavLink className={getNavLinkClass} to="/reservations">
                 Reservations
               </NavLink>
 
-              {/* Review history link */}
+              {/* Review history link. */}
               <NavLink className={getNavLinkClass} to="/reviews/history">
                 Review History
               </NavLink>
 
-              {/* Notifications link */}
+              {/* Notifications link. */}
               <NavLink className={getNavLinkClass} to="/notifications">
                 Notifications
               </NavLink>
 
-              {/* Admin invite management link for frontend issues #62, #63, and #64 */}
+              {/* Profile edit link for frontend issue #102. */}
+              <NavLink className={getNavLinkClass} to="/profile/edit">
+                Profile
+              </NavLink>
+
+              {/* Admin invite management link for frontend issues #62, #63, and #64. */}
               <NavLink className={getNavLinkClass} to="/admin/invites">
                 Admin Invites
               </NavLink>
 
-              {/* Logout action button styled like a nav tab */}
+              {/* Logout action button styled like a nav tab. */}
               <button
                 className="nav-link nav-button"
                 type="button"
@@ -156,12 +158,12 @@ function AppLayout() {
             </>
           ) : (
             <>
-              {/* Public login link */}
+              {/* Public login link. */}
               <NavLink className={getNavLinkClass} to="/login">
                 Login
               </NavLink>
 
-              {/* Public register link */}
+              {/* Public register link. */}
               <NavLink className={getNavLinkClass} to="/register">
                 Register
               </NavLink>
@@ -170,7 +172,7 @@ function AppLayout() {
         </nav>
       </header>
 
-      {/* Page content rendered by React Router child routes */}
+      {/* Page content rendered by React Router child routes. */}
       <main className="app-main">
         <Outlet />
       </main>
