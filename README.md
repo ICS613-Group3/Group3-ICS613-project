@@ -22,6 +22,7 @@ This is an ICS613 Group 3 project in Summer 2026. We will collaborate to create 
 - Yafei Wang - Frontend Lead/Documentation and Testing
 - Ivan Wu - Backend Lead/Requirements elicitation and code reviews
 - Nick Fairhart - QA/DevOps Lead/Backend development
+- Loreto Coloma - Document Lead
 
 
 
