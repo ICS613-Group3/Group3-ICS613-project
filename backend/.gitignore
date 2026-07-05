@@ -1,0 +1,79 @@
+# Environment secrets - never commit
+.env
+src/.env
+.env.*
+# Re-include the template — the `.env.*` pattern above would otherwise ignore it.
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv*/
+env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database data
+pgdata/
+data/
+
+# User-uploaded media (photos served at /uploads). Runtime-only — never
+# tracked. Seed photos for dev live in scripts/seed_photos/ and are copied
+# into media/tool_photos/ by scripts/seed_dev.py on demand.
+media/
+
+# Alembic cache
+alembic/__pycache__/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ruff
+.ruff_cache/
+
+# Local working drafts — never committed.
+_local_drafts/
+
+# AI / agent tooling state — local to each machine, not for committing.
+# .omo/ holds OhMyOpenCode session continuation files.
+# .codegraph/ holds a local SQLite index rebuilt on demand.
+.omo/
+.codegraph/
