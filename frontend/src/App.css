@@ -2708,3 +2708,14 @@ select {
     margin-left: 0;
   }
 }
+
+/* ================================
+   Task 5B Tool Form HST Polish
+   Purpose:
+   - Adds spacing for HST helper panels on Create/Edit Tool forms.
+   - Keeps HST explanation visually consistent with Tool Detail page.
+   ================================ */
+
+.tool-form-hst-helper {
+  margin: 1rem 0 1.25rem;
+}

@@ -12,7 +12,7 @@ import {
   type ToolCondition,
 } from '../data/mockData';
 
-// Latest return time must use 24-hour HH:MM format.
+// Latest return time must use 24-hour HH:MM HST format.
 const returnTimePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Maximum photo size for frontend validation.
@@ -43,7 +43,7 @@ const activeReservationStatuses = ['REQUESTED', 'APPROVED', 'PICKED_UP'];
  * Existing frontend issues supported:
  * - #114 Display required-field validation message.
  * - #115 Display photo upload error message.
- * - #118 Display return time HH:MM format message.
+ * - #118 Display return time HH:MM 24-hour HST format message.
  * - #120 Display duplicate listing name message.
  * - #122 Create edit functionality on tool listing.
  *
@@ -364,7 +364,7 @@ function EditToolPage() {
    *
    * Validation:
    * - Required fields must be completed.
-   * - Latest return time must be HH:MM.
+   * - Latest return time must be HH:MM 24-hour HST format.
    * - Available To cannot be before Available From.
    * - At least one photo is required.
    * - Tool name cannot duplicate another existing listing.
@@ -413,29 +413,29 @@ function EditToolPage() {
     }
 
     if (!availableFrom) {
-      setErrorMessage('Available From date is required.');
+      setErrorMessage('Available From date (HST) is required.');
       return;
     }
 
     if (!availableTo) {
-      setErrorMessage('Available To date is required.');
+      setErrorMessage('Available To date (HST) is required.');
       return;
     }
 
     if (!latestReturnTime) {
-      setErrorMessage('Latest return time is required.');
+      setErrorMessage('Latest return time (HST) is required.');
       return;
     }
 
     // Issue #118:
     // Latest return time must be HH:MM.
     if (!returnTimePattern.test(latestReturnTime)) {
-      setErrorMessage('Latest return time must use HH:MM format, such as 17:30.');
+      setErrorMessage('Latest return time must use HH:MM 24-hour HST format, such as 17:30.');
       return;
     }
 
     if (availableTo < availableFrom) {
-      setErrorMessage('Available To date cannot be before Available From date.');
+      setErrorMessage('Available To date (HST) cannot be before Available From date (HST).');
       return;
     }
 
@@ -618,6 +618,16 @@ function EditToolPage() {
         <form className="tool-form-card" onSubmit={handleSubmit} noValidate>
           <h2>Listing Information</h2>
 
+          {/* Task 5B: HST helper text for owner-side listing schedule fields. */}
+          <section className="hst-helper-panel tool-form-hst-helper">
+            <strong>HST listing schedule</strong>
+            <p>
+              Availability dates and latest return time are interpreted in
+              Hawaii Standard Time (HST). Backend validation can later normalize
+              these values before saving to the database.
+            </p>
+          </section>
+
           <div className="form-grid">
             {/* Required tool name field. */}
             <label htmlFor="edit-tool-name">
@@ -673,7 +683,7 @@ function EditToolPage() {
 
             {/* Required latest return time field. */}
             <label htmlFor="edit-tool-return-time">
-              Latest Return Time *
+              Latest Return Time (HST) *
               <input
                 id="edit-tool-return-time"
                 type="time"
@@ -685,7 +695,7 @@ function EditToolPage() {
 
             {/* Required availability start date. */}
             <label htmlFor="edit-tool-available-from">
-              Available From *
+              Available From Date (HST) *
               <input
                 id="edit-tool-available-from"
                 type="date"
@@ -697,7 +707,7 @@ function EditToolPage() {
 
             {/* Required availability end date. */}
             <label htmlFor="edit-tool-available-to">
-              Available To *
+              Available To Date (HST) *
               <input
                 id="edit-tool-available-to"
                 type="date"
@@ -707,6 +717,12 @@ function EditToolPage() {
               />
             </label>
           </div>
+
+          <p className="hst-note">
+            Availability dates and latest return time are interpreted in Hawaii
+            Standard Time (HST). Latest return time must use HH:MM 24-hour HST
+            format, for example 17:30.
+          </p>
 
           {/* Required description field. */}
           <label htmlFor="edit-tool-description">
@@ -862,12 +878,14 @@ function EditToolPage() {
           </p>
 
           <p>
-            <strong>Available:</strong> {availableFrom || 'Not selected'} to{' '}
-            {availableTo || 'Not selected'}
+            <strong>Available (HST):</strong>{' '}
+            {availableFrom ? `${availableFrom} HST` : 'Not selected'} to{' '}
+            {availableTo ? `${availableTo} HST` : 'Not selected'}
           </p>
 
           <p>
-            <strong>Latest Return Time:</strong> {latestReturnTime || '--:--'} HST
+            <strong>Latest Return Time (HST):</strong>{' '}
+            {latestReturnTime || '--:--'}
           </p>
 
           <p>
