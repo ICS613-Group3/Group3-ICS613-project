@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend tests (unit + acceptance)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ics613user
+          POSTGRES_PASSWORD: ics613password
+          POSTGRES_DB: toolsharing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ics613user -d toolsharing_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # No backend/.env is created here on purpose: every Settings field has
+      # a default (app/config.py), and conftest.py sets the handful of
+      # test-critical env vars (DATABASE_URL, SECRET_KEY, DISABLE_SCHEDULER)
+      # itself before the app is imported. Verified locally that the full
+      # suite passes with no .env file present at all.
+      - name: Run backend test suite (unit + acceptance)
+        run: pytest src/app/tests -q
+
+  frontend-checks:
+    name: Frontend lint, typecheck, build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc -b
+
+      - name: Build
+        run: npm run build
