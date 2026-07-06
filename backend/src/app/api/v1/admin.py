@@ -1,5 +1,4 @@
 """Admin endpoints."""
-
 import uuid
 from typing import Annotated
 
@@ -14,9 +13,47 @@ from app.schemas.admin import (
     AuditLogResponse,
 )
 from app.schemas.common import PaginatedResponse
+from app.schemas.user import UserProfile
 from app.services.admin import AdminService
 
 router = APIRouter()
+
+
+# ── User listing ────────────────────────────────────────────────────────
+@router.get("/users", response_model=PaginatedResponse[UserProfile])
+async def list_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin_user)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    search: Annotated[str | None, Query()] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> PaginatedResponse[UserProfile]:
+    """Admin-only: list all non-deleted users with optional filters."""
+    service = AdminService()
+    users, total = await service.list_users(
+        db,
+        status=status_filter,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
+    items = [UserProfile.model_validate(u) for u in users]
+    pages = max(1, (total + page_size - 1) // page_size)
+    return PaginatedResponse(
+        items=items, total=total, page=page, page_size=page_size, pages=pages
+    )
+
+
+@router.get("/users/{user_id}", response_model=UserProfile)
+async def get_user(
+    user_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin_user)],
+) -> UserProfile:
+    """Admin-only: get a single user by ID."""
+    user = await AdminService().get_user(db, user_id=user_id)
+    return UserProfile.model_validate(user)
 
 
 # ── User management ────────────────────────────────────────────────────

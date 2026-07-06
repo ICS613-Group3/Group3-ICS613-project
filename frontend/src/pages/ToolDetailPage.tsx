@@ -15,8 +15,6 @@ const categoryLabels: Record<string, string> = {
   OUTDOOR_GEAR: 'Outdoor Gear',
 };
 
-const BACKEND_ORIGIN = import.meta.env.VITE_API_TARGET || 'http://localhost:8000';
-
 function ToolDetailPage() {
   const { toolId } = useParams();
   const { user } = useAuth();
@@ -44,7 +42,7 @@ function ToolDetailPage() {
 
   const getImageUrl = (): string => {
     if (tool?.photos && tool.photos.length > 0) {
-      return `${BACKEND_ORIGIN}${tool.photos[0].url}`;
+      return tool.photos[0].url;
     }
     return `https://placehold.co/600x400?text=${encodeURIComponent(tool?.name || 'Tool')}`;
   };

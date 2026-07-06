@@ -12,7 +12,6 @@ const categoryLabels: Record<string, string> = {
 };
 
 const categoryOptions = Object.entries(categoryLabels) as Array<[string, string]>;
-const BACKEND_ORIGIN = import.meta.env.VITE_API_TARGET || 'http://localhost:8000';
 
 function AvailableToolsPage() {
   const [tools, setTools] = useState<ToolResponse[]>([]);
@@ -59,10 +58,10 @@ function AvailableToolsPage() {
 
   const getImageUrl = (tool: ToolResponse): string => {
     if (tool.photos.length > 0) {
-      return `${BACKEND_ORIGIN}${tool.photos[0].url}`;
+      return tool.photos[0].url;
     }
     return `https://placehold.co/600x400?text=${encodeURIComponent(tool.name)}`;
-  };
+  }
 
   return (
     <section className="page-section">

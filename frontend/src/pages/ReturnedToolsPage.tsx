@@ -103,7 +103,7 @@ function ReturnedToolsPage() {
           {filteredTools.map(({ tool, reservation }) => (
             <article className="tool-card" key={tool.id}>
               <img
-                src={tool.photos?.[0]?.url ? `http://localhost:8000${tool.photos[0].url}` : `https://placehold.co/600x400?text=${encodeURIComponent(tool.name)}`}
+                src={tool.photos?.[0]?.url || `https://placehold.co/600x400?text=${encodeURIComponent(tool.name)}`}
                 alt={tool.name}
                 className="tool-image"
               />

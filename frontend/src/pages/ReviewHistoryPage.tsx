@@ -1,121 +1,73 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-/**
- * ReviewHistoryItem
- *
- * Mock review history data for US25.
- */
-type ReviewHistoryItem = {
-  id: string;
-  reservationId: string;
-  toolName: string;
-  reviewerName: string;
-  reviewTarget: string;
-  reviewType: 'Given' | 'Received';
-  rating: number;
-  comment: string;
-  submittedAt: string;
-};
+import { reviewsApi } from '../api/reviews';
+import { useAuth } from '../context/useAuth';
+import type { ReviewResponse } from '../types/api';
 
-/**
- * Mock review history data.
- *
- * Uses team member names for R1 demo:
- * - Rion Sawabe
- * - Ivan Wu
- * - Nick Fairhart
- * - Yafei Wang
- * - Loreto Coloma
- */
-const mockReviewHistory: ReviewHistoryItem[] = [
-  {
-    id: 'review-1',
-    reservationId: 'reservation-4',
-    toolName: 'Pressure Washer',
-    reviewerName: 'Yafei Wang',
-    reviewTarget: 'Ivan Wu',
-    reviewType: 'Given',
-    rating: 5,
-    comment: 'Tool was returned successfully and worked well during the borrowing period.',
-    submittedAt: '2026-06-30',
-  },
-  {
-    id: 'review-2',
-    reservationId: 'reservation-3',
-    toolName: 'Cordless Drill',
-    reviewerName: 'Rion Sawabe',
-    reviewTarget: 'Nick Fairhart',
-    reviewType: 'Received',
-    rating: 4,
-    comment: 'Good borrower communication and the tool was returned on time.',
-    submittedAt: '2026-06-28',
-  },
-  {
-    id: 'review-3',
-    reservationId: 'reservation-2',
-    toolName: 'Garden Shovel',
-    reviewerName: 'Loreto Coloma',
-    reviewTarget: 'Yafei Wang',
-    reviewType: 'Received',
-    rating: 5,
-    comment: 'Smooth reservation process and clear pickup/return coordination.',
-    submittedAt: '2026-06-25',
-  },
-  {
-    id: 'review-4',
-    reservationId: 'reservation-1',
-    toolName: 'Hammer Set',
-    reviewerName: 'Ivan Wu',
-    reviewTarget: 'Rion Sawabe',
-    reviewType: 'Given',
-    rating: 4,
-    comment: 'The tool condition matched the listing and the return process was clear.',
-    submittedAt: '2026-06-22',
-  },
-];
-
-/**
- * ReviewHistoryPage
- *
- * US25 Review History page.
- *
- * Current R1 behavior:
- * - Shows mock submitted review history.
- * - Supports search by tool, reviewer, review target, and comment.
- * - Supports filtering by Given / Received.
- *
- * Future backend behavior:
- * - Replace mockReviewHistory with backend API data.
- */
 function ReviewHistoryPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [reviews, setReviews] = useState<ReviewResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [reviewTypeFilter, setReviewTypeFilter] = useState<
-    'All' | 'Given' | 'Received'
-  >('All');
+  const [reviewTypeFilter, setReviewTypeFilter] = useState<'all' | 'given' | 'received'>('all');
+
+  const role = reviewTypeFilter === 'all' ? undefined : reviewTypeFilter;
+
+  const loadReviews = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      // Load both given and received for the "all" filter
+      if (reviewTypeFilter === 'all') {
+        const [given, received] = await Promise.all([
+          reviewsApi.listMyReviews({ role: 'given', page_size: 50 }),
+          reviewsApi.listMyReviews({ role: 'received', page_size: 50 }),
+        ]);
+        setReviews([...given.items, ...received.items]);
+      } else {
+        const data = await reviewsApi.listMyReviews({ role, page_size: 50 });
+        setReviews(data.items);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load reviews');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, role, reviewTypeFilter]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
 
   const filteredReviews = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    return mockReviewHistory.filter((review) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        review.toolName.toLowerCase().includes(normalizedSearch) ||
-        review.reviewerName.toLowerCase().includes(normalizedSearch) ||
-        review.reviewTarget.toLowerCase().includes(normalizedSearch) ||
-        review.comment.toLowerCase().includes(normalizedSearch);
-
-      const matchesType =
-        reviewTypeFilter === 'All' || review.reviewType === reviewTypeFilter;
-
-      return matchesSearch && matchesType;
+    if (!normalizedSearch) return reviews;
+    return reviews.filter((review) => {
+      const toolName = ''; // reviews don't include tool name directly
+      const comment = review.comment?.toLowerCase() || '';
+      return comment.includes(normalizedSearch) || toolName.includes(normalizedSearch);
     });
-  }, [reviewTypeFilter, searchTerm]);
+  }, [reviews, searchTerm]);
 
   const clearFilters = () => {
     setSearchTerm('');
-    setReviewTypeFilter('All');
+    setReviewTypeFilter('all');
   };
+
+  if (authLoading) {
+    return <section className="page-section"><div className="page-header"><h1>Loading...</h1></div></section>;
+  }
+
+  if (!user) {
+    return (
+      <section className="page-section">
+        <div className="page-header"><h1>Please log in</h1></div>
+      </section>
+    );
+  }
 
   return (
     <section className="page-section">
@@ -124,10 +76,9 @@ function ReviewHistoryPage() {
           <p className="eyebrow">US25</p>
           <h1>Review History</h1>
           <p className="page-description">
-            View mock review history for completed and returned reservations.
+            View reviews you have given and received.
           </p>
         </div>
-
         <Link className="primary-link header-action-link" to="/tools?view=returned">
           Review Returned Tools
         </Link>
@@ -136,32 +87,35 @@ function ReviewHistoryPage() {
       <div className="filter-panel">
         <input
           type="text"
-          placeholder="Search by tool, reviewer, target, or comment"
+          placeholder="Search by comment text"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
         />
-
         <select
           value={reviewTypeFilter}
           onChange={(event) =>
-            setReviewTypeFilter(event.target.value as 'All' | 'Given' | 'Received')
+            setReviewTypeFilter(event.target.value as 'all' | 'given' | 'received')
           }
         >
-          <option value="All">All reviews</option>
-          <option value="Given">Reviews given</option>
-          <option value="Received">Reviews received</option>
+          <option value="all">All reviews</option>
+          <option value="given">Reviews given</option>
+          <option value="received">Reviews received</option>
         </select>
-
         <button type="button" onClick={clearFilters}>
           Clear Filters
         </button>
       </div>
 
-      <p className="results-summary">
-        Showing {filteredReviews.length} of {mockReviewHistory.length} reviews.
-      </p>
+      {error && <p className="form-error">{error}</p>}
+      {isLoading && <p>Loading reviews...</p>}
 
-      {filteredReviews.length === 0 ? (
+      {!isLoading && !error && (
+        <p className="results-summary">
+          Showing {filteredReviews.length} of {reviews.length} reviews.
+        </p>
+      )}
+
+      {!isLoading && !error && filteredReviews.length === 0 ? (
         <div className="empty-state-card">
           <p className="eyebrow">No Results</p>
           <h2>No reviews match the current filters.</h2>
@@ -175,32 +129,23 @@ function ReviewHistoryPage() {
           {filteredReviews.map((review) => (
             <article className="review-history-card" key={review.id}>
               <div className="tool-card-top">
-                <span className="status-badge">{review.reviewType}</span>
                 <span className="rating">Rating: {review.rating}/5</span>
               </div>
 
-              <h2>{review.toolName}</h2>
+              <h2>Review for Reservation</h2>
 
               <dl className="tool-meta">
                 <div>
-                  <dt>Reviewer</dt>
-                  <dd>{review.reviewerName}</dd>
+                  <dt>Comment</dt>
+                  <dd>{review.comment || 'No comment'}</dd>
                 </div>
-
-                <div>
-                  <dt>Review target</dt>
-                  <dd>{review.reviewTarget}</dd>
-                </div>
-
                 <div>
                   <dt>Submitted</dt>
-                  <dd>{review.submittedAt}</dd>
+                  <dd>{new Date(review.created_at).toLocaleDateString()}</dd>
                 </div>
               </dl>
 
-              <p className="review-history-comment">{review.comment}</p>
-
-              <Link className="secondary-link" to={`/reservations/${review.reservationId}`}>
+              <Link className="secondary-link" to={`/reservations/${review.reservation_id}`}>
                 View Reservation
               </Link>
             </article>
