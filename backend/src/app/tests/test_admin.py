@@ -110,7 +110,10 @@ class TestAdminDeleteUser:
         # Verify the target user is now marked as deleted.
         await db_session.refresh(target)
         assert target.status == UserStatus.DELETED
-        assert target.full_name == "Deleted User"
+        # Display name is preserved for history integrity; email is anonymized.
+        assert target.full_name is not None
+        assert target.full_name != "Deleted User"
+        assert "deleted+" in target.email
 
     async def test_non_admin_cannot_delete(
         self,

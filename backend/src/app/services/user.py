@@ -19,10 +19,12 @@ def _anonymize_user(user: User) -> None:
     ``deleted_at``. Keeping this helper narrow means the same logic can be
     reused by both self-service (``UserService.soft_delete``) and admin hard-
     delete (``AdminService.delete_user``) without one side-effect slipping in.
+
+    The display name (``full_name``) is preserved for history integrity —
+    reviews and reservation history remain linked to a recognisable name.
     """
     user.email = f"deleted+{user.id}@example.com"
     user.hashed_password = ""
-    user.full_name = "Deleted User"
     user.bio = None
     user.neighborhood = None
     user.photo_url = None
@@ -94,10 +96,10 @@ class UserService:
         """Anonymize user PII and mark as DELETED.
 
         Refuses if the user has any active reservation as a borrower (REQUESTED,
-        APPROVED, or PICKED_UP). Owners can still soft-delete: their tools
-        remain listed but are owned by a deleted account (visible only to admins).
+        APPROVED, or PICKED_UP) OR as an owner with tools currently out on loan.
         """
-        active = await db.execute(
+        # Check borrower obligations
+        active_borrowed = await db.execute(
             select(Reservation.id)
             .where(
                 Reservation.borrower_id == user.id,
@@ -111,10 +113,28 @@ class UserService:
             )
             .limit(1)
         )
-        if active.scalar_one_or_none() is not None:
+        if active_borrowed.scalar_one_or_none() is not None:
             raise ConflictError(
                 "Cannot delete account with active reservations. "
                 "Please cancel or return borrowed tools first."
+            )
+
+        # Check owner obligations — tools currently out on loan
+        from app.models.tool import Tool
+
+        active_lent = await db.execute(
+            select(Reservation.id)
+            .join(Tool, Reservation.tool_id == Tool.id)
+            .where(
+                Tool.owner_id == user.id,
+                Reservation.state == ReservationState.PICKED_UP,
+            )
+            .limit(1)
+        )
+        if active_lent.scalar_one_or_none() is not None:
+            raise ConflictError(
+                "Cannot delete account while your tools are out on loan. "
+                "Please wait for their return or contact an admin."
             )
 
         _anonymize_user(user)

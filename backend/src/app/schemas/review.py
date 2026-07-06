@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ReviewCreate(BaseModel):
@@ -28,8 +28,27 @@ class ReviewResponse(BaseModel):
     id: UUID
     reservation_id: UUID
     reviewer_id: UUID
+    reviewer_name: str | None = None
     reviewee_id: UUID
+    reviewee_name: str | None = None
     rating: int
     comment: str | None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_names(cls, data):
+        """Extract display names from ORM relationships before validation."""
+        if isinstance(data, dict):
+            return data
+        try:
+            reviewer = getattr(data, "reviewer", None)
+            if reviewer is not None:
+                data.reviewer_name = getattr(reviewer, "full_name", None) or getattr(reviewer, "email", None)
+            reviewee = getattr(data, "reviewee", None)
+            if reviewee is not None:
+                data.reviewee_name = getattr(reviewee, "full_name", None) or getattr(reviewee, "email", None)
+        except Exception:
+            pass
+        return data

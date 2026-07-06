@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import ReservationState
 
@@ -23,7 +23,10 @@ class ReservationResponse(BaseModel):
 
     id: UUID
     tool_id: UUID
+    tool_name: str | None = None
     borrower_id: UUID
+    borrower_name: str | None = None
+    owner_name: str | None = None
     state: ReservationState
     start_date: date
     end_date: date
@@ -40,6 +43,27 @@ class ReservationResponse(BaseModel):
     force_resolution_reason: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_names(cls, data):
+        """Extract display names from ORM relationships before validation."""
+        if isinstance(data, dict):
+            return data
+        # data is an ORM object with from_attributes=True
+        try:
+            tool = getattr(data, "tool", None)
+            if tool is not None:
+                data.tool_name = getattr(tool, "name", None)
+                owner = getattr(tool, "owner", None)
+                if owner is not None:
+                    data.owner_name = getattr(owner, "full_name", None) or getattr(owner, "email", None)
+            borrower = getattr(data, "borrower", None)
+            if borrower is not None:
+                data.borrower_name = getattr(borrower, "full_name", None) or getattr(borrower, "email", None)
+        except Exception:
+            pass
+        return data
 
 
 class ReservationDeny(BaseModel):

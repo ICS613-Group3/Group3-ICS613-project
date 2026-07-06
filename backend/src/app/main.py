@@ -18,6 +18,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     TooManyRequestsError,
     ValidationError,
+    VerifyTokenError,
 )
 from app.core.logging import configure_logging, get_logger
 from app.services.scheduler import SchedulerService
@@ -59,6 +60,7 @@ def _handle_app_error(_request: Request, exc: AppError) -> JSONResponse:
         (PermissionDeniedError, status.HTTP_403_FORBIDDEN),
         (ConflictError, status.HTTP_409_CONFLICT),
         (ValidationError, status.HTTP_422_UNPROCESSABLE_ENTITY),
+        (VerifyTokenError, status.HTTP_400_BAD_REQUEST),
         (AuthenticationError, status.HTTP_401_UNAUTHORIZED),
         (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),
     ]

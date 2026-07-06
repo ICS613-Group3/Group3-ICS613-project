@@ -81,7 +81,7 @@ class ReservationService:
             title="New reservation request",
             body=(
                 f"{borrower.full_name or borrower.email} requested your tool "
-                f"for {start_date} → {end_date}."
+                f"\"{tool.name}\" for {start_date} → {end_date}."
             ),
             payload={
                 "reservation_id": str(reservation.id),
@@ -220,12 +220,14 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_APPROVED,
             title="Reservation approved",
-            body=f"Your reservation for {reservation.start_date} → {reservation.end_date} was approved.",
+            body=f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was approved.",
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -248,13 +250,15 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_DENIED,
             title="Reservation denied",
             body=(
-                f"Your reservation for {reservation.start_date} → {reservation.end_date} was denied."
+                f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was denied."
                 + (f" Reason: {reason}" if reason else "")
             ),
             payload={"reservation_id": str(reservation.id)},
@@ -306,14 +310,23 @@ class ReservationService:
         recipient_id = (
             reservation.tool.owner_id if is_borrower else reservation.borrower_id
         )
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+        recipient_name = (
+            reservation.borrower.full_name or reservation.borrower.email
+            if is_owner
+            else (reservation.tool.owner.full_name or reservation.tool.owner.email)
+            if hasattr(reservation.tool, 'owner') and reservation.tool.owner
+            else "The other party"
+        )
         await NotificationService().create(
             db,
             user_id=recipient_id,
             type_=NotificationType.RESERVATION_CANCELLED,
             title="Reservation cancelled",
             body=(
-                f"Reservation {reservation.id} was cancelled by the "
-                f"{'borrower' if is_borrower else 'owner'}. Reason: {reason}"
+                f"Reservation for \"{tool_name}\" was cancelled by the "
+                f"{'borrower' if is_borrower else 'owner'} ({actor.full_name or actor.email}). "
+                f"Reason: {reason}"
             ),
             payload={"reservation_id": str(reservation.id)},
         )
@@ -406,6 +419,9 @@ class ReservationService:
                 f"Must report within 7 days (returned {days_since_return} days ago)"
             )
 
+        if reservation.damage_reported:
+            raise ConflictError("Damage has already been reported for this reservation")
+
         reservation.damage_reported = True
         reservation.damage_description = description
         reservation.damage_reported_at = datetime.now(UTC)
@@ -445,6 +461,14 @@ class ReservationService:
                     damage_reported=User.damage_reported + 1,
                     updated_at=datetime.now(UTC),
                 )
+            )
+
+            # Recalculate the borrower's trust score — a damage report counts
+            # as a 1-star equivalent.
+            from app.services.review import ReviewService
+
+            await ReviewService._recalculate_ratings(
+                db, reservation.borrower_id, reservation.tool_id
             )
 
             # Auto-cancel pending reservations.
