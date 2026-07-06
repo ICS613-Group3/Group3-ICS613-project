@@ -1,6 +1,7 @@
 """Shared helpers for acceptance tests (not a test module itself)."""
 
 import uuid
+from contextlib import asynccontextmanager
 from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
@@ -133,3 +134,21 @@ async def register_and_verify(
         await db_session.execute(select(User).where(User.email == email.lower()))
     ).scalar_one()
     return user
+
+
+def patch_scheduler_session(db_session: AsyncSession):
+    """Patch ``app.services.scheduler.get_session`` to reuse the test's session.
+
+    ``SchedulerService`` jobs open their own session via ``get_session()``
+    (a separate connection from the test's ``db_session``/``client``
+    fixtures), so data created-but-not-committed within a test would be
+    invisible to a job run the normal way. Patching the name lets a
+    scheduler job run against the same in-progress transaction the rest of
+    the test uses, so its effects can be asserted directly afterward.
+    """
+
+    @asynccontextmanager
+    async def _reuse_session():
+        yield db_session
+
+    return patch("app.services.scheduler.get_session", _reuse_session)
