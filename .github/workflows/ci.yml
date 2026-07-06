@@ -48,8 +48,36 @@ jobs:
       # test-critical env vars (DATABASE_URL, SECRET_KEY, DISABLE_SCHEDULER)
       # itself before the app is imported. Verified locally that the full
       # suite passes with no .env file present at all.
+      #
+      # pytest-github-actions-annotate-failures (see requirements.txt) turns
+      # each FAILED test into an inline `::error file=...,line=...::`
+      # annotation automatically -- no flag needed here, it activates because
+      # GITHUB_ACTIONS is set in this environment. `set -o pipefail` makes
+      # sure a pytest failure still fails the step even though its output is
+      # piped through `tee` (otherwise the pipeline's exit code would be
+      # tee's, which is always 0).
       - name: Run backend test suite (unit + acceptance)
-        run: pytest src/app/tests -q
+        run: |
+          set -o pipefail
+          pytest src/app/tests -q | tee pytest-output.log
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Backend test results"
+            echo
+            echo '```'
+            tail -n 1 pytest-output.log
+            echo '```'
+            echo
+            echo "<details><summary>Skipped / expected-failure details (gap tracker)</summary>"
+            echo
+            echo '```'
+            awk '/short test summary info/{flag=1} flag' pytest-output.log | head -n -1
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-checks:
     name: Frontend lint, typecheck, build
