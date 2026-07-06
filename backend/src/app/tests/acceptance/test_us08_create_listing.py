@@ -1,0 +1,208 @@
+"""User Story 8 — Create a Tool Listing.
+
+Structural note up front: the doc's category examples ("Power Tools",
+"Garden", "Kitchen", "Ladders", "Other") and its admin-managed category list
+(User Story 28) don't match reality. ``ToolCategory`` (app/models/enums.py)
+is a fixed Python enum -- ``HAND_TOOLS``, ``POWER_TOOLS``, ``GARDEN_TOOLS``,
+``CLEANING_TOOLS``, ``OUTDOOR_GEAR`` -- with no DB-backed, admin-editable
+list, no "Kitchen"/"Ladders" categories, and no add/remove capability. That
+whole gap is tracked once under User Story 28's acceptance module rather
+than repeated here.
+
+Also missing from the ``Tool`` model entirely: ``latest_return_time``,
+lending rules, and notes-for-borrowers. Scenarios that hinge on those fields
+are marked as gaps below.
+"""
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.tool import Tool
+from app.tests.acceptance.helpers import auth_header, create_tool, fake_photo
+from app.tests.factories import UserFactory
+
+pytestmark = pytest.mark.acceptance
+
+
+class TestScenario1SuccessfullyCreateNewListing:
+    async def test_listing_created_active_with_photos(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+
+        tool = await create_tool(
+            client,
+            owner,
+            name="Circular Saw",
+            category="POWER_TOOLS",
+            condition="GOOD",
+            description="A reliable circular saw.",
+            num_photos=2,
+        )
+
+        assert tool["is_active"] is True
+        assert tool["owner_id"] == str(owner.id)
+        assert len(tool["photos"]) == 2
+        # Photos are stored in upload order; first is the thumbnail.
+        assert tool["photos"][0]["display_order"] == 1
+
+        # Appears in browse results filtered by category, to a different member.
+        other = await UserFactory.create_async(db_session)
+        browse = await client.get(
+            "/api/v1/tools",
+            params={"category": "POWER_TOOLS"},
+            headers=auth_header(other.id),
+        )
+        assert browse.status_code == 200
+        assert any(item["id"] == tool["id"] for item in browse.json()["items"])
+
+    @pytest.mark.skip(
+        reason="not implemented: Tool has no latest_return_time, lending_rules, or "
+        "notes-for-borrowers fields (app/models/tool.py, app/schemas/tool.py) -- there "
+        "is nothing to submit or assert on for this part of the scenario."
+    )
+    async def test_optional_lending_fields_stored_and_displayed(self) -> None:
+        raise NotImplementedError
+
+
+class TestScenario2RequiredFieldsMissing:
+    async def test_missing_name_is_rejected(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"category": "POWER_TOOLS", "condition": "GOOD"},
+            files=[("photos", fake_photo())],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+    async def test_missing_category_is_rejected(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "condition": "GOOD"},
+            files=[("photos", fake_photo())],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+    async def test_missing_condition_is_rejected(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS"},
+            files=[("photos", fake_photo())],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="known gap: 'description' is Form(..., default=None) in "
+        "create_tool (app/api/v1/tools.py) -- optional, not required -- so the doc's "
+        "'missing description is rejected' requirement is not enforced.",
+    )
+    async def test_missing_description_is_rejected(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS", "condition": "GOOD"},
+            files=[("photos", fake_photo())],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+
+class TestScenario3PhotoUploadValidationRejectsInvalidFiles:
+    async def test_non_image_file_is_rejected(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        from io import BytesIO
+
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS", "condition": "GOOD"},
+            files=[("photos", ("not-a-photo.txt", BytesIO(b"hello world"), "text/plain"))],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+    async def test_more_than_five_photos_is_rejected(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS", "condition": "GOOD"},
+            files=[("photos", fake_photo(f"p{i}.jpg")) for i in range(6)],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+
+class TestScenario4ZeroPhotosIsRejected:
+    @pytest.mark.xfail(
+        strict=True,
+        reason="known gap: create_tool's 'photos' parameter defaults to None and "
+        "create_with_photos (app/services/tool.py) only calls add_photos 'if photos:' "
+        "-- a listing with zero photos is currently created successfully instead of "
+        "being rejected.",
+    )
+    async def test_no_photos_is_rejected(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS", "condition": "GOOD"},
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+
+
+class TestScenario5LatestReturnTimeFormatValidated:
+    @pytest.mark.skip(
+        reason="not implemented: no latest_return_time field exists on Tool "
+        "(app/models/tool.py) or ToolResponse/ToolUpdate (app/schemas/tool.py)."
+    )
+    async def test_invalid_time_format_rejected(self) -> None:
+        raise NotImplementedError
+
+
+class TestScenario6UnauthenticatedCannotCreateListing:
+    async def test_returns_401(self, client) -> None:
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Drill", "category": "POWER_TOOLS", "condition": "GOOD"},
+        )
+        assert response.status_code == 401
+
+
+class TestScenario7ListingNameMustBeUniquePerOwner:
+    @pytest.mark.xfail(
+        strict=True,
+        reason="known gap: ToolService.create_tool (app/services/tool.py) never "
+        "checks for an existing listing with the same name+owner before inserting.",
+    )
+    async def test_duplicate_name_for_same_owner_is_rejected(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        await create_tool(client, owner, name="Circular Saw")
+
+        response = await client.post(
+            "/api/v1/tools",
+            data={"name": "Circular Saw", "category": "POWER_TOOLS", "condition": "GOOD"},
+            files=[("photos", fake_photo())],
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 409
+
+        count = (
+            await db_session.execute(
+                select(Tool).where(Tool.owner_id == owner.id, Tool.name == "Circular Saw")
+            )
+        ).scalars().all()
+        assert len(count) == 1

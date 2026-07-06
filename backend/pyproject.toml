@@ -41,6 +41,9 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["src/app/tests"]
 pythonpath = ["src"]
+markers = [
+    "acceptance: QA acceptance-scenario tests mapped 1:1 to the User Stories doc",
+]
 # Note: this project uses ``bcrypt`` directly, not ``passlib``. Do not
 # re-add a ``passlib`` filterwarning entry without first adding passlib
 # to requirements.txt.
