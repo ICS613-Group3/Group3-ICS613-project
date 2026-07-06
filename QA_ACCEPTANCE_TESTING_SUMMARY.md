@@ -46,7 +46,7 @@ pytest src/app/tests -q                  # everything: unit suite + acceptance s
 | 7 — Reviews & Ratings | US24–25 | ✅ Done |
 | 8 — Reporting & Moderation | US26–34 | ✅ Done (mostly skip — see below) |
 
-CI/CD integration (GitHub Actions) has not been started — this suite currently only runs locally. That's the natural next step.
+CI integration (GitHub Actions) is now in place via `/.github/workflows/ci.yml` — this suite runs in CI on pushes and pull requests.
 
 ---
 
