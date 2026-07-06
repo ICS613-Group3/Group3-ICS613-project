@@ -12,9 +12,7 @@ pytestmark = pytest.mark.acceptance
 
 
 class TestScenario1OwnerNotifiedOfNewRequest:
-    async def test_notification_created_on_request(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_notification_created_on_request(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session, full_name="Pat Owner")
         borrower = await UserFactory.create_async(db_session, full_name="Alex Borrower")
         tool = await create_tool(client, owner, name="Impact Driver")
@@ -42,9 +40,7 @@ class TestScenario1OwnerNotifiedOfNewRequest:
         "it never includes the tool's actual name, only the generic phrase "
         "'your tool'. The tool_id is in the payload but not a human-readable name.",
     )
-    async def test_notification_includes_tool_name(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_notification_includes_tool_name(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner, name="Impact Driver")
@@ -64,9 +60,7 @@ class TestScenario1OwnerNotifiedOfNewRequest:
 
 
 class TestScenario2BorrowerNotifiedOfApprovalOrDenial:
-    async def test_approval_notification_created(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_approval_notification_created(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
@@ -78,9 +72,7 @@ class TestScenario2BorrowerNotifiedOfApprovalOrDenial:
             f"/api/v1/reservations/{reservation.id}/approve", headers=auth_header(owner.id)
         )
 
-        response = await client.get(
-            "/api/v1/notifications", headers=auth_header(borrower.id)
-        )
+        response = await client.get("/api/v1/notifications", headers=auth_header(borrower.id))
         items = response.json()["items"]
         assert any("approved" in i["body"].lower() for i in items)
 
@@ -104,9 +96,7 @@ class TestScenario2BorrowerNotifiedOfApprovalOrDenial:
             f"/api/v1/reservations/{reservation.id}/approve", headers=auth_header(owner.id)
         )
 
-        response = await client.get(
-            "/api/v1/notifications", headers=auth_header(borrower.id)
-        )
+        response = await client.get("/api/v1/notifications", headers=auth_header(borrower.id))
         body = response.json()["items"][0]["body"]
         assert "Impact Driver" in body
         assert "Pat Owner" in body
@@ -144,9 +134,7 @@ class TestScenario3BothPartiesNotifiedOfPickupAndReturn:
         "their own pickup/return. The doc says 'both the borrower and owner "
         "receive in-app notifications.'",
     )
-    async def test_borrower_also_notified_on_pickup(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_borrower_also_notified_on_pickup(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
@@ -166,9 +154,7 @@ class TestScenario3BothPartiesNotifiedOfPickupAndReturn:
             headers=auth_header(borrower.id),
         )
 
-        response = await client.get(
-            "/api/v1/notifications", headers=auth_header(borrower.id)
-        )
+        response = await client.get("/api/v1/notifications", headers=auth_header(borrower.id))
         assert len(response.json()["items"]) >= 1
 
 

@@ -52,9 +52,7 @@ class TestScenario2ActiveReservationsBlockDeletion:
             state=ReservationState.APPROVED,
         )
 
-        response = await client.delete(
-            "/api/v1/auth/me", headers=auth_header(borrower.id)
-        )
+        response = await client.delete("/api/v1/auth/me", headers=auth_header(borrower.id))
         assert response.status_code == 409
         assert "active reservations" in response.json()["detail"].lower()
 
@@ -122,16 +120,10 @@ class TestScenario5SuspendedMemberCanStillDelete:
 
 
 class TestScenario4DeletedAccountCannotLogIn:
-    async def test_login_after_deletion_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        user = await UserFactory.create_async(
-            db_session, email="us7-scenario4@example.com"
-        )
+    async def test_login_after_deletion_is_rejected(self, client, db_session: AsyncSession) -> None:
+        user = await UserFactory.create_async(db_session, email="us7-scenario4@example.com")
 
-        delete_response = await client.delete(
-            "/api/v1/auth/me", headers=auth_header(user.id)
-        )
+        delete_response = await client.delete("/api/v1/auth/me", headers=auth_header(user.id))
         assert delete_response.status_code == 204
 
         login_response = await client.post(

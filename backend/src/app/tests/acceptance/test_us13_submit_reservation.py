@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import ReservationState
 from app.models.notification import Notification
 from app.tests.acceptance.helpers import auth_header, create_tool
 from app.tests.factories import UserFactory
@@ -35,10 +34,10 @@ class TestScenario1BorrowerSubmitsValidRequest:
         assert data["state"] == "REQUESTED"
 
         notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == owner.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Notification).where(Notification.user_id == owner.id)))
+            .scalars()
+            .all()
+        )
         assert len(notifications) >= 1
 
 

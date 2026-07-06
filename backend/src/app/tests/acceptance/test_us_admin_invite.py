@@ -18,9 +18,7 @@ pytestmark = pytest.mark.acceptance
 class TestScenario1AdminInvitesNewMember:
     """Admin invites a new member (one-click)."""
 
-    async def test_invite_is_created_and_emailed(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_invite_is_created_and_emailed(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         email = unique_email()
 

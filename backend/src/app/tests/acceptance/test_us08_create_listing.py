@@ -103,9 +103,7 @@ class TestScenario2RequiredFieldsMissing:
         "create_tool (app/api/v1/tools.py) -- optional, not required -- so the doc's "
         "'missing description is rejected' requirement is not enforced.",
     )
-    async def test_missing_description_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_missing_description_is_rejected(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         response = await client.post(
             "/api/v1/tools",
@@ -117,9 +115,7 @@ class TestScenario2RequiredFieldsMissing:
 
 
 class TestScenario3PhotoUploadValidationRejectsInvalidFiles:
-    async def test_non_image_file_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_non_image_file_is_rejected(self, client, db_session: AsyncSession) -> None:
         from io import BytesIO
 
         owner = await UserFactory.create_async(db_session)
@@ -201,8 +197,12 @@ class TestScenario7ListingNameMustBeUniquePerOwner:
         assert response.status_code == 409
 
         count = (
-            await db_session.execute(
-                select(Tool).where(Tool.owner_id == owner.id, Tool.name == "Circular Saw")
+            (
+                await db_session.execute(
+                    select(Tool).where(Tool.owner_id == owner.id, Tool.name == "Circular Saw")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(count) == 1

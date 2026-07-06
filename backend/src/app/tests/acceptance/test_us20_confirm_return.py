@@ -48,9 +48,7 @@ class TestScenario1BorrowerMarksReturnedOnTime:
     async def test_state_becomes_returned_with_timestamp(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_picked_up_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_picked_up_reservation(client, db_session)
 
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/mark-returned",
@@ -107,9 +105,7 @@ class TestScenario3ReturnAfterEndDate:
 
 class TestScenario4NonBorrowerCannotMarkReturned:
     async def test_owner_gets_403(self, client, db_session: AsyncSession) -> None:
-        owner, borrower, tool, reservation = await _make_picked_up_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_picked_up_reservation(client, db_session)
 
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/mark-returned",
@@ -318,10 +314,10 @@ class TestScenario7ToolNeverReturnedEscalationAfterSevenDays:
         from app.models.notification import Notification
 
         admin_notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == admin.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Notification).where(Notification.user_id == admin.id)))
+            .scalars()
+            .all()
+        )
         assert len(admin_notifications) >= 1
 
     @pytest.mark.xfail(
@@ -352,9 +348,7 @@ class TestScenario8AdminCanForceMarkReturnedInDispute:
     async def test_force_return_sets_resolution_fields(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_picked_up_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_picked_up_reservation(client, db_session)
         admin = await UserFactory.create_async(db_session, is_admin=True)
 
         response = await client.post(
@@ -369,12 +363,8 @@ class TestScenario8AdminCanForceMarkReturnedInDispute:
         assert data["force_resolved_by"] == str(admin.id)
         assert data["force_resolution_reason"] == "Reviewed evidence from both parties"
 
-    async def test_non_admin_cannot_force_return(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        owner, borrower, tool, reservation = await _make_picked_up_reservation(
-            client, db_session
-        )
+    async def test_non_admin_cannot_force_return(self, client, db_session: AsyncSession) -> None:
+        owner, borrower, tool, reservation = await _make_picked_up_reservation(client, db_session)
 
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/admin-force-return",

@@ -32,9 +32,7 @@ class TestScenario1SubmitValidReview:
     async def test_review_saved_and_associated_with_reviewee(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
 
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
@@ -58,9 +56,7 @@ class TestScenario1SubmitValidReview:
     async def test_review_response_includes_reviewer_display_name(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
 
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
@@ -103,9 +99,7 @@ class TestScenario3OneReviewPerReservationPerReviewer:
     async def test_second_review_rejected_first_preserved(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
 
         first = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
@@ -172,9 +166,7 @@ class TestScenario5UserCannotReviewThemselves:
 
 class TestScenario6RatingMustBeIntegerBetweenOneAndFive:
     async def test_rating_zero_rejected(self, client, db_session: AsyncSession) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 0},
@@ -183,9 +175,7 @@ class TestScenario6RatingMustBeIntegerBetweenOneAndFive:
         assert response.status_code == 422
 
     async def test_rating_six_rejected(self, client, db_session: AsyncSession) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 6},
@@ -193,12 +183,8 @@ class TestScenario6RatingMustBeIntegerBetweenOneAndFive:
         )
         assert response.status_code == 422
 
-    async def test_non_integer_rating_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+    async def test_non_integer_rating_rejected(self, client, db_session: AsyncSession) -> None:
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 3.5},
@@ -208,12 +194,8 @@ class TestScenario6RatingMustBeIntegerBetweenOneAndFive:
 
 
 class TestScenario7CommentOptionalRatingRequired:
-    async def test_review_saved_with_rating_only(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+    async def test_review_saved_with_rating_only(self, client, db_session: AsyncSession) -> None:
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 4},
@@ -224,12 +206,8 @@ class TestScenario7CommentOptionalRatingRequired:
 
 
 class TestScenario8EditOrDeleteWithin24Hours:
-    async def test_edit_within_window_succeeds(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+    async def test_edit_within_window_succeeds(self, client, db_session: AsyncSession) -> None:
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         create_response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 3, "comment": "Okay"},
@@ -248,9 +226,7 @@ class TestScenario8EditOrDeleteWithin24Hours:
     async def test_delete_within_window_removes_review(
         self, client, db_session: AsyncSession
     ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         create_response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 3},
@@ -269,12 +245,8 @@ class TestScenario8EditOrDeleteWithin24Hours:
         )
         assert reviews.json() == []
 
-    async def test_edit_after_24_hours_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
-        owner, borrower, tool, reservation = await _make_returned_reservation(
-            client, db_session
-        )
+    async def test_edit_after_24_hours_rejected(self, client, db_session: AsyncSession) -> None:
+        owner, borrower, tool, reservation = await _make_returned_reservation(client, db_session)
         create_response = await client.post(
             f"/api/v1/reservations/{reservation.id}/review",
             json={"rating": 3},
@@ -283,6 +255,7 @@ class TestScenario8EditOrDeleteWithin24Hours:
         review_id = create_response.json()["id"]
 
         review = await db_session.get(Review, review_id)
+        assert review is not None
         review.created_at = datetime.now(UTC) - timedelta(hours=25)
         db_session.add(review)
         await db_session.flush()

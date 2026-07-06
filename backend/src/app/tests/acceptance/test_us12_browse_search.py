@@ -56,8 +56,10 @@ class TestScenario2SearchByNameOrKeyword:
 
         assert response.status_code == 200
         items = response.json()["items"]
-        assert all("drill" in i["name"].lower() or "drill" in (i["description"] or "").lower()
-                    for i in items)
+        assert all(
+            "drill" in i["name"].lower() or "drill" in (i["description"] or "").lower()
+            for i in items
+        )
         assert any(i["name"] == "Cordless Drill" for i in items)
         assert not any(i["name"] == "Lawn Mower" for i in items)
 
@@ -163,9 +165,7 @@ class TestScenario5ViewDetailedInformation:
         )
 
         viewer = await UserFactory.create_async(db_session)
-        response = await client.get(
-            f"/api/v1/tools/{tool['id']}", headers=auth_header(viewer.id)
-        )
+        response = await client.get(f"/api/v1/tools/{tool['id']}", headers=auth_header(viewer.id))
 
         assert response.status_code == 200
         data = response.json()

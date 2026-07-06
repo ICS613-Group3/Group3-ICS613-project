@@ -41,9 +41,7 @@ class TestScenario2CompletePasswordReset:
         user = await UserFactory.create_async(db_session, email="us4-scenario2@example.com")
         old_access_headers = auth_header(user.id)
 
-        await client.post(
-            "/api/v1/auth/forgot-password", json={"email": user.email}
-        )
+        await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
         reset_token = (
             await db_session.execute(
                 select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
@@ -110,9 +108,7 @@ class TestScenario3PasswordResetWithInvalidToken:
         )
         assert response.status_code == 422
 
-    async def test_already_used_token_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_already_used_token_rejected(self, client, db_session: AsyncSession) -> None:
         user = await UserFactory.create_async(db_session, email="us4-scenario3@example.com")
         await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
         reset_token = (

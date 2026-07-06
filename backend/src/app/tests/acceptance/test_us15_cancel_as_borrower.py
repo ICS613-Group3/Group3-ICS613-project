@@ -107,9 +107,7 @@ class TestScenario4CannotCancelPickedUp:
 
 
 class TestScenario5CannotCancelDenied:
-    async def test_rejected_status_remains_denied(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_rejected_status_remains_denied(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.DENIED
         )
@@ -126,9 +124,7 @@ class TestScenario5CannotCancelDenied:
 
 
 class TestScenario6CannotCancelReturned:
-    async def test_rejected_status_remains_returned(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_rejected_status_remains_returned(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.RETURNED
         )

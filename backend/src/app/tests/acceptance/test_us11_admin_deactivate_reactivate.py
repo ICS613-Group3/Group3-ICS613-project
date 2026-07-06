@@ -98,9 +98,7 @@ class TestScenario3DeactivatingWithPendingReservationsAutoCancels:
         "cancels REQUESTED/APPROVED reservations but never calls NotificationService "
         "-- affected borrowers receive no in-app notification of the cancellation.",
     )
-    async def test_affected_borrower_is_notified(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_affected_borrower_is_notified(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         admin = await make_admin(db_session)
@@ -119,10 +117,14 @@ class TestScenario3DeactivatingWithPendingReservationsAutoCancels:
         )
 
         notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == borrower.id)
+            (
+                await db_session.execute(
+                    select(Notification).where(Notification.user_id == borrower.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(notifications) >= 1
 
 
@@ -152,10 +154,14 @@ class TestScenario4AdminCanReactivateDeactivatedListing:
         assert any(item["id"] == tool["id"] for item in browse.json()["items"])
 
         audit_rows = (
-            await db_session.execute(
-                select(AdminAuditLog).where(AdminAuditLog.actor_id == admin.id)
+            (
+                await db_session.execute(
+                    select(AdminAuditLog).where(AdminAuditLog.actor_id == admin.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(audit_rows) >= 1
 
     @pytest.mark.xfail(
@@ -175,15 +181,13 @@ class TestScenario4AdminCanReactivateDeactivatedListing:
             json={"reason": "temporary hold"},
             headers=auth_header(admin.id),
         )
-        await client.post(
-            f"/api/v1/tools/{tool['id']}/reactivate", headers=auth_header(admin.id)
-        )
+        await client.post(f"/api/v1/tools/{tool['id']}/reactivate", headers=auth_header(admin.id))
 
         notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == owner.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Notification).where(Notification.user_id == owner.id)))
+            .scalars()
+            .all()
+        )
         assert len(notifications) >= 1
 
 

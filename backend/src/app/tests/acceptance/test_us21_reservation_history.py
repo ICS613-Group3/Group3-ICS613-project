@@ -101,17 +101,11 @@ class TestScenario3PastReturnedReservationsRemainVisible:
             returned_at=datetime.now(UTC),
         )
 
-        borrower_view = await client.get(
-            "/api/v1/reservations", headers=auth_header(borrower.id)
-        )
-        owner_view = await client.get(
-            "/api/v1/reservations", headers=auth_header(owner.id)
-        )
+        borrower_view = await client.get("/api/v1/reservations", headers=auth_header(borrower.id))
+        owner_view = await client.get("/api/v1/reservations", headers=auth_header(owner.id))
 
         assert any(i["id"] == str(reservation.id) for i in borrower_view.json()["items"])
         assert any(i["id"] == str(reservation.id) for i in owner_view.json()["items"])
-        matching = next(
-            i for i in borrower_view.json()["items"] if i["id"] == str(reservation.id)
-        )
+        matching = next(i for i in borrower_view.json()["items"] if i["id"] == str(reservation.id))
         assert matching["state"] == "RETURNED"
         assert matching["returned_at"] is not None

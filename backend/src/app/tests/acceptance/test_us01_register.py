@@ -46,9 +46,7 @@ class TestScenario1RegisterWithValidInviteToken:
         from app.models.invite import InviteToken
 
         invite = (
-            await db_session.execute(
-                select(InviteToken).where(InviteToken.token == token)
-            )
+            await db_session.execute(select(InviteToken).where(InviteToken.token == token))
         ).scalar_one()
         assert invite.status == InviteStatus.USED
 
@@ -65,9 +63,7 @@ class TestScenario2RegisterWithInvalidOrUsedToken:
         )
         assert response.status_code == 422
 
-    async def test_already_used_token_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_already_used_token_is_rejected(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         email = unique_email()
         token = await invite_email(db_session, email, admin)
@@ -115,8 +111,6 @@ class TestScenario3RegisterWithEmailAlreadyInUse:
         from app.models.invite import InviteToken
 
         invite = (
-            await db_session.execute(
-                select(InviteToken).where(InviteToken.token == token)
-            )
+            await db_session.execute(select(InviteToken).where(InviteToken.token == token))
         ).scalar_one()
         assert invite.status == InviteStatus.SENT, "invite must remain valid for another email"

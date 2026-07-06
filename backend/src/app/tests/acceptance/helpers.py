@@ -3,6 +3,7 @@
 import uuid
 from contextlib import asynccontextmanager
 from io import BytesIO
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.models.email_verification import EmailVerificationToken
+from app.models.invite import InviteToken
 from app.models.user import User
 from app.services.email import EmailService
 from app.tests.factories import AdminFactory, InviteFactory
@@ -25,7 +27,7 @@ _FAKE_JPEG_BYTES = (
     b"\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00"
     b"\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xc4\x00"
     b"\xb5\x10\x00\x02\x01\x03\x03\x02\x04\x03\x05\x05\x04\x04\x00\x00"
-    b"\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa\x07\"q\x142"
+    b'\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa\x07"q\x142'
     b"\x81\x91\xa1\x08#B\xb1\xc1\x15R\xd1\xf0$3br\x82\t\n\x16\x17\x18"
     b"\x19\x1a%&'()*456789:CDEFGHIJSTUVWXYZcdefghijstuvwxyz"
     b"\x83\x84\x85\x86\x87\x88\x89\x8a\x92\x93\x94\x95\x96\x97\x98\x99"
@@ -51,7 +53,7 @@ async def create_tool(
     condition: str = "GOOD",
     description: str | None = "A tool for testing.",
     num_photos: int = 1,
-) -> dict:
+) -> dict[str, Any]:
     """Create a tool listing via the multipart create endpoint. Returns the JSON body."""
     data = {"name": name, "category": category, "condition": condition}
     if description is not None:
@@ -64,7 +66,8 @@ async def create_tool(
         headers=auth_header(owner.id),
     )
     assert response.status_code == 201, response.text
-    return response.json()
+    body: dict[str, Any] = response.json()
+    return body
 
 
 def unique_email(prefix: str = "qa") -> str:
@@ -81,8 +84,11 @@ async def make_admin(db_session: AsyncSession) -> User:
 
 async def invite_email(db_session: AsyncSession, email: str, admin: User) -> str:
     """Create a SENT invite token for ``email`` and return the raw token string."""
-    invite = await InviteFactory.create_async(db_session, email=email, created_by=admin.id)
-    return invite.token
+    invite: InviteToken = await InviteFactory.create_async(
+        db_session, email=email, created_by=admin.id
+    )
+    token: str = invite.token
+    return token
 
 
 async def register_and_verify(
@@ -118,9 +124,7 @@ async def register_and_verify(
     ).scalar_one()
     verification_token = (
         await db_session.execute(
-            select(EmailVerificationToken).where(
-                EmailVerificationToken.user_id == pending_user.id
-            )
+            select(EmailVerificationToken).where(EmailVerificationToken.user_id == pending_user.id)
         )
     ).scalar_one()
 
@@ -130,9 +134,7 @@ async def register_and_verify(
     )
     assert verify_response.status_code == 200, verify_response.text
 
-    user = (
-        await db_session.execute(select(User).where(User.email == email.lower()))
-    ).scalar_one()
+    user = (await db_session.execute(select(User).where(User.email == email.lower()))).scalar_one()
     return user
 
 

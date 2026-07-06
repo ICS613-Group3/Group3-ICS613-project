@@ -28,9 +28,7 @@ class TestScenario1AdminViewsModerationHistory:
             headers=auth_header(admin.id),
         )
 
-        response = await client.get(
-            "/api/v1/admin/audit-log", headers=auth_header(admin.id)
-        )
+        response = await client.get("/api/v1/admin/audit-log", headers=auth_header(admin.id))
 
         assert response.status_code == 200
         items = response.json()["items"]
@@ -40,9 +38,7 @@ class TestScenario1AdminViewsModerationHistory:
         assert entry["reason"] == "policy violation"
         assert entry["created_at"] is not None
 
-    async def test_filterable_by_action_type(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_filterable_by_action_type(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         member = await UserFactory.create_async(db_session)
         await client.post(
@@ -117,7 +113,5 @@ class TestScenario4NonAdminCannotViewModerationHistory:
     async def test_returns_403(self, client, db_session: AsyncSession) -> None:
         non_admin = await UserFactory.create_async(db_session)
 
-        response = await client.get(
-            "/api/v1/admin/audit-log", headers=auth_header(non_admin.id)
-        )
+        response = await client.get("/api/v1/admin/audit-log", headers=auth_header(non_admin.id))
         assert response.status_code == 403

@@ -16,9 +16,7 @@ pytestmark = pytest.mark.acceptance
 
 
 class TestScenario1SuccessfullyEditWithNoPickedUpReservation:
-    async def test_fields_and_category_updated(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_fields_and_category_updated(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner, category="HAND_TOOLS")
 
@@ -99,9 +97,7 @@ class TestScenario2CannotEditWhilePickedUp:
 
 
 class TestScenario3OwnerCanAddPhotoUpToFive:
-    async def test_add_photo_when_below_limit(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_add_photo_when_below_limit(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner, num_photos=1)
 
@@ -130,9 +126,7 @@ class TestScenario4CannotAddPhotoAtFive:
 
 
 class TestScenario5OwnerCanRemovePhotoWhenTwoOrMoreExist:
-    async def test_remove_photo_updates_gallery(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_remove_photo_updates_gallery(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner, num_photos=2)
         first_photo_id = tool["photos"][0]["id"]
@@ -153,18 +147,16 @@ class TestScenario5OwnerCanRemovePhotoWhenTwoOrMoreExist:
         # the Photo table directly instead, which isn't affected by that
         # collection-caching quirk.
         remaining = (
-            await db_session.execute(
-                select(Photo).where(Photo.tool_id == uuid.UUID(tool["id"]))
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Photo).where(Photo.tool_id == uuid.UUID(tool["id"]))))
+            .scalars()
+            .all()
+        )
         assert len(remaining) == 1
         assert str(remaining[0].id) != first_photo_id
 
 
 class TestScenario6OwnerCannotRemoveLastPhoto:
-    async def test_removing_only_photo_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_removing_only_photo_is_rejected(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner, num_photos=1)
         photo_id = tool["photos"][0]["id"]
@@ -223,9 +215,7 @@ class TestScenario9UnauthenticatedCannotEdit:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
 
-        response = await client.patch(
-            f"/api/v1/tools/{tool['id']}", json={"condition": "POOR"}
-        )
+        response = await client.patch(f"/api/v1/tools/{tool['id']}", json={"condition": "POOR"})
         assert response.status_code == 401
 
 

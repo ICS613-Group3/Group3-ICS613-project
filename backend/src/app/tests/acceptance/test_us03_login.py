@@ -27,9 +27,7 @@ class TestScenario1LoginWithValidCredentials:
 
 
 class TestScenario2CannotLoginUntilVerified:
-    async def test_email_pending_login_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_email_pending_login_rejected(self, client, db_session: AsyncSession) -> None:
         await PendingUserFactory.create_async(db_session, email="us3-scenario2@example.com")
 
         response = await client.post(

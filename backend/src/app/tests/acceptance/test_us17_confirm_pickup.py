@@ -50,9 +50,7 @@ class TestScenario1BorrowerMarksPickedUpOnOrAfterStartDate:
 
 
 class TestScenario2CannotMarkPickedUpBeforeStartDate:
-    async def test_rejected_status_remains_approved(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_rejected_status_remains_approved(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client,
             db_session,

@@ -75,15 +75,13 @@ class TestScenario4DeletedMembersReviewsPreserved:
         )
         assert review_response.status_code == 201
 
-        delete_response = await client.delete(
-            "/api/v1/auth/me", headers=auth_header(borrower.id)
-        )
+        delete_response = await client.delete("/api/v1/auth/me", headers=auth_header(borrower.id))
         assert delete_response.status_code == 204
 
         reviews = (
-            await db_session.execute(
-                select(Review).where(Review.reviewee_id == borrower.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Review).where(Review.reviewee_id == borrower.id)))
+            .scalars()
+            .all()
+        )
         assert len(reviews) == 1
         assert reviews[0].comment == "Great borrower"

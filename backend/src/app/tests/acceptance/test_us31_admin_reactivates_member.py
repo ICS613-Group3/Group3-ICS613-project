@@ -80,9 +80,7 @@ class TestScenario1AdminReactivatesSuspendedMember:
 
 
 class TestScenario2CannotReactivateNonSuspendedAccount:
-    async def test_rejected_for_active_account(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_rejected_for_active_account(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         member = await UserFactory.create_async(db_session)
 
@@ -119,9 +117,7 @@ class TestScenario3ReactivatedMemberRegainsNormalAccess:
 
 
 class TestScenario4NonAdminCannotReactivateMember:
-    async def test_returns_403_status_unchanged(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_returns_403_status_unchanged(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         non_admin = await UserFactory.create_async(db_session)
         member = await UserFactory.create_async(db_session)

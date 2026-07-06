@@ -15,9 +15,7 @@ pytestmark = pytest.mark.acceptance
 
 
 class TestScenario1VerifyWithValidToken:
-    async def test_account_activated_and_logged_in(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_account_activated_and_logged_in(self, client, db_session: AsyncSession) -> None:
         from sqlalchemy import select
 
         from app.models.enums import UserStatus
@@ -38,9 +36,7 @@ class TestScenario1VerifyWithValidToken:
         ).scalar_one()
         verification_token = (
             await db_session.execute(
-                select(EmailVerificationToken).where(
-                    EmailVerificationToken.user_id == user.id
-                )
+                select(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
             )
         ).scalar_one()
 

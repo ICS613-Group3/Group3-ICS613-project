@@ -72,9 +72,7 @@ class TestScenario3CannotDenyAlreadyDenied:
 
 
 class TestScenario4OwnerCannotCancelPickedUp:
-    async def test_cancel_rejected_on_picked_up(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_cancel_rejected_on_picked_up(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.PICKED_UP
         )
@@ -91,9 +89,7 @@ class TestScenario4OwnerCannotCancelPickedUp:
 
 
 class TestScenario5OwnerCannotDenyPickedUpReturnedOrCancelled:
-    async def test_deny_rejected_on_picked_up(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_deny_rejected_on_picked_up(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.PICKED_UP
         )
@@ -104,9 +100,7 @@ class TestScenario5OwnerCannotDenyPickedUpReturnedOrCancelled:
         )
         assert response.status_code == 409
 
-    async def test_deny_rejected_on_returned(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_deny_rejected_on_returned(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.RETURNED
         )
@@ -117,9 +111,7 @@ class TestScenario5OwnerCannotDenyPickedUpReturnedOrCancelled:
         )
         assert response.status_code == 409
 
-    async def test_deny_rejected_on_cancelled(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_deny_rejected_on_cancelled(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_reservation(
             client, db_session, state=ReservationState.CANCELLED
         )

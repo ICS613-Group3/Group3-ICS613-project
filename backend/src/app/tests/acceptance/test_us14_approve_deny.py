@@ -33,9 +33,7 @@ class TestScenario1OwnerApprovesRequested:
 
 
 class TestScenario2OwnerDeniesRequested:
-    async def test_state_becomes_denied_with_reason(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_state_becomes_denied_with_reason(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
@@ -99,9 +97,7 @@ class TestScenario3CannotApproveOverlappingActiveReservation:
 
 
 class TestScenario4TwoNonOverlappingRequestedApprovedIndependently:
-    async def test_both_approved_without_conflict(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_both_approved_without_conflict(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)

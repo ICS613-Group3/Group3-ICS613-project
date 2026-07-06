@@ -58,10 +58,14 @@ class TestScenario1AutoCancelledAfterGracePeriod:
         assert reservation.state == ReservationState.CANCELLED
 
         borrower_notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == borrower.id)
+            (
+                await db_session.execute(
+                    select(Notification).where(Notification.user_id == borrower.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(borrower_notifications) >= 1
 
         # Dates are freed: a new request overlapping the cancelled reservation's
@@ -100,17 +104,15 @@ class TestScenario1AutoCancelledAfterGracePeriod:
             await SchedulerService().auto_cancel_overdue_pickups()
 
         owner_notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == owner.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(Notification).where(Notification.user_id == owner.id)))
+            .scalars()
+            .all()
+        )
         assert len(owner_notifications) >= 1
 
 
 class TestScenario2NotAutoCancelledWithinGracePeriod:
-    async def test_reservation_remains_approved(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_reservation_remains_approved(self, client, db_session: AsyncSession) -> None:
         owner, borrower, tool, reservation = await _make_approved_reservation(
             client, db_session, start_days_ago=2
         )

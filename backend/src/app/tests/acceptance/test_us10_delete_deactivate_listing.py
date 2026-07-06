@@ -17,9 +17,7 @@ class TestScenario1DeleteWithNoActiveReservations:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
 
-        response = await client.delete(
-            f"/api/v1/tools/{tool['id']}", headers=auth_header(owner.id)
-        )
+        response = await client.delete(f"/api/v1/tools/{tool['id']}", headers=auth_header(owner.id))
         assert response.status_code == 204
 
         other = await UserFactory.create_async(db_session)
@@ -28,9 +26,7 @@ class TestScenario1DeleteWithNoActiveReservations:
 
 
 class TestScenario2CannotDeleteWithActiveReservations:
-    async def test_delete_rejected_status_unchanged(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_delete_rejected_status_unchanged(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
@@ -41,9 +37,7 @@ class TestScenario2CannotDeleteWithActiveReservations:
             state=ReservationState.REQUESTED,
         )
 
-        response = await client.delete(
-            f"/api/v1/tools/{tool['id']}", headers=auth_header(owner.id)
-        )
+        response = await client.delete(f"/api/v1/tools/{tool['id']}", headers=auth_header(owner.id))
         assert response.status_code == 409
 
         get_response = await client.get(
@@ -117,9 +111,7 @@ class TestScenario5NonOwnerCannotDeleteOrDeactivate:
         other = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
 
-        response = await client.delete(
-            f"/api/v1/tools/{tool['id']}", headers=auth_header(other.id)
-        )
+        response = await client.delete(f"/api/v1/tools/{tool['id']}", headers=auth_header(other.id))
         assert response.status_code == 403
 
     async def test_deactivate_returns_403(self, client, db_session: AsyncSession) -> None:
@@ -147,9 +139,7 @@ class TestScenario6UnauthenticatedCannotDeleteOrDeactivate:
         owner = await UserFactory.create_async(db_session)
         tool = await create_tool(client, owner)
 
-        response = await client.post(
-            f"/api/v1/tools/{tool['id']}/deactivate", json={"reason": "x"}
-        )
+        response = await client.post(f"/api/v1/tools/{tool['id']}/deactivate", json={"reason": "x"})
         assert response.status_code == 401
 
 

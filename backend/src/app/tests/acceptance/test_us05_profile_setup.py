@@ -19,9 +19,7 @@ pytestmark = pytest.mark.acceptance
 
 
 class TestScenario1SetUpProfileAfterFirstLogin:
-    async def test_profile_fields_saved_and_visible(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_profile_fields_saved_and_visible(self, client, db_session: AsyncSession) -> None:
         user = await UserFactory.create_async(db_session, full_name=None)
 
         response = await client.put(
@@ -49,9 +47,7 @@ class TestScenario2DisplayNameMissingOrBlank:
         "values, and UserUpdate has no validator requiring non-blank full_name. A "
         "whitespace-only name is currently accepted and saved as-is.",
     )
-    async def test_blank_display_name_is_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_blank_display_name_is_rejected(self, client, db_session: AsyncSession) -> None:
         user = await UserFactory.create_async(db_session, full_name="Original Name")
 
         response = await client.put(
@@ -99,9 +95,7 @@ class TestScenario4ProfilePhotoUploadFailsValidation:
 
 class TestScenario5UnauthenticatedCannotAccessProfileSetup:
     async def test_returns_401(self, client) -> None:
-        response = await client.put(
-            "/api/v1/auth/me", json={"full_name": "Someone"}
-        )
+        response = await client.put("/api/v1/auth/me", json={"full_name": "Someone"})
         assert response.status_code == 401
 
 

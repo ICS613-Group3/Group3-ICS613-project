@@ -42,10 +42,14 @@ class TestScenario1AdminSuspendsMember:
         assert audit.reason == "Repeated policy violations"
 
         notifications = (
-            await db_session.execute(
-                select(Notification).where(Notification.user_id == member.id)
+            (
+                await db_session.execute(
+                    select(Notification).where(Notification.user_id == member.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(notifications) >= 1
 
 
@@ -101,9 +105,7 @@ class TestScenario3SuspendedMemberCanStillLogIn:
         "log in at all today, let alone see a suspension notice. The doc "
         "requires login to succeed and show the suspension notice/status.",
     )
-    async def test_suspended_member_login_succeeds(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_suspended_member_login_succeeds(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         member = await UserFactory.create_async(db_session, email="suspended-us30@example.com")
         await client.post(
@@ -120,9 +122,7 @@ class TestScenario3SuspendedMemberCanStillLogIn:
 
 
 class TestScenario4NonAdminCannotSuspendMember:
-    async def test_returns_403_status_unchanged(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_returns_403_status_unchanged(self, client, db_session: AsyncSession) -> None:
         non_admin = await UserFactory.create_async(db_session)
         member = await UserFactory.create_async(db_session)
 

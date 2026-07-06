@@ -54,9 +54,7 @@ class TestScenario3DisplayNameExceedsMaxLength:
         reason="known gap: same root cause as US5 Scenario 3 -- "
         "UserUpdate.full_name has no max_length constraint.",
     )
-    async def test_overlong_display_name_rejected(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_overlong_display_name_rejected(self, client, db_session: AsyncSession) -> None:
         user = await UserFactory.create_async(db_session)
 
         response = await client.put(
