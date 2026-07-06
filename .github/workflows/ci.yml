@@ -52,14 +52,22 @@ jobs:
       # pytest-github-actions-annotate-failures (see requirements.txt) turns
       # each FAILED test into an inline `::error file=...,line=...::`
       # annotation automatically -- no flag needed here, it activates because
-      # GITHUB_ACTIONS is set in this environment. `set -o pipefail` makes
-      # sure a pytest failure still fails the step even though its output is
-      # piped through `tee` (otherwise the pipeline's exit code would be
-      # tee's, which is always 0).
+      # GITHUB_ACTIONS is set in this environment. It also annotates captured
+      # warnings, so expect some `::warning::` noise from recurring
+      # deprecation warnings -- harmless, just noisier than pure failures.
+      #
+      # -rxXs makes pytest print each xfailed/xpassed/skipped test's reason
+      # in the "short test summary info" block (off by default) -- without
+      # it, the gap-tracker section below would be empty even though we do
+      # have skips/xfails.
+      #
+      # `set -o pipefail` makes sure a pytest failure still fails the step
+      # even though its output is piped through `tee` (otherwise the
+      # pipeline's exit code would be tee's, which is always 0).
       - name: Run backend test suite (unit + acceptance)
         run: |
           set -o pipefail
-          pytest src/app/tests -q | tee pytest-output.log
+          pytest src/app/tests -q -rxXs | tee pytest-output.log
 
       - name: Write test summary
         if: always()
