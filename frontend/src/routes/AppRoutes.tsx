@@ -6,6 +6,7 @@ import AppLayout from '../components/AppLayout';
 // Import admin pages.
 import AdminInvitesPage from '../pages/AdminInvitesPage';
 import AdminListingsPage from '../pages/AdminListingsPage';
+import AdminMembersPage from '../pages/AdminMembersPage';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
 
         {/* Admin routes. */}
+        <Route path="/admin/members" element={<RequireAuth><AdminMembersPage /></RequireAuth>} />
         <Route path="/admin/invites" element={<RequireAuth><AdminInvitesPage /></RequireAuth>} />
         <Route path="/admin/listings" element={<RequireAuth><AdminListingsPage /></RequireAuth>} />
 

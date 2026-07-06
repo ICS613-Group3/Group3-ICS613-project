@@ -108,6 +108,9 @@ function AppLayout() {
 
               {user?.is_admin && (
                 <>
+                  <NavLink className={getNavLinkClass} to="/admin/members">
+                    Admin Members
+                  </NavLink>
                   <NavLink className={getNavLinkClass} to="/admin/invites">
                     Admin Invites
                   </NavLink>
