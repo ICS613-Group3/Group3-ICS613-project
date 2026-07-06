@@ -1,147 +1,158 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ApiError,
-  notificationsApi,
-  type Notification,
-} from '../api/client';
+import { notificationsApi } from '../api/notifications';
+import { ApiRequestError } from '../api/client';
+import type { NotificationResponse } from '../types/api';
 
-/**
- * NotificationsPage
- *
- * Real backend list via ``GET /notifications`` and mark-read via
- * ``POST /notifications/{id}/read``. Clicking a notification body
- * tries to deep-link to the relevant reservation (if the payload
- * contains ``reservation_id``) — otherwise it just marks it read.
- */
 function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
 
-  const load = async () => {
+  const fetchNotifications = async () => {
     setIsLoading(true);
-    setErrorMessage('');
+    setError('');
     try {
-      const res = await notificationsApi.list({ unread_only: unreadOnly });
-      setItems(res.items);
-      setUnreadCount(res.unread_count);
+      const data = await notificationsApi.list();
+      setNotifications(data.items);
+      setUnreadCount(data.unread_count);
+      setTotal(data.total);
     } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to load notifications.');
+      setError(err instanceof Error ? err.message : 'Failed to load notifications');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unreadOnly]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchNotifications();
+  }, []);
 
-  const handleMarkRead = async (id: string) => {
+  const handleMarkAsRead = async (notificationId: string) => {
+    setStatusMessage('');
     try {
-      await notificationsApi.markRead(id);
-      // Optimistic update: clear read_at locally and drop from unread view.
-      setItems((prev) =>
-        prev.map((n) =>
-          n.id === id ? { ...n, read_at: new Date().toISOString() } : n,
-        ),
+      await notificationsApi.markRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)),
       );
       setUnreadCount((c) => Math.max(0, c - 1));
-      if (unreadOnly) {
-        setItems((prev) => prev.filter((n) => n.id !== id));
-      }
+      setStatusMessage('Notification marked as read.');
+      window.dispatchEvent(new Event('auth-change'));
     } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to mark notification read.');
+      setStatusMessage(err instanceof ApiRequestError ? err.detail : 'Failed to mark as read');
     }
   };
 
-  const reservationIdFromPayload = (n: Notification): string | null => {
-    if (!n.payload || typeof n.payload !== 'object') return null;
-    const candidate = (n.payload as Record<string, unknown>).reservation_id;
-    return typeof candidate === 'string' ? candidate : null;
+  const handleMarkAllAsRead = async () => {
+    setStatusMessage('');
+    try {
+      await notificationsApi.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+      setUnreadCount(0);
+      setStatusMessage('All notifications marked as read.');
+      window.dispatchEvent(new Event('auth-change'));
+    } catch (err) {
+      setStatusMessage(err instanceof ApiRequestError ? err.detail : 'Failed to mark all as read');
+    }
   };
+
+  const readCount = total - unreadCount;
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === 'unread') return !n.read_at;
+    if (filter === 'read') return !!n.read_at;
+    return true;
+  });
 
   return (
     <section className="page-section">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Notifications</p>
+          <p className="eyebrow">Notification Center</p>
           <h1>Notifications</h1>
           <p className="page-description">
-            Reservation updates, approval notices, and other system events.
-            {unreadCount > 0 && ` ${unreadCount} unread.`}
+            Review reservation updates, owner actions, and system alerts.
           </p>
         </div>
+        <Link className="secondary-link" to="/dashboard">
+          Back to Dashboard
+        </Link>
       </div>
 
-      <div className="filter-panel">
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(event) => setUnreadOnly(event.target.checked)}
-          />
-          Show unread only
-        </label>
+      <div className="notification-summary-grid">
+        <article className="summary-card">
+          <span className="summary-number">{total}</span>
+          <span className="summary-label">Total</span>
+        </article>
+        <article className="summary-card notification-unread-summary">
+          <span className="summary-number">{unreadCount}</span>
+          <span className="summary-label">Unread</span>
+        </article>
+        <article className="summary-card">
+          <span className="summary-number">{readCount}</span>
+          <span className="summary-label">Read</span>
+        </article>
       </div>
 
-      {isLoading ? (
-        <p>Loading…</p>
-      ) : errorMessage ? (
-        <p className="error-message" role="alert">
-          {errorMessage}
-        </p>
-      ) : items.length === 0 ? (
-        <div className="empty-state-card">
-          <p className="eyebrow">No Notifications</p>
-          <h2>You're all caught up.</h2>
-          <p>New activity will appear here.</p>
+      <section className="notification-toolbar">
+        <div className="notification-filter-group" aria-label="Notification filters">
+          <button type="button" className={filter === 'all' ? 'notification-filter-button active' : 'notification-filter-button'} onClick={() => setFilter('all')}>All ({total})</button>
+          <button type="button" className={filter === 'unread' ? 'notification-filter-button active' : 'notification-filter-button'} onClick={() => setFilter('unread')}>Unread ({unreadCount})</button>
+          <button type="button" className={filter === 'read' ? 'notification-filter-button active' : 'notification-filter-button'} onClick={() => setFilter('read')}>Read ({readCount})</button>
         </div>
-      ) : (
-        <div className="notification-list">
-          {items.map((n) => {
-            const reservationId = reservationIdFromPayload(n);
-            const isUnread = n.read_at === null;
-            return (
-              <article
-                className={`notification-card${isUnread ? ' unread' : ''}`}
-                key={n.id}
-              >
-                <div className="notification-card-body">
-                  <h3>{n.title}</h3>
-                  <p>{n.body}</p>
-                  <p className="notification-meta">
-                    {new Date(n.created_at).toLocaleString()} — {n.type}
-                  </p>
-                </div>
-                <div className="notification-actions">
-                  {reservationId && (
-                    <Link
-                      className="secondary-link"
-                      to={`/reservations/${reservationId}`}
-                    >
-                      View
-                    </Link>
-                  )}
-                  {isUnread && (
-                    <button
-                      type="button"
-                      className="action-button approve-button"
-                      onClick={() => handleMarkRead(n.id)}
-                    >
-                      Mark read
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+        <div className="notification-action-group">
+          <button type="button" className="secondary-button" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
+            Mark All as Read
+          </button>
         </div>
+      </section>
+
+      {statusMessage && <p className="success-message">{statusMessage}</p>}
+      {error && <p className="form-error">{error}</p>}
+      {isLoading && <p>Loading notifications...</p>}
+
+      <div className="notification-list">
+        {filteredNotifications.map((n) => (
+          <article key={n.id} className={n.read_at ? 'notification-card notification-card-read' : 'notification-card notification-card-unread'}>
+            <div className="notification-card-header">
+              <div>
+                <span className="notification-type-badge">{n.type}</span>
+                <h2>{n.title}</h2>
+              </div>
+              <span className={n.read_at ? 'notification-read-status read' : 'notification-read-status unread'}>
+                {n.read_at ? 'Read' : 'Unread'}
+              </span>
+            </div>
+            <p className="notification-message">{n.body}</p>
+            <div className="notification-footer">
+              <span className="auth-helper-text">Created: {new Date(n.created_at).toLocaleString()}</span>
+              <div className="notification-card-actions">
+                {n.payload && typeof n.payload === 'object' && 'reservation_id' in n.payload && (
+                  <Link className="secondary-link" to={`/reservations/${String((n.payload as Record<string,unknown>).reservation_id)}`}>
+                    View Reservation
+                  </Link>
+                )}
+                {!n.read_at && (
+                  <button type="button" className="secondary-button" onClick={() => handleMarkAsRead(n.id)}>
+                    Mark as Read
+                  </button>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {!isLoading && filteredNotifications.length === 0 && (
+        <section className="empty-state-card">
+          <h2>No notifications found</h2>
+          <p>Try switching to a different filter.</p>
+        </section>
       )}
     </section>
   );

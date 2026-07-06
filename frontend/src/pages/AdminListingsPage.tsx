@@ -1,349 +1,182 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  absolutePhotoUrl,
-  ApiError,
-  adminApi,
-  toolsApi,
-  type Tool,
-  type ToolCategory,
-} from '../api/client';
+import { toolsApi } from '../api/tools';
+import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
+import type { ToolResponse } from '../types/api';
 
-/**
- * AdminListingsPage (US11)
- *
- * Admin-only listing management. Lists ALL tool listings (active and
- * deactivated) across all owners, with deactivate / reactivate actions.
- *
- * Backend endpoints:
- *   GET    /tools/admin/all          — admin-only, all tools
- *   POST   /tools/{id}/deactivate    — owner or admin
- *   POST   /tools/{id}/reactivate    — admin only
- */
-const categoryLabels: Record<ToolCategory, string> = {
-  HAND_TOOLS: 'Hand Tools',
-  POWER_TOOLS: 'Power Tools',
-  GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools',
-  OUTDOOR_GEAR: 'Outdoor Gear',
+const categoryLabels: Record<string, string> = {
+  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
 };
 
-const categoryOptions: ToolCategory[] = [
-  'HAND_TOOLS',
-  'POWER_TOOLS',
-  'GARDEN_TOOLS',
-  'CLEANING_TOOLS',
-  'OUTDOOR_GEAR',
-];
-
-type StatusFilter = '' | 'active' | 'inactive';
-
 function AdminListingsPage() {
-  const [tools, setTools] = useState<Tool[]>([]);
+  const { user } = useAuth();
+  const [tools, setTools] = useState<ToolResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [deactivationReason, setDeactivationReason] = useState<Record<string, string>>({});
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<ToolCategory | ''>('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
-
-  const [deactivateFor, setDeactivateFor] = useState<Tool | null>(null);
-  const [deactivateReason, setDeactivateReason] = useState('');
-  const [isActing, setIsActing] = useState(false);
+  const fetchTools = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const params: Record<string, string> = {};
+      if (statusFilter) params.status = statusFilter;
+      if (search.trim()) params.search = search.trim();
+      const data = await toolsApi.adminListAll(params);
+      setTools(data.items);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tools');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter, search]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setIsLoading(true);
-      setErrorMessage('');
-      try {
-        const params: {
-          search?: string;
-          category?: ToolCategory;
-          status?: 'active' | 'inactive';
-          page_size?: number;
-        } = { page_size: 100 };
-        if (searchTerm.trim()) params.search = searchTerm.trim();
-        if (categoryFilter) params.category = categoryFilter;
-        if (statusFilter) params.status = statusFilter;
-        const res = await adminApi.listAllTools(params);
-        if (!cancelled) {
-          setTools(res.items);
-          setTotal(res.total);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          if (err instanceof ApiError) setErrorMessage(err.message);
-          else setErrorMessage('Failed to load tool listings.');
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    const timeout = setTimeout(load, 200);
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [searchTerm, categoryFilter, statusFilter]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTools();
+  }, [fetchTools]);
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setCategoryFilter('');
-    setStatusFilter('');
-  };
-
-  const handleDeactivate = async () => {
-    if (!deactivateFor) return;
-    if (!deactivateReason.trim()) {
-      setErrorMessage('A reason is required to deactivate a listing.');
+  const handleDeactivate = async (toolId: string, toolName: string) => {
+    const reason = deactivationReason[toolId]?.trim();
+    if (!reason) {
+      setActionMessage('A deactivation reason is required.');
       return;
     }
-    setIsActing(true);
     setActionMessage('');
-    setErrorMessage('');
     try {
-      await toolsApi.deactivate(deactivateFor.id, deactivateReason.trim());
-      setActionMessage(`Deactivated "${deactivateFor.name}". Pending reservations were auto-cancelled.`);
-      setDeactivateFor(null);
-      setDeactivateReason('');
-      // Reload
-      const params: { status?: 'active' | 'inactive'; category?: ToolCategory; search?: string; page_size?: number } = { page_size: 100 };
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      if (categoryFilter) params.category = categoryFilter;
-      if (statusFilter) params.status = statusFilter;
-      const res = await adminApi.listAllTools(params);
-      setTools(res.items);
-      setTotal(res.total);
+      const updated = await toolsApi.deactivate(toolId, { reason });
+      setTools((prev) => prev.map((t) => (t.id === toolId ? updated : t)));
+      setActionMessage(`${toolName} deactivated.`);
+      setDeactivationReason((prev) => ({ ...prev, [toolId]: '' }));
     } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to deactivate tool.');
-    } finally {
-      setIsActing(false);
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Deactivation failed.');
     }
   };
 
-  const handleReactivate = async (tool: Tool) => {
-    setIsActing(true);
+  const handleReactivate = async (toolId: string, toolName: string) => {
     setActionMessage('');
-    setErrorMessage('');
     try {
-      await toolsApi.reactivate(tool.id);
-      setActionMessage(`Reactivated "${tool.name}".`);
-      // Reload
-      const params: { status?: 'active' | 'inactive'; category?: ToolCategory; search?: string; page_size?: number } = { page_size: 100 };
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      if (categoryFilter) params.category = categoryFilter;
-      if (statusFilter) params.status = statusFilter;
-      const res = await adminApi.listAllTools(params);
-      setTools(res.items);
-      setTotal(res.total);
+      const updated = await toolsApi.reactivate(toolId);
+      setTools((prev) => prev.map((t) => (t.id === toolId ? updated : t)));
+      setActionMessage(`${toolName} reactivated.`);
     } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to reactivate tool.');
-    } finally {
-      setIsActing(false);
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Reactivation failed.');
     }
   };
+
+  if (!user?.is_admin) {
+    return (
+      <section className="page-section">
+        <div className="empty-state-card">
+          <h1>Access Denied</h1>
+          <p>You must be an admin to view this page.</p>
+          <Link className="primary-link" to="/dashboard">Back to Dashboard</Link>
+        </div>
+      </section>
+    );
+  }
+
+  const activeCount = tools.filter((t) => t.is_active).length;
+  const deactivatedCount = tools.filter((t) => !t.is_active).length;
 
   return (
     <section className="page-section">
       <div className="page-header">
         <div>
-          <p className="eyebrow">US11 — Admin · Listing Management</p>
-          <h1>All Tool Listings</h1>
+          <p className="eyebrow">US11 Admin Listing Controls</p>
+          <h1>Admin Listing Management</h1>
           <p className="page-description">
-            Manage every tool listing on the platform. Deactivate listings
-            that violate policy or reactivate previously deactivated ones.
-            All actions are audit-logged.
+            Review and manage all tool listings. Deactivate problematic listings or reactivate previously deactivated ones.
           </p>
         </div>
+        <Link className="secondary-link header-action-link" to="/admin/invites">Admin Invites</Link>
       </div>
 
-      {actionMessage && (
-        <div className="success-message" role="status">
-          {actionMessage}
-        </div>
-      )}
-      {errorMessage && (
-        <p className="error-message" role="alert">
-          {errorMessage}
-        </p>
-      )}
-
-      <div className="filter-panel">
-        <input
-          type="text"
-          placeholder="Search by tool name or description"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-        />
-
-        <select
-          value={categoryFilter}
-          onChange={(event) =>
-            setCategoryFilter(event.target.value as ToolCategory | '')
-          }
-          aria-label="Filter by category"
-        >
-          <option value="">All categories</option>
-          {categoryOptions.map((cat) => (
-            <option key={cat} value={cat}>
-              {categoryLabels[cat]}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-          aria-label="Filter by status"
-        >
-          <option value="">All statuses</option>
-          <option value="active">Active only</option>
-          <option value="inactive">Deactivated only</option>
-        </select>
-
-        <button type="button" onClick={clearFilters}>
-          Clear Filters
-        </button>
+      <div className="admin-listing-summary-grid">
+        <article className="summary-card"><strong>{total}</strong><span>Total Listings</span></article>
+        <article className="summary-card"><strong>{activeCount}</strong><span>Active</span></article>
+        <article className="summary-card"><strong>{deactivatedCount}</strong><span>Deactivated</span></article>
       </div>
 
-      <p className="results-summary">
-        {isLoading ? 'Loading…' : `Showing ${tools.length} of ${total} listings.`}
-      </p>
+      <section className="admin-listing-filter-panel">
+        <label htmlFor="admin-listing-search">
+          Search Listings
+          <input id="admin-listing-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by tool name" />
+        </label>
+        <label htmlFor="admin-listing-status-filter">
+          Status Filter
+          <select id="admin-listing-status-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Deactivated</option>
+          </select>
+        </label>
+      </section>
 
-      {isLoading ? (
-        <p>Loading…</p>
-      ) : tools.length === 0 ? (
-        <div className="empty-state-card">
-          <p className="eyebrow">No Listings</p>
-          <h2>No tool listings match the current filters.</h2>
-          <p>Try clearing filters or adjusting your search.</p>
-          <button type="button" onClick={clearFilters}>
-            Clear Filters
-          </button>
-        </div>
-      ) : (
-        <div className="tool-grid">
-          {tools.map((tool) => {
-            const photo = tool.photos[0];
-            const imageUrl = photo ? absolutePhotoUrl(photo.url) : '';
-            return (
-              <article
-                className={`tool-card${!tool.is_active ? ' tool-card-inactive' : ''}`}
-                key={tool.id}
-              >
-                {imageUrl ? (
-                  <img src={imageUrl} alt={tool.name} className="tool-image" />
-                ) : (
-                  <div className="tool-image tool-image-placeholder">No photo</div>
-                )}
-                <div className="tool-card-body">
-                  <div className="tool-card-top">
-                    <span className={`status-badge${!tool.is_active ? ' status-badge-inactive' : ''}`}>
-                      {tool.is_active ? 'ACTIVE' : 'DEACTIVATED'}
-                    </span>
-                    <span className="rating">
-                      {tool.rating_count > 0
-                        ? `★ ${tool.avg_rating.toFixed(1)} (${tool.rating_count})`
-                        : 'No reviews'}
-                    </span>
-                  </div>
+      {error && <p className="form-error">{error}</p>}
+      {actionMessage && <p className="success-message">{actionMessage}</p>}
+      {isLoading && <p>Loading listings...</p>}
+
+      <section className="admin-listings-grid">
+        {tools.map((tool) => {
+          const reason = deactivationReason[tool.id] ?? '';
+          return (
+            <article className="admin-listing-card" key={tool.id}>
+              <div className="admin-listing-card-header">
+                <div>
+                  <p className="eyebrow">{categoryLabels[tool.category] || tool.category}</p>
                   <h2>{tool.name}</h2>
-                  <p>{tool.description ?? 'No description provided.'}</p>
-                  <dl className="tool-meta">
-                    <div>
-                      <dt>Owner</dt>
-                      <dd>{tool.owner.full_name ?? 'Anonymous'}</dd>
-                    </div>
-                    <div>
-                      <dt>Category</dt>
-                      <dd>{categoryLabels[tool.category]}</dd>
-                    </div>
-                  </dl>
-                  {tool.deactivation_reason && (
-                    <p className="tool-deactivation-reason">
-                      <strong>Deactivation reason:</strong> {tool.deactivation_reason}
-                    </p>
-                  )}
-                  <div className="tool-card-actions">
-                    <Link className="primary-link" to={`/tools/${tool.id}`}>
-                      View
-                    </Link>
-                    {tool.is_active && (
-                      <button
-                        type="button"
-                        className="action-button danger-button"
-                        onClick={() => setDeactivateFor(tool)}
-                        disabled={isActing}
-                      >
-                        Deactivate
-                      </button>
-                    )}
-                    {!tool.is_active && (
-                      <button
-                        type="button"
-                        className="action-button approve-button"
-                        onClick={() => handleReactivate(tool)}
-                        disabled={isActing}
-                      >
-                        Reactivate
-                      </button>
-                    )}
-                  </div>
+                  <p>{tool.description}</p>
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+                <span className={tool.is_active ? 'admin-listing-status admin-listing-status-active' : 'admin-listing-status admin-listing-status-deactivated'}>
+                  {tool.is_active ? 'active' : 'deactivated'}
+                </span>
+              </div>
 
-      {deactivateFor && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal-card">
-            <h2>Deactivate "{deactivateFor.name}"</h2>
-            <p>
-              The tool will be hidden from the browse page. Any
-              REQUESTED or APPROVED reservations will be auto-cancelled.
-              This action is audit-logged.
-            </p>
-            <label>
-              Reason (required, shown to owner and audit log)
-              <textarea
-                value={deactivateReason}
-                onChange={(event) => setDeactivateReason(event.target.value)}
-                rows={3}
-                maxLength={2000}
-                required
-              />
-            </label>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary-link"
-                onClick={() => {
-                  setDeactivateFor(null);
-                  setDeactivateReason('');
-                  setErrorMessage('');
-                }}
-                disabled={isActing}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="action-button danger-button"
-                onClick={handleDeactivate}
-                disabled={isActing || !deactivateReason.trim()}
-              >
-                {isActing ? 'Deactivating…' : 'Deactivate listing'}
-              </button>
-            </div>
-          </div>
-        </div>
+              <dl className="admin-listing-meta-grid">
+                <div><dt>Owner</dt><dd>{tool.owner.full_name || 'Unknown'}</dd></div>
+                <div><dt>Condition</dt><dd>{tool.condition}</dd></div>
+                <div><dt>Rating</dt><dd>{tool.avg_rating}/5 ({tool.rating_count})</dd></div>
+              </dl>
+
+              {tool.deactivation_reason && (
+                <p><strong>Deactivation reason:</strong> {tool.deactivation_reason}</p>
+              )}
+
+              <div className="admin-listing-actions">
+                {tool.is_active ? (
+                  <>
+                    <label htmlFor={`reason-${tool.id}`}>
+                      Reason *
+                      <input id={`reason-${tool.id}`} type="text" value={reason} onChange={(e) => setDeactivationReason((prev) => ({ ...prev, [tool.id]: e.target.value }))} placeholder="Why deactivate?" />
+                    </label>
+                    <button type="button" className="action-button danger-button" onClick={() => handleDeactivate(tool.id, tool.name)} disabled={!reason.trim()}>
+                      Deactivate
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="action-button approve-button" onClick={() => handleReactivate(tool.id, tool.name)}>
+                    Reactivate
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      {!isLoading && tools.length === 0 && (
+        <section className="empty-state-card">
+          <h2>No listings found</h2>
+          <p>Try changing the search or status filter.</p>
+        </section>
       )}
     </section>
   );

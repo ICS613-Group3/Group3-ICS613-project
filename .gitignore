@@ -23,6 +23,7 @@ venv*/
 venv_py313/
 env/
 ENV/
+_local_drafts/*
 build/
 develop-eggs/
 downloads/

@@ -1,386 +1,226 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  absolutePhotoUrl,
-  ApiError,
-  toolsApi,
-  type Tool,
-  type ToolCategory,
-  type ToolCondition,
-} from '../api/client';
-import { useAuth } from '../context/authContextValue';
+import { toolsApi } from '../api/tools';
+import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
+import type { ToolCategory, ToolCondition, ToolResponse } from '../types/api';
 
-const categoryLabels: Record<ToolCategory, string> = {
-  HAND_TOOLS: 'Hand Tools',
-  POWER_TOOLS: 'Power Tools',
-  GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools',
-  OUTDOOR_GEAR: 'Outdoor Gear',
+const categoryLabels: Record<string, string> = {
+  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
 };
+const categoryOptions = Object.entries(categoryLabels) as Array<[string, string]>;
+const conditionOptions: ToolCondition[] = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR'];
 
-const conditionLabels: Record<ToolCondition, string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-};
-
-const categoryOptions: ToolCategory[] = [
-  'HAND_TOOLS',
-  'POWER_TOOLS',
-  'GARDEN_TOOLS',
-  'CLEANING_TOOLS',
-  'OUTDOOR_GEAR',
-];
-
-const conditionOptions: ToolCondition[] = [
-  'NEW',
-  'LIKE_NEW',
-  'GOOD',
-  'FAIR',
-  'POOR',
-];
-
-/**
- * EditToolPage
- *
- * Real backend edit via ``PATCH /tools/{id}`` plus the separate
- * photo endpoints:
- *   - ``POST   /tools/{id}/photos``    — add 1–5 photos
- *   - ``DELETE /tools/{id}/photos/{photoId}`` — remove one
- *
- * Backend constraints:
- * - PATCH is blocked (409) when any reservation is in ``PICKED_UP`` state.
- * - Photo add enforces a 1–5 total per tool.
- * - Cannot remove the last photo (422).
- */
 function EditToolPage() {
   const { toolId } = useParams();
   const { user } = useAuth();
-
-  const [tool, setTool] = useState<Tool | null>(null);
+  const [tool, setTool] = useState<ToolResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-
+  const [error, setError] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<ToolCategory>('GOOD' as never);
-  const [condition, setCondition] = useState<ToolCondition>('GOOD' as never);
+  const [category, setCategory] = useState<ToolCategory | ''>('');
+  const [condition, setCondition] = useState<ToolCondition | ''>('');
   const [description, setDescription] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [deactivationReason, setDeactivationReason] = useState('');
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
 
-  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAddingPhotos, setIsAddingPhotos] = useState(false);
-
-  useEffect(() => {
+  const loadTool = useCallback(async () => {
     if (!toolId) return;
-    let cancelled = false;
     setIsLoading(true);
-    setLoadError('');
-    toolsApi
-      .get(toolId)
-      .then((t) => {
-        if (cancelled) return;
-        setTool(t);
-        setName(t.name);
-        setCategory(t.category);
-        setCondition(t.condition);
-        setDescription(t.description ?? '');
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          if (err instanceof ApiError) setLoadError(err.message);
-          else setLoadError('Failed to load tool.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const t = await toolsApi.get(toolId);
+      setTool(t);
+      setName(t.name);
+      setCategory(t.category);
+      setCondition(t.condition);
+      setDescription(t.description || '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Tool not found');
+    } finally {
+      setIsLoading(false);
+    }
   }, [toolId]);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadTool();
+  }, [loadTool]);
+
+  const isOwner = user && tool && user.id === tool.owner_id;
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setActionMessage('');
+    if (!name.trim()) { setActionMessage('Tool name is required.'); return; }
+    if (!category) { setActionMessage('Category is required.'); return; }
+    if (!condition) { setActionMessage('Condition is required.'); return; }
+
+    setIsSaving(true);
+    try {
+      const updated = await toolsApi.update(toolId!, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        category: category as ToolCategory,
+        condition: condition as ToolCondition,
+      });
+      setTool(updated);
+      setActionMessage('Tool listing updated successfully.');
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Failed to update.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setActionMessage('');
+    if (!deactivationReason.trim()) { setActionMessage('A reason is required.'); return; }
+    setIsDeactivating(true);
+    try {
+      const updated = await toolsApi.deactivate(toolId!, { reason: deactivationReason.trim() });
+      setTool(updated);
+      setActionMessage('Tool deactivated successfully.');
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Failed to deactivate.');
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setActionMessage('');
+    setIsReactivating(true);
+    try {
+      const updated = await toolsApi.reactivate(toolId!);
+      setTool(updated);
+      setActionMessage('Tool reactivated successfully.');
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Failed to reactivate.');
+    } finally {
+      setIsReactivating(false);
+    }
+  };
+
   if (isLoading) {
-    return (
-      <main className="page-container">
-        <section className="tool-form-card">
-          <p>Loading tool…</p>
-        </section>
-      </main>
-    );
+    return <section className="page-section"><div className="page-header"><h1>Loading...</h1></div></section>;
   }
 
-  if (!tool) {
+  if (!tool || error) {
     return (
-      <main className="page-container">
-        <section className="tool-form-card">
+      <section className="page-section">
+        <div className="tool-form-card">
           <p className="eyebrow">Edit Tool</p>
           <h1>Tool not found</h1>
-          <p className="page-subtitle">
-            {loadError || 'The tool you are trying to edit does not exist.'}
-          </p>
-          <Link className="secondary-link" to="/tools">
-            Back to Browse Tools
-          </Link>
-        </section>
-      </main>
-    );
-  }
-
-  if (user?.id !== tool.owner_id) {
-    return (
-      <main className="page-container">
-        <section className="tool-form-card">
-          <p className="eyebrow">Edit Tool</p>
-          <h1>Not allowed</h1>
-          <p className="page-subtitle">You can only edit your own tool listings.</p>
-          <Link className="secondary-link" to={`/tools/${tool.id}`}>
-            Back to Tool Detail
-          </Link>
-        </section>
-      </main>
-    );
-  }
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-    setIsSubmitting(true);
-    try {
-      const updated = await toolsApi.update(tool.id, {
-        name: name.trim() || undefined,
-        description: description.trim() || undefined,
-        category,
-        condition,
-      });
-      setTool(updated);
-      setSuccessMessage('Changes saved.');
-    } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to save changes.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddPhotos = async () => {
-    if (newPhotoFiles.length === 0) return;
-    setErrorMessage('');
-    setSuccessMessage('');
-    setIsAddingPhotos(true);
-    try {
-      const updated = await toolsApi.addPhotos(tool.id, newPhotoFiles);
-      setTool(updated);
-      setNewPhotoFiles([]);
-      setSuccessMessage(`Added ${newPhotoFiles.length} photo(s).`);
-    } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to add photos.');
-    } finally {
-      setIsAddingPhotos(false);
-    }
-  };
-
-  const handleRemovePhoto = async (photoId: string) => {
-    setErrorMessage('');
-    setSuccessMessage('');
-    try {
-      await toolsApi.removePhoto(tool.id, photoId);
-      setTool({
-        ...tool,
-        photos: tool.photos.filter((p) => p.id !== photoId),
-      });
-      setSuccessMessage('Photo removed.');
-    } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to remove photo.');
-    }
-  };
-
-  const onPhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    setNewPhotoFiles(event.target.files ? Array.from(event.target.files) : []);
-  };
-
-  return (
-    <main className="page-container">
-      <section className="page-header split-page-header">
-        <div>
-          <p className="eyebrow">Edit Tool Listing</p>
-          <h1>Edit Tool Listing</h1>
-          <p className="page-subtitle">
-            Update listing details and manage photos.
-          </p>
-        </div>
-
-        <div className="header-actions">
-          <Link className="secondary-link" to={`/tools/${tool.id}`}>
-            Back to Tool Detail
-          </Link>
+          <p className="page-description">{error || 'The tool does not exist.'}</p>
+          <Link className="secondary-link" to="/tools">Back to Browse Tools</Link>
         </div>
       </section>
+    );
+  }
 
-      <section className="tool-form-layout">
-        <form className="tool-form-card" onSubmit={handleSubmit}>
-          <h2>Listing Information</h2>
+  if (!isOwner) {
+    return (
+      <section className="page-section">
+        <div className="tool-form-card">
+          <p className="eyebrow">Edit Tool</p>
+          <h1>Access Denied</h1>
+          <p className="page-description">Only the tool owner can edit this listing.</p>
+          <Link className="secondary-link" to={`/tools/${tool.id}`}>Back to Tool Detail</Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="page-section">
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">Edit Tool</p>
+          <h1>Edit: {tool.name}</h1>
+        </div>
+        <Link className="secondary-link" to={`/tools/${tool.id}`}>Back to Tool Detail</Link>
+      </div>
+
+      <div className="tool-form-layout">
+        <form className="tool-form-card" onSubmit={handleSave} noValidate>
+          <p className="eyebrow">US9 Edit Tool</p>
+          <h2>Edit Listing</h2>
 
           <div className="form-grid">
-            <label>
-              Tool Name
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Example: Cordless Drill"
-                maxLength={255}
-              />
+            <label htmlFor="edit-tool-name">
+              Tool Name *
+              <input id="edit-tool-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
             </label>
 
-            <label>
-              Category
-              <select
-                value={category}
-                onChange={(event) =>
-                  setCategory(event.target.value as ToolCategory)
-                }
-              >
-                {categoryOptions.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {categoryLabels[cat]}
-                  </option>
-                ))}
+            <label htmlFor="edit-tool-category">
+              Category *
+              <select id="edit-tool-category" value={category} onChange={(e) => setCategory(e.target.value as ToolCategory | '')}>
+                <option value="">Select category</option>
+                {categoryOptions.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </label>
 
-            <label>
-              Condition
-              <select
-                value={condition}
-                onChange={(event) =>
-                  setCondition(event.target.value as ToolCondition)
-                }
-              >
-                {conditionOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {conditionLabels[c]}
-                  </option>
-                ))}
+            <label htmlFor="edit-tool-condition">
+              Condition *
+              <select id="edit-tool-condition" value={condition} onChange={(e) => setCondition(e.target.value as ToolCondition | '')}>
+                <option value="">Select condition</option>
+                {conditionOptions.map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
               </select>
             </label>
           </div>
 
-          <label>
-            Description
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-              placeholder="Describe the tool and any notes for borrowers."
-              maxLength={5000}
-            />
+          <label htmlFor="edit-tool-description">
+            Description *
+            <textarea id="edit-tool-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
           </label>
 
-          <div className="photo-management-section">
-            <h3>Photos</h3>
-            <p className="helper-text">
-              The first photo is the thumbnail. The backend enforces a
-              1–5 photo total per tool, max 5 MB each, JPEG/PNG/WebP/GIF
-              only. Edits here are persisted immediately when you click
-              "Add" or "Remove"; remember to Save Changes to persist the
-              listing fields above.
-            </p>
+          <p>
+            <strong>Status:</strong> {tool.is_active ? 'Active' : 'Deactivated'}
+            {tool.deactivation_reason && <> — Reason: {tool.deactivation_reason}</>}
+          </p>
 
-            <div className="photo-list">
-              {tool.photos.map((photo, index) => (
-                <article className="photo-list-item" key={photo.id}>
-                  <img
-                    src={absolutePhotoUrl(photo.url)}
-                    alt={`Photo ${index + 1}`}
-                  />
-                  <div>
-                    <strong>
-                      Photo {index + 1}
-                      {index === 0 ? ' — Thumbnail' : ''}
-                    </strong>
-                    <p className="photo-path">{photo.url}</p>
-                    <div className="photo-action-row">
-                      <button
-                        type="button"
-                        className="danger-button small-button"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                        disabled={tool.photos.length <= 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <div className="photo-add-row">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple
-                onChange={onPhotoSelect}
-              />
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleAddPhotos}
-                disabled={isAddingPhotos || newPhotoFiles.length === 0}
-              >
-                {isAddingPhotos
-                  ? 'Uploading…'
-                  : `Add ${newPhotoFiles.length || ''} Photo${
-                      newPhotoFiles.length === 1 ? '' : 's'
-                    }`.trim()}
-              </button>
-            </div>
-          </div>
-
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
-          {successMessage && <p className="success-message">{successMessage}</p>}
-
-          <button className="primary-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save Changes'}
+          <button className="primary-button" type="submit" disabled={isSaving || !tool.is_active}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
+
+          {actionMessage && (
+            <p className={actionMessage.includes('fail') || actionMessage.includes('error') || actionMessage.includes('required') ? 'form-error' : 'success-message'}>
+              {actionMessage}
+            </p>
+          )}
         </form>
 
         <aside className="tool-preview-card">
-          <h2>Live Preview</h2>
+          <p className="eyebrow">US10 Listing Lifecycle</p>
+          <h2>Deactivate / Reactivate</h2>
 
-          {tool.photos[0] ? (
-            <img
-              className="tool-preview-image"
-              src={absolutePhotoUrl(tool.photos[0].url)}
-              alt={`${name} preview`}
-            />
+          {tool.is_active ? (
+            <div>
+              <p>Deactivate this listing to temporarily remove it from browse results. Any existing REQUESTED/APPROVED reservations will be auto-cancelled.</p>
+              <label htmlFor="deactivation-reason">
+                Reason *
+                <input id="deactivation-reason" type="text" value={deactivationReason} onChange={(e) => setDeactivationReason(e.target.value)} placeholder="Why are you deactivating this listing?" />
+              </label>
+              <button className="action-button danger-button" type="button" onClick={handleDeactivate} disabled={isDeactivating}>
+                {isDeactivating ? 'Deactivating...' : 'Deactivate Listing'}
+              </button>
+            </div>
           ) : (
-            <div className="tool-preview-image tool-image-placeholder">
-              No photo
+            <div>
+              <p>This listing is currently deactivated. Reactivate it to make it available again. (Admin-only in production.)</p>
+              <button className="action-button approve-button" type="button" onClick={handleReactivate} disabled={isReactivating}>
+                {isReactivating ? 'Reactivating...' : 'Reactivate Listing'}
+              </button>
             </div>
           )}
-
-          <h3>{name || 'Tool Name'}</h3>
-
-          <p>
-            <strong>Category:</strong> {categoryLabels[category]}
-          </p>
-
-          <p>
-            <strong>Condition:</strong> {conditionLabels[condition]}
-          </p>
-
-          <p>
-            <strong>Description:</strong> {description || '—'}
-          </p>
         </aside>
-      </section>
-    </main>
+      </div>
+    </section>
   );
 }
 

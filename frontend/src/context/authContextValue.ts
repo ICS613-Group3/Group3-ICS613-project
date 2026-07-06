@@ -1,25 +1,19 @@
-/**
- * Auth context value type and ``useAuth`` hook.
- *
- * Lives in its own file so the HMR (react-refresh) linter rule doesn't
- * complain about exporting non-components from the context file.
- */
+// Auth state type and context reference, shared between AuthContext and useAuth hook.
+import { createContext } from 'react';
+import type { LoginRequest, RegisterRequest, UserProfile } from '../types/api';
 
-import { useContext } from 'react';
-import { AuthContext } from './authContextObject';
-import type { UserProfile } from '../api/client';
-
-export interface AuthContextValue {
+export interface AuthState {
   user: UserProfile | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
-  isInitializing: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  error: string | null;
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an <AuthProvider>');
-  return ctx;
+export interface AuthContextValue extends AuthState {
+  login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
+
+export const AuthContext = createContext<AuthContextValue | null>(null);

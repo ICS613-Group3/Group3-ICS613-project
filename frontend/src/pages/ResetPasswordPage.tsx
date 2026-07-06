@@ -1,131 +1,174 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ApiError, authApi, tokenStore } from '../api/client';
+// Import React runtime hook for local page state.
+import { useState } from 'react';
+
+// Import React type only for form submit event typing.
+// This is required because verbatimModuleSyntax is enabled.
+import type { FormEvent } from 'react';
+
+// Import routing helper to read reset token from URL query string.
+import { useSearchParams } from 'react-router-dom';
 
 /**
  * ResetPasswordPage
  *
- * US4 — finalize a password reset. The user lands here from the link in
- * the reset email; the token comes in as the ``?token=`` query param.
- * On success the backend returns a fresh token pair, so we also store
- * those into ``tokenStore`` and route the user to the dashboard.
+ * Frontend issues covered:
+ * - #91 Create the Create-New-Password UI.
+ * - #93 Display message like "Request a new reset email".
+ *
+ * Current behavior:
+ * - Frontend mock/demo page only.
+ * - Accepts any token except empty token or special demo invalid tokens.
+ *
+ * Future backend behavior:
+ * - Submit token + new password to backend endpoint: POST /api/v1/auth/reset-password.
  */
-function ResetPasswordPage() {
+export default function ResetPasswordPage() {
+  // Read token from URL, for example: /reset-password?token=abc123
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const tokenFromUrl = searchParams.get('token') ?? '';
 
-  const [token, setToken] = useState(tokenFromUrl);
+  // Store reset token field.
+  const [token, setToken] = useState(searchParams.get('token') ?? '');
+
+  // Store new password field.
   const [newPassword, setNewPassword] = useState('');
+
+  // Store confirm password field.
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Store validation or mock backend error messages.
   const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  // Store success message after password reset.
+  const [successMessage, setSuccessMessage] = useState('');
+
+  /**
+   * Handle create-new-password form submission.
+   *
+   * Demo rules:
+   * - Empty token is rejected.
+   * - "expired" or "invalid" shows request-new-reset-email message.
+   * - Password must be at least 8 characters.
+   * - Confirm password must match.
+   */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // Clear old messages before processing the reset form.
     setErrorMessage('');
+    setSuccessMessage('');
 
-    if (!token.trim()) {
-      setErrorMessage('Missing reset token. Use the link from your email.');
+    // Normalize token before validation.
+    const normalizedToken = token.trim();
+
+    // Reject empty reset token.
+    if (!normalizedToken) {
+      setErrorMessage('Password reset token is required.');
       return;
     }
+
+    // Issue #93: show request-new-reset-email message for invalid/expired token.
+    if (
+      normalizedToken.toLowerCase() === 'expired' ||
+      normalizedToken.toLowerCase() === 'invalid'
+    ) {
+      setErrorMessage(
+        'This reset link is invalid, expired, or already used. Please request a new reset email.',
+      );
+      return;
+    }
+
+    // Require a basic minimum password length for frontend demo validation.
     if (newPassword.length < 8) {
-      setErrorMessage('New password must be at least 8 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
+      setErrorMessage('New password must be at least 8 characters long.');
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const tokens = await authApi.resetPassword(token.trim(), newPassword);
-      tokenStore.set(tokens.access_token, tokens.refresh_token);
-      navigate('/dashboard');
-    } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to reset password.');
-    } finally {
-      setIsSubmitting(false);
+    // Require password confirmation to match.
+    if (newPassword !== confirmPassword) {
+      setErrorMessage('New password and confirmation password must match.');
+      return;
     }
-  };
+
+    // Mock success result.
+    setSuccessMessage(
+      'Password reset successfully. Please return to the login page and sign in with your new password.',
+    );
+
+    // Clear password fields after mock success.
+    setNewPassword('');
+    setConfirmPassword('');
+  }
 
   return (
     <section className="page-section">
+      {/* Page header explains the create-new-password workflow. */}
       <div className="page-header">
         <div>
-          <p className="eyebrow">US4 — Password Reset</p>
-          <h1>Set a new password</h1>
+          <p className="eyebrow">Password Reset</p>
+          <h1>Create New Password</h1>
           <p className="page-description">
-            Paste the token from your reset email and choose a new
-            password. In dev with MailHog, the token is visible at
-            http://localhost:8025.
+            Enter your reset token and choose a new password for your account.
           </p>
         </div>
       </div>
 
+      {/* Create-new-password form covers issues #91 and #93. */}
       <form className="auth-card" onSubmit={handleSubmit}>
-        <label>
-          Reset token
+        <h2>Reset Your Password</h2>
+
+        <label htmlFor="reset-token">
+          Reset Token
           <input
+            id="reset-token"
             type="text"
             value={token}
             onChange={(event) => setToken(event.target.value)}
-            placeholder="Paste the token from the email link"
+            placeholder="Paste reset token"
             required
           />
-          <span className="helper-text">
-            The link in the email already includes this token in the URL.
-          </span>
         </label>
 
-        <label>
-          New password
+        <label htmlFor="new-password">
+          New Password
           <input
+            id="new-password"
             type="password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
-            autoComplete="new-password"
-            minLength={8}
-            maxLength={128}
+            placeholder="At least 8 characters"
             required
+            minLength={8}
           />
         </label>
 
-        <label>
-          Confirm new password
+        <label htmlFor="confirm-password">
+          Confirm New Password
           <input
+            id="confirm-password"
             type="password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
-            autoComplete="new-password"
-            minLength={8}
-            maxLength={128}
+            placeholder="Re-enter new password"
             required
+            minLength={8}
           />
         </label>
 
-        <button
-          className="primary-link auth-submit-button"
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Resetting…' : 'Reset password'}
+        <button type="submit" className="primary-button">
+          Create New Password
         </button>
 
-        {errorMessage && (
-          <p className="error-message" role="alert">
-            {errorMessage}
-          </p>
-        )}
+        {/* Error message includes request-new-reset-email message for expired token. */}
+        {errorMessage && <p className="form-error">{errorMessage}</p>}
+
+        {/* Success message confirms mock password reset. */}
+        {successMessage && <p className="form-success">{successMessage}</p>}
 
         <p className="auth-helper-text">
-          Need a new link? <Link to="/forgot-password">Request one</Link>.
+          Demo test: use <strong>expired</strong> or <strong>invalid</strong> as the
+          token to show the request-new-reset-email message.
         </p>
       </form>
     </section>
   );
 }
-
-export default ResetPasswordPage;

@@ -1,84 +1,60 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  absolutePhotoUrl,
-  ApiError,
-  reservationsApi,
-  toolsApi,
-  type Reservation,
-  type Tool,
-} from '../api/client';
-import { useAuth } from '../context/authContextValue';
+import { reservationsApi } from '../api/reservations';
+import { toolsApi } from '../api/tools';
+import type { ReservationResponse, ToolResponse } from '../types/api';
 
-/**
- * ReturnedToolsPage
- *
- * Concept shift from the R1 mock: "returned tools" is not a backend
- * resource. We build this page by:
- *   1. Fetching ``GET /reservations?state=RETURNED`` (both roles).
- *   2. For each reservation, fetching ``GET /tools/{tool_id}`` to get
- *      the tool details and owner summary.
- *   3. Linking each card to the original reservation's review page.
- */
+const categoryLabels: Record<string, string> = {
+  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
+};
+
 function ReturnedToolsPage() {
-  const { user } = useAuth();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [toolsById, setToolsById] = useState<Record<string, Tool>>({});
+  const [tools, setTools] = useState<Array<{ tool: ToolResponse; reservation: ReservationResponse }>>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setErrorMessage('');
-    (async () => {
+    const fetchReturned = async () => {
+      setIsLoading(true);
+      setError('');
       try {
-        // Pull both borrower and owner views, then dedupe by id.
-        const [asBorrower, asOwner] = await Promise.all([
-          reservationsApi.list({ state: 'RETURNED', role: 'borrower' }),
-          reservationsApi.list({ state: 'RETURNED', role: 'owner' }),
-        ]);
-        const seen = new Set<string>();
-        const all: Reservation[] = [];
-        for (const r of [...asBorrower.items, ...asOwner.items]) {
-          if (!seen.has(r.id)) {
-            seen.add(r.id);
-            all.push(r);
-          }
-        }
-        if (cancelled) return;
-        setReservations(all);
-
-        // Fetch the tools for each reservation in parallel.
-        const toolEntries = await Promise.all(
-          all.map(async (r) => {
+        // Fetch returned reservations where the current user is the borrower
+        const resData = await reservationsApi.list({ role: 'borrower', state: 'RETURNED' });
+        // Fetch tool details for each returned reservation
+        const pairs = await Promise.all(
+          resData.items.map(async (res) => {
             try {
-              const tool = await toolsApi.get(r.tool_id);
-              return [r.tool_id, tool] as const;
+              const t = await toolsApi.get(res.tool_id);
+              return { tool: t, reservation: res };
             } catch {
               return null;
             }
           }),
         );
-        if (cancelled) return;
-        const map: Record<string, Tool> = {};
-        for (const entry of toolEntries) {
-          if (entry) map[entry[0]] = entry[1];
-        }
-        setToolsById(map);
+        setTools(pairs.filter((p): p is NonNullable<typeof p> => p !== null));
       } catch (err) {
-        if (!cancelled) {
-          if (err instanceof ApiError) setErrorMessage(err.message);
-          else setErrorMessage('Failed to load returned tools.');
-        }
+        setError(err instanceof Error ? err.message : 'Failed to load returned tools');
       } finally {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
-    })();
-    return () => {
-      cancelled = true;
     };
+
+    fetchReturned();
   }, []);
+
+  const filteredTools = tools.filter(({ tool }) => {
+    const matchesCategory = !categoryFilter || tool.category === categoryFilter;
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      !normalizedSearch ||
+      tool.name.toLowerCase().includes(normalizedSearch) ||
+      (tool.description || '').toLowerCase().includes(normalizedSearch) ||
+      (tool.owner.full_name || '').toLowerCase().includes(normalizedSearch);
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <section className="page-section">
@@ -87,84 +63,73 @@ function ReturnedToolsPage() {
           <p className="eyebrow">Browse &amp; Search</p>
           <h1>Returned Tools</h1>
           <p className="page-description">
-            View tools that have been returned and open the review workflow.
+            Tools you have borrowed and returned. Leave a review from here.
           </p>
         </div>
       </div>
 
-      {isLoading ? (
-        <p>Loading…</p>
-      ) : errorMessage ? (
-        <p className="error-message" role="alert">
-          {errorMessage}
+      <div className="filter-panel">
+        <input
+          type="text"
+          placeholder="Search by tool name, description, or owner"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+        />
+        <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <option value="">All categories</option>
+          {Object.entries(categoryLabels).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+      </div>
+
+      {error && <p className="form-error">{error}</p>}
+      {isLoading && <p>Loading returned tools...</p>}
+
+      {!isLoading && !error && (
+        <p className="results-summary">
+          Showing {filteredTools.length} of {tools.length} returned tools.
         </p>
-      ) : reservations.length === 0 ? (
+      )}
+
+      {!isLoading && filteredTools.length === 0 ? (
         <div className="empty-state-card">
-          <p className="eyebrow">No Returned Tools</p>
-          <h2>No reservations are returned yet.</h2>
-          <p>Once a borrower marks a tool as returned, it will appear here.</p>
-          <Link className="primary-link" to="/tools">
-            Browse Tools
-          </Link>
+          <p className="eyebrow">No Results</p>
+          <h2>No returned tools found.</h2>
+          <p>Tools you borrow and return will appear here.</p>
         </div>
       ) : (
         <div className="tool-grid">
-          {reservations.map((reservation) => {
-            const tool = toolsById[reservation.tool_id];
-            const isBorrower = user?.id === reservation.borrower_id;
-            // The other party is the one the current user reviews.
-            const reviewTarget = isBorrower ? 'owner' : 'borrower';
-            return (
-              <article className="tool-card" key={reservation.id}>
-                {tool?.photos[0] ? (
-                  <img
-                    src={absolutePhotoUrl(tool.photos[0].url)}
-                    alt={tool?.name ?? 'Tool'}
-                    className="tool-image"
-                  />
-                ) : (
-                  <div className="tool-image tool-image-placeholder">
-                    No photo
-                  </div>
-                )}
+          {filteredTools.map(({ tool, reservation }) => (
+            <article className="tool-card" key={tool.id}>
+              <img
+                src={tool.photos?.[0]?.url ? `http://localhost:8000${tool.photos[0].url}` : `https://placehold.co/600x400?text=${encodeURIComponent(tool.name)}`}
+                alt={tool.name}
+                className="tool-image"
+              />
 
-                <div className="tool-card-body">
-                  <div className="tool-card-top">
-                    <span className="status-badge">RETURNED</span>
-                    <span className="rating">
-                      Reviewing: {reviewTarget}
-                    </span>
-                  </div>
-
-                  <h2>{tool?.name ?? `Tool #${reservation.tool_id.slice(0, 8)}`}</h2>
-                  <p>{tool?.description ?? '—'}</p>
-
-                  <dl className="tool-meta">
-                    <div>
-                      <dt>Owner</dt>
-                      <dd>{tool?.owner.full_name ?? '—'}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Returned</dt>
-                      <dd>
-                        {reservation.returned_at
-                          ? new Date(reservation.returned_at).toLocaleDateString()
-                          : '—'}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <Link
-                    className="primary-link"
-                    to={`/reservations/${reservation.id}/review`}
-                  >
-                    Review This Reservation
-                  </Link>
+              <div className="tool-card-body">
+                <div className="tool-card-top">
+                  <span className="status-badge">{categoryLabels[tool.category] || tool.category}</span>
+                  <span className="rating">Rating: {tool.avg_rating}/5</span>
                 </div>
-              </article>
-            );
-          })}
+
+                <h2>{tool.name}</h2>
+                <p>{tool.description}</p>
+
+                <dl className="tool-meta">
+                  <div><dt>Owner</dt><dd>{tool.owner.full_name || 'Unknown'}</dd></div>
+                  <div><dt>Condition</dt><dd>{tool.condition}</dd></div>
+                  <div><dt>Returned</dt><dd>{reservation.returned_at ? new Date(reservation.returned_at).toLocaleDateString() : reservation.end_date}</dd></div>
+                </dl>
+
+                <Link className="primary-link" to={`/tools/${tool.id}`}>View Details</Link>
+                <Link className="secondary-link returned-review-link" to={`/reservations/${reservation.id}/review`}>
+                  Review This Tool
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </section>

@@ -1,98 +1,111 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { ApiError, authApi } from '../api/client';
-import { isValidEmail } from '../utils/validation';
+// Import React runtime hook for local page state.
+import { useState } from 'react';
+
+// Import React type only for form submit event typing.
+// This is required because verbatimModuleSyntax is enabled.
+import type { FormEvent } from 'react';
+
+// Strong email validation pattern for forgot-password form.
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * ForgotPasswordPage
  *
- * US4 — request a password-reset email. The backend always returns 200
- * whether or not the email exists (anti-enumeration). In dev with
- * MailHog, the reset email and its token are visible at
- * http://localhost:8025.
+ * Frontend issue covered:
+ * - #89 Create Reset Password UI.
+ *
+ * Current behavior:
+ * - Frontend mock/demo page only.
+ * - Shows generic success message after valid email submit.
+ *
+ * Future backend behavior:
+ * - Submit email to backend endpoint: POST /api/v1/auth/forgot-password.
  */
-function ForgotPasswordPage() {
+export default function ForgotPasswordPage() {
+  // Store email typed by the user.
   const [email, setEmail] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  // Store validation or mock backend error messages.
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Store generic success message after reset request.
+  const [successMessage, setSuccessMessage] = useState('');
+
+  /**
+   * Handle forgot-password form submission.
+   *
+   * Security note:
+   * - The success message is generic.
+   * - It does not reveal whether the email exists.
+   */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // Clear old messages before processing the form.
     setErrorMessage('');
     setSuccessMessage('');
 
-    const trimmed = email.trim();
-    if (!isValidEmail(trimmed)) {
-      setErrorMessage('Please enter a valid email address.');
+    // Normalize email before validation.
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Reject incomplete emails like rion@e.
+    if (!emailPattern.test(normalizedEmail)) {
+      setErrorMessage('Please enter a valid email address, such as name@example.com.');
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await authApi.forgotPassword(trimmed);
-      setSuccessMessage(
-        'If an account with that email exists, a reset link has been sent. Check your inbox (in dev: MailHog at http://localhost:8025).',
-      );
-      setEmail('');
-    } catch (err) {
-      if (err instanceof ApiError) setErrorMessage(err.message);
-      else setErrorMessage('Failed to request password reset.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    // Mock success message for R1 frontend demo.
+    setSuccessMessage(
+      'If an account exists for that email, a password reset link has been sent.',
+    );
+    setEmail('');
+  }
 
   return (
     <section className="page-section">
+      {/* Page header explains the password reset request workflow. */}
       <div className="page-header">
         <div>
-          <p className="eyebrow">US4 — Password Reset</p>
-          <h1>Forgot password</h1>
+          <p className="eyebrow">Password Help</p>
+          <h1>Forgot Password</h1>
           <p className="page-description">
-            Enter the email address on your account. We'll send you a
-            one-time link to set a new password.
+            Enter your email address and we will send a password reset link if the
+            account exists.
           </p>
         </div>
       </div>
 
+      {/* Forgot password form covers issue #89. */}
       <form className="auth-card" onSubmit={handleSubmit}>
-        <label>
-          Email
+        <h2>Request Password Reset</h2>
+
+        <label htmlFor="forgot-password-email">
+          Email Address
           <input
+            id="forgot-password-email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            autoComplete="email"
+            placeholder="name@example.com"
             required
+            pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+            title="Please enter a valid email address, such as name@example.com."
           />
         </label>
 
-        <button
-          className="primary-link auth-submit-button"
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Sending…' : 'Send reset link'}
+        <button type="submit" className="primary-button">
+          Send Reset Link
         </button>
 
-        {errorMessage && (
-          <p className="error-message" role="alert">
-            {errorMessage}
-          </p>
-        )}
-        {successMessage && (
-          <p className="success-message" role="status">
-            {successMessage}
-          </p>
-        )}
+        {/* Error and success messages are shown below the form button. */}
+        {errorMessage && <p className="form-error">{errorMessage}</p>}
+        {successMessage && <p className="form-success">{successMessage}</p>}
 
         <p className="auth-helper-text">
-          Remembered it? <Link to="/login">Back to login</Link>.
+          Demo note: this page is frontend mock behavior. Backend integration can send
+          the real reset email later.
         </p>
       </form>
     </section>
   );
 }
-
-export default ForgotPasswordPage;

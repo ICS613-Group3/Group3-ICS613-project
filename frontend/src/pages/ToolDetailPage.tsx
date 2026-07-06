@@ -1,16 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  absolutePhotoUrl,
-  ApiError,
-  reservationsApi,
-  toolsApi,
-  type Tool,
-  type ToolCategory,
-} from '../api/client';
-import { useAuth } from '../context/authContextValue';
+import { toolsApi } from '../api/tools';
+import { reservationsApi } from '../api/reservations';
+import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
+import type { ToolResponse } from '../types/api';
 
-const categoryLabels: Record<ToolCategory, string> = {
+const categoryLabels: Record<string, string> = {
   HAND_TOOLS: 'Hand Tools',
   POWER_TOOLS: 'Power Tools',
   GARDEN_TOOLS: 'Garden Tools',
@@ -18,78 +15,98 @@ const categoryLabels: Record<ToolCategory, string> = {
   OUTDOOR_GEAR: 'Outdoor Gear',
 };
 
-const conditionLabels: Record<Tool['condition'], string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-};
+const BACKEND_ORIGIN = import.meta.env.VITE_API_TARGET || 'http://localhost:8000';
 
-/**
- * ToolDetailPage
- *
- * Fetches one tool via ``GET /tools/{id}`` and offers a real
- * reservation request form (``POST /reservations``).
- *
- * "Edit Tool Listing" only shows when the current user is the owner.
- * The backend still enforces ownership on the PATCH endpoint.
- */
 function ToolDetailPage() {
   const { toolId } = useParams();
   const { user } = useAuth();
-  const [tool, setTool] = useState<Tool | null>(null);
+  const [tool, setTool] = useState<ToolResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-
+  const [error, setError] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [submitError, setSubmitError] = useState('');
+  const [reserveError, setReserveError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!toolId) return;
-    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
-    setErrorMessage('');
     toolsApi
       .get(toolId)
-      .then((t) => {
-        if (!cancelled) setTool(t);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          if (err instanceof ApiError) setErrorMessage(err.message);
-          else setErrorMessage('Failed to load tool.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then(setTool)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load tool'))
+      .finally(() => setIsLoading(false));
   }, [toolId]);
+
+  const isOwner = user && tool && user.id === tool.owner_id;
+
+  const getImageUrl = (): string => {
+    if (tool?.photos && tool.photos.length > 0) {
+      return `${BACKEND_ORIGIN}${tool.photos[0].url}`;
+    }
+    return `https://placehold.co/600x400?text=${encodeURIComponent(tool?.name || 'Tool')}`;
+  };
+
+  const handleReservationSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSuccessMessage('');
+    setReserveError('');
+
+    if (!tool || !toolId) {
+      setReserveError('Tool not found.');
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      setReserveError('Please select both a start date and an end date.');
+      return;
+    }
+
+    if (endDate < startDate) {
+      setReserveError('End date cannot be before start date.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await reservationsApi.create({
+        tool_id: toolId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      setSuccessMessage(
+        `Reservation request submitted for ${tool.name} from ${startDate} to ${endDate}. Status: REQUESTED.`,
+      );
+      setStartDate('');
+      setEndDate('');
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setReserveError(err.detail);
+      } else {
+        setReserveError('Failed to submit reservation.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
       <section className="page-section">
-        <p>Loading tool…</p>
+        <div className="page-header"><h1>Loading...</h1></div>
       </section>
     );
   }
 
-  if (!tool) {
+  if (!tool || error) {
     return (
       <section className="page-section">
         <div className="empty-state-card">
           <p className="eyebrow">Tool Not Found</p>
           <h1>We could not find this tool.</h1>
-          <p>
-            {errorMessage ||
-              'The selected tool may no longer exist or the link may be incorrect.'}
-          </p>
+          <p>{error || 'The selected tool may not exist.'}</p>
           <Link className="primary-link narrow-link" to="/tools">
             Back to Browse Tools
           </Link>
@@ -97,42 +114,6 @@ function ToolDetailPage() {
       </section>
     );
   }
-
-  const photo = tool.photos[0];
-  const imageUrl = photo ? absolutePhotoUrl(photo.url) : '';
-  const isOwner = user?.id === tool.owner_id;
-
-  const handleReservationSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitError('');
-    setSuccessMessage('');
-    if (!startDate || !endDate) {
-      setSubmitError('Please select both a start date and an end date.');
-      return;
-    }
-    if (endDate < startDate) {
-      setSubmitError('End date cannot be before start date.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const reservation = await reservationsApi.create({
-        tool_id: tool.id,
-        start_date: startDate,
-        end_date: endDate,
-      });
-      setSuccessMessage(
-        `Reservation request submitted. Status: ${reservation.state}.`,
-      );
-      setStartDate('');
-      setEndDate('');
-    } catch (err) {
-      if (err instanceof ApiError) setSubmitError(err.message);
-      else setSubmitError('Failed to submit reservation.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <section className="page-section">
@@ -144,8 +125,7 @@ function ToolDetailPage() {
             Review the tool information and submit a reservation request.
           </p>
         </div>
-
-        <div className="header-actions tool-detail-actions">
+        <div className="page-header-actions">
           {isOwner && (
             <Link className="primary-link" to={`/tools/${tool.id}/edit`}>
               Edit Tool Listing
@@ -157,101 +137,78 @@ function ToolDetailPage() {
         </div>
       </div>
 
-      <div className="tool-detail-grid">
+      <div className="tool-detail-layout">
         <article className="tool-detail-card">
-          {imageUrl ? (
-            <img src={imageUrl} alt={tool.name} className="detail-image" />
-          ) : (
-            <div className="detail-image detail-image-placeholder">No photo</div>
-          )}
+          <img className="tool-detail-image" src={getImageUrl()} alt={tool.name} />
 
           <div className="tool-detail-content">
-            <div className="tool-card-top">
-              <span className="status-badge">{categoryLabels[tool.category]}</span>
-              <span className="rating">
-                {tool.rating_count > 0
-                  ? `★ ${tool.avg_rating.toFixed(1)} (${tool.rating_count})`
-                  : 'No reviews yet'}
+            <div className="tool-detail-title-row">
+              <span className="tool-category-badge">
+                {categoryLabels[tool.category] || tool.category}
+              </span>
+              <span className="tool-rating">
+                Rating: {tool.avg_rating}/5 ({tool.rating_count} reviews)
               </span>
             </div>
 
             <h2>{tool.name}</h2>
-            <p>{tool.description ?? 'No description provided.'}</p>
+            <p>{tool.description}</p>
 
-            <dl className="detail-meta-grid">
+            <dl className="tool-detail-meta-grid">
               <div>
                 <dt>Owner</dt>
-                <dd>{tool.owner.full_name ?? 'Anonymous'}</dd>
+                <dd>{tool.owner.full_name || 'Unknown'}</dd>
               </div>
-
               <div>
                 <dt>Condition</dt>
-                <dd>{conditionLabels[tool.condition]}</dd>
+                <dd>{tool.condition}</dd>
               </div>
-
-              {!tool.is_active && (
-                <div>
-                  <dt>Status</dt>
-                  <dd>
-                    Deactivated
-                    {tool.deactivation_reason ? `: ${tool.deactivation_reason}` : ''}
-                  </dd>
-                </div>
-              )}
             </dl>
           </div>
         </article>
 
-        <aside className="reservation-request-card">
-          <p className="eyebrow">Reservation Request</p>
-          <h2>Request this tool</h2>
-          {isOwner ? (
-            <p>You own this tool — you cannot reserve your own listing.</p>
-          ) : !tool.is_active ? (
-            <p>This tool is currently deactivated and cannot be reserved.</p>
-          ) : (
-            <>
-              <p>Select your desired borrowing dates.</p>
-              <p className="helper-text">Dates are in Hawaii Standard Time (HST).</p>
-              <form className="reservation-form" onSubmit={handleReservationSubmit}>
-                <label>
-                  Start Date (HST)
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    required
-                  />
-                </label>
+        {!isOwner && (
+          <aside className="reservation-request-card">
+            <p className="eyebrow">Reservation Request</p>
+            <h2>Request this tool</h2>
+            <p>Select your desired borrowing dates (HST).</p>
 
-                <label>
-                  End Date (HST)
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    required
-                  />
-                </label>
+            <form className="reservation-form" onSubmit={handleReservationSubmit}>
+              <label htmlFor="reservation-start-date">
+                Start Date (HST)
+                <input
+                  id="reservation-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  required
+                />
+              </label>
 
-                <button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting…' : 'Submit Reservation Request'}
-                </button>
-              </form>
+              <label htmlFor="reservation-end-date">
+                End Date (HST)
+                <input
+                  id="reservation-end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  required
+                />
+              </label>
 
-              {submitError && (
-                <p className="error-message" role="alert">
-                  {submitError}
-                </p>
-              )}
-              {successMessage && (
-                <div className="success-message" role="status">
-                  {successMessage}
-                </div>
-              )}
-            </>
-          )}
-        </aside>
+              <p className="hst-note">
+                All reservation dates are in Hawaii Standard Time (HST).
+              </p>
+
+              {reserveError && <p className="form-error">{reserveError}</p>}
+              {successMessage && <p className="success-message">{successMessage}</p>}
+
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Reservation Request'}
+              </button>
+            </form>
+          </aside>
+        )}
       </div>
     </section>
   );

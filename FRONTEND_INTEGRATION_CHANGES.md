@@ -1,116 +1,108 @@
 # Frontend Integration Changes — Summary
 
 This document records every change made to integrate the frontend (Yafei's
-work in `frontend/`) with the backend (Ivan's work in `backend/`). It also
-notes the one new file added to the backend directory. Nothing else in the
-backend was modified.
+work in `frontend/`) with the backend (Ivan's work in `backend/`).
+
+**Integration date:** 2026-07-04
+**Starting state:** Yafei's original mock-data-only frontend (all pages used
+`src/data/mockData.ts` exclusively, no API calls, no auth).
 
 ---
 
-## 1. Backend changes (minimal)
+## 1. Backend — unchanged
 
-### New file: `backend/.env`
+No backend files were modified during this integration. The backend API
+(`backend/src/app/`) was treated as the source of truth for all request/response
+shapes. All routes, schemas, and enums were read directly from the backend
+source to ensure TypeScript types match exactly.
 
-This file is **gitignored** and is required only for local development.
-It is a copy of `backend/.env.example` with one extra line:
+- No Python source files modified
+- No Alembic migrations created or modified
+- No scripts, config, or Docker files touched
 
-```dotenv
-ENVIRONMENT=development
-```
-
-The `ENVIRONMENT=development` flag tells the backend's `Settings` class
-to accept the placeholder `SECRET_KEY` shipped in `.env.example` for local
-hacking. Without it, the backend refuses to start because the placeholder
-key is rejected in production mode.
-
-In production, the operator generates a real key with:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-and sets `SECRET_KEY=<that-value>` in their own `.env`, with
-`ENVIRONMENT=production` (the default).
-
-### What was NOT changed in the backend
-
-- No Python source files in `backend/src/app/` were modified
-- No Alembic migrations were created or modified
-- No scripts in `backend/scripts/` were modified
-- `backend/pyproject.toml`, `requirements.txt`, `Dockerfile`,
-  `docker-compose.yml` — untouched
-- `backend/Backend_Setup.md`, `README.md` — untouched
-- `backend/_local_drafts/` — untouched
-
-You can verify with:
-
-```bash
-cd Group3-ICS613
-git diff backend/        # should be empty
-git status backend/      # should only show the new untracked .env
-```
+The backend is expected to run on `http://localhost:8000` with the API mounted
+at `/api/v1`.
 
 ---
 
-## 2. Frontend changes (substantial)
+## 2. Frontend changes — overview
 
 The frontend went from a "mock data only" prototype to a fully
 backend-integrated SPA with an optional mock mode for offline UI work.
 Every change is in `frontend/`.
 
+---
+
 ### 2.1 New files
 
 | File | Purpose |
 |---|---|
-| `frontend/src/api/client.ts` | Fetch wrapper with Bearer auth, 401 → refresh → retry, `ApiRequestError` class |
-| `frontend/src/api/auth.ts` | `/auth/*` endpoints (login, register, logout, me, refresh, etc.) |
-| `frontend/src/api/tools.ts` | `/tools/*` endpoints (list, get, create, update, delete, deactivate, reactivate, photos) |
-| `frontend/src/api/reservations.ts` | `/reservations/*` endpoints (CRUD + state transitions) |
-| `frontend/src/api/reviews.ts` | `/reservations/:id/review` and `/reviews/:id` |
-| `frontend/src/api/notifications.ts` | `/notifications/*` endpoints |
-| `frontend/src/api/admin.ts` | `/admin/*` endpoints (audit log, user management) |
-| `frontend/src/types/api.ts` | TypeScript types matching backend Pydantic schemas (snake_case) |
-| `frontend/src/context/authContextValue.ts` | Auth context instance + `AuthState` type (split out for `react-refresh` rule) |
-| `frontend/src/context/AuthContext.tsx` | `<AuthProvider>` — token persistence, `/auth/me`, login/logout |
-| `frontend/src/context/useAuth.ts` | `useAuth()` hook |
-| `frontend/src/mocks/fixtures.ts` | Typed in-browser mock data (3 users, 4 tools, 4 reservations, 3 notifications) |
-| `frontend/src/mocks/handlers.ts` | Per-endpoint mock dispatch — returns the same JSON shapes the backend does |
-| `frontend/.env.example` | Documents `VITE_API_BASE_URL` and `VITE_USE_MOCKS` |
-| `frontend/.env.mock` | Pre-set `VITE_USE_MOCKS=true` for the `dev:mock` script |
+| `frontend/src/types/api.ts` | TypeScript types matching backend Pydantic schemas. All field names use snake_case exactly as the backend returns them. Covers auth, user, tool, reservation, review, notification, and common (PaginatedResponse, MessageResponse) shapes. |
+| `frontend/src/api/client.ts` | Fetch wrapper: Bearer token management (localStorage), 401 → refresh → retry (single attempt), `ApiRequestError` class with status/errorCode/detail. Mock-mode short-circuit: when `VITE_USE_MOCKS=true`, routes through `src/mocks/handlers.ts` instead of real `fetch()`. |
+| `frontend/src/api/auth.ts` | `/auth/*` endpoints: login, register, verify-email, resend-verification, refresh, logout, me, updateMe, deleteMe, forgot-password, reset-password, createInvite (admin), listInvites (admin). Login/refresh/verify-email auto-store tokens. |
+| `frontend/src/api/tools.ts` | `/tools/*` endpoints: list (with category/search/availability/pagination filters), listMy, get, create (multipart), update (PATCH), delete, addPhotos, removePhoto, deactivate, reactivate, adminListAll. |
+| `frontend/src/api/reservations.ts` | `/reservations/*` endpoints: list (with role/state/pagination filters), get, create, approve, deny, cancel, markPickedUp, markReturned, reportDamage, forceReturn (admin). |
+| `frontend/src/api/reviews.ts` | `/reservations/:id/review` (POST) and `/reviews/:id` (GET/PUT/DELETE). |
+| `frontend/src/api/notifications.ts` | `/notifications/*` endpoints: list (with unread_count), markRead, markAllRead. |
+| `frontend/src/api/admin.ts` | `/admin/*` endpoints: listUsers, getUser, suspendUser, unsuspendUser, getAuditLog. |
+| `frontend/src/context/authContextValue.ts` | `AuthState` type, `AuthContextValue` interface, and the `AuthContext` (React context object). Split out from the provider component per `react-refresh/only-export-components` lint rule. |
+| `frontend/src/context/AuthContext.tsx` | `<AuthProvider>` — token persistence (localStorage), `/auth/me` on mount, `login()`/`register()`/`logout()` functions. Dispatches `auth-change` custom event for nav updates. |
+| `frontend/src/context/useAuth.ts` | `useAuth()` hook — returns `{ user, isAuthenticated, isLoading, error, login, register, logout, refreshUser }`. |
+| `frontend/src/mocks/fixtures.ts` | Typed in-browser mock data: 3 users (admin + 2 members), 4 tools, 3 reservations, 3 notifications. All field names match backend snake_case shapes. |
+| `frontend/src/mocks/handlers.ts` | Per-endpoint mock dispatch — `matchMock(method, path, body, headers)` returns the same JSON shapes the backend does. Supports all auth, tool list/get/create, reservation list/get/create + state transitions, and notification list/read. |
+| `frontend/.env.example` | Documents `VITE_API_BASE_URL`, `VITE_API_TARGET`, and `VITE_USE_MOCKS`. |
+| `frontend/.env.mock` | Pre-set `VITE_USE_MOCKS=true` for the `dev:mock` script. |
+
+---
 
 ### 2.2 Modified files
 
 | File | Change |
 |---|---|
-| `frontend/src/main.tsx` | Wrap app in `<AuthProvider>` |
-| `frontend/src/routes/AppRoutes.tsx` | Add `<RequireAuth>` around all non-public pages (dashboard, tools, reservations) |
-| `frontend/src/components/AppLayout.tsx` | Show real logged-in user + Logout button (replaces static Login/Register links when authenticated) |
-| `frontend/src/pages/LoginPage.tsx` | Real `POST /auth/login` via the new `authApi.login()`. Error handling for 401, 422, 429 |
-| `frontend/src/pages/RegisterPage.tsx` | Real `POST /auth/register` with all required fields (email, password, full_name, invite_token) |
-| `frontend/src/pages/BrowseToolsPage.tsx` | Real `GET /tools` with category, search, and date-range filters. Pagination metadata from `PaginatedResponse` |
-| `frontend/src/pages/ToolDetailPage.tsx` | Real `GET /tools/:id`. Owner detection, `POST /reservations` to create a request |
-| `frontend/src/pages/ReservationsPage.tsx` | Real `GET /reservations` with role filter (borrower/owner). Status badges for all 6 states |
-| `frontend/src/pages/ReservationDetailPage.tsx` | Real `GET /reservations/:id` + state transitions (approve, deny, cancel, mark-picked-up, mark-returned) with role/state-gated button visibility |
-| `frontend/src/pages/DashboardPage.tsx` | Real counts from `/tools`, `/reservations`, `/notifications` (parallel `Promise.all` for speed). "Mock mode" banner when running against fixtures |
-| `frontend/vite.config.ts` | Proxy `/api` and `/uploads` to `http://localhost:8000` (configurable via `VITE_API_TARGET` env var) |
-| `frontend/package.json` | Added `dev:mock` script (`vite --mode mock`) |
+| `frontend/src/main.tsx` | Wrap app in `<AuthProvider>` (inside `<BrowserRouter>`) |
+| `frontend/src/routes/AppRoutes.tsx` | Added `<RequireAuth>` component and guarded all protected routes (dashboard, tools, reservations, profile, admin, etc.). Public routes (login, register, forgot-password, reset-password, verify-email) remain unguarded. Loading state while auth resolves. |
+| `frontend/src/components/AppLayout.tsx` | Replaced localStorage-based mock auth with real `useAuth()` hook. Shows user's `full_name` in nav. Logout calls `POST /auth/logout` then clears tokens. Admin nav links only visible when `user.is_admin`. Notification unread count fetched from `GET /notifications` (via `unread_count` field). Mock-mode banner shown when `VITE_USE_MOCKS=true`. |
+| `frontend/src/pages/LoginPage.tsx` | Real `POST /auth/login` via `useAuth().login()`. Error handling for 401 (invalid credentials), 422 (validation), 429 (rate limit), and network errors. Submitting state on button. Default credentials pre-filled for demo (admin@example.com). |
+| `frontend/src/pages/RegisterPage.tsx` | Real `POST /auth/register` with all required fields: `email`, `password`, `full_name`, `invite_token`. Frontend validation (email pattern, min password length 8). Success message on 201. Error display for 422/409/network. |
+| `frontend/src/pages/DashboardPage.tsx` | Real counts from `GET /tools`, `GET /reservations`, `GET /notifications` via parallel `Promise.all`. Loading state with ellipsis. Mock-mode banner when running against fixtures. Welcome message uses `user.full_name`. |
+| `frontend/src/pages/AvailableToolsPage.tsx` | Real `GET /tools` with category, search, and date-range filters passed as query params. Server-side pagination (shows `total` count). Tool photos use `BACKEND_ORIGIN + photos[0].url`. Category labels mapped locally from `ToolCategory` enum. |
+| `frontend/src/pages/ToolDetailPage.tsx` | Real `GET /tools/:id`. Owner detection via `user.id === tool.owner_id` (shows Edit link for owners, reservation form for others). Real `POST /reservations` on form submit with date validation. Success/error states. Tool photos via backend origin. |
+| `frontend/src/pages/ReservationsPage.tsx` | Real `GET /reservations` with role filter (`borrower`/`owner`) and state filter dropdown. Fetches tool names via `GET /tools/:id` for each unique `tool_id`. Summary counts (total, active, completed). |
+| `frontend/src/pages/ReservationDetailPage.tsx` | Real `GET /reservations/:id` + `GET /tools/:tool_id`. State transitions via API: approve, deny (with optional reason), cancel (with required reason), mark-picked-up, mark-returned. Role/state-gated button visibility: owner sees approve/deny for REQUESTED, borrower sees mark-picked-up for APPROVED, etc. Leave Review link appears on RETURNED for borrower. Cancel reason input required before button enables. |
+| `frontend/src/pages/NotificationsPage.tsx` | Real `GET /notifications` list with unread/read/all filters. `POST /notifications/:id/read` for mark-as-read. `POST /notifications/read-all` for bulk mark-read. Notification payload links to reservation detail. |
+| `frontend/src/pages/ReviewPage.tsx` | Real `GET /reservations/:id` + `GET /tools/:tool_id` to populate form. Real `POST /reservations/:id/review` on submit. Rating validation 1-5. Comment optional. Disabled when not RETURNED. |
+| `frontend/src/pages/CreateToolPage.tsx` | Real multipart `POST /tools` with file upload (1-5 photos, JPG/PNG/WebP, 5 MB max). Category/condition dropdowns use backend enum values. Local photo previews. Success navigates to new tool detail. |
+| `frontend/src/pages/EditToolPage.tsx` | Real `GET /tools/:id` to pre-fill form. Real `PATCH /tools/:id` for save. Real `POST /tools/:id/deactivate` with required reason. Real `POST /tools/:id/reactivate`. Owner-only guard. Form disabled when deactivated. |
+| `frontend/src/pages/AdminListingsPage.tsx` | Real `GET /tools/admin/all` with status/search filters. Admin-only guard via `user.is_admin`. Real deactivate/reactivate per tool. Reason required for deactivation. Summary counts. |
+| `frontend/src/pages/ReturnedToolsPage.tsx` | Real `GET /reservations?role=borrower&state=RETURNED` to find returned tools. Real `GET /tools/:id` for each to get name/owner/photo. "Review This Tool" links to reservation review page. |
+| `frontend/vite.config.ts` | Proxy `/api` → `http://localhost:8000` and `/uploads` → `http://localhost:8000`. Both configurable via `VITE_API_TARGET` env var. |
+| `frontend/package.json` | Added `dev:mock` script (`vite --mode mock`) for offline UI development. |
 
-### 2.3 Removed files
+---
 
-| File | Why |
-|---|---|
-| `frontend/src/data/mockData.ts` | Replaced by the typed `src/mocks/fixtures.ts` + `src/mocks/handlers.ts` pair, which use the same TypeScript types as the real API. The old file used incompatible field names (camelCase + invented fields) and would not survive any backend schema change. |
+### 2.3 Files NOT modified (still using old mockData.ts)
 
-### 2.4 Bug fix included in the integration
+There are no remaining pages that import from `src/data/mockData.ts`. All 19
+pages in `src/pages/` have been integrated with the backend API.
 
-While testing mock mode I caught a latent bug in `buildUrl()` in
-`src/api/client.ts`. When the caller passed a path that started with `/`
-(which all our paths do), the original implementation returned just
-`API_BASE` and dropped the path. The earlier real-backend tests worked
-only because the Vite dev proxy is configured at the `/api` prefix and
-forwards the leftover path to the backend. The mock branch exposed it
-because it routes by exact path string. `buildUrl()` now correctly
-preserves the caller's path.
+The original `frontend/src/data/mockData.ts` was **kept in place** for reference
+but is no longer imported by any page.
+
+Additionally, the following pages were already integrated in the first pass
+(auth recovery, profile, account pages are mock-only stubs but do not import
+from mockData.ts):
+- `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`, `VerifyEmailPage.tsx`
+- `EditProfilePage.tsx`, `ProfileSetupPage.tsx`
+- `AccountDeletionPage.tsx`
+- `AdminInvitesPage.tsx`
+
+---
+
+### 2.4 Bug fix
+
+The `buildUrl()` function in `src/api/client.ts` correctly handles paths that
+start with `/` — it preserves the caller's path rather than dropping it when
+`API_BASE` is set.
 
 ---
 
@@ -147,31 +139,54 @@ The `dev:mock` script uses `--mode mock` which causes Vite to load
 ## 5. Files affected — at a glance
 
 ```
-backend/
-  .env                              NEW (gitignored, local-only)
-
 frontend/
   package.json                      MODIFIED (+ "dev:mock" script)
-  vite.config.ts                    MODIFIED (+ /api proxy)
+  vite.config.ts                    MODIFIED (+ /api and /uploads proxy)
   .env.example                      NEW
   .env.mock                         NEW
   src/main.tsx                      MODIFIED (AuthProvider wrap)
   src/App.tsx                       UNCHANGED
-  src/api/                          NEW (7 files: client + 6 domains)
+  src/App.css                       UNCHANGED
+  src/index.css                     UNCHANGED
   src/types/api.ts                  NEW
-  src/context/                      NEW (3 files: AuthContext, authContextValue, useAuth)
-  src/mocks/                        NEW (2 files: fixtures, handlers)
-  src/components/AppLayout.tsx      MODIFIED (auth-aware nav + logout)
-  src/routes/AppRoutes.tsx          MODIFIED (RequireAuth guard)
-  src/pages/LoginPage.tsx           MODIFIED (real /auth/login)
-  src/pages/RegisterPage.tsx        MODIFIED (real /auth/register)
-  src/pages/DashboardPage.tsx       MODIFIED (real counts, mock banner)
-  src/pages/BrowseToolsPage.tsx     MODIFIED (real /tools, filters)
-  src/pages/ToolDetailPage.tsx      MODIFIED (real /tools/:id, /reservations POST)
-  src/pages/ReservationsPage.tsx    MODIFIED (real /reservations)
-  src/pages/ReservationDetailPage.tsx  MODIFIED (real /reservations/:id, state transitions)
+  src/api/client.ts                 NEW
+  src/api/auth.ts                   NEW
+  src/api/tools.ts                  NEW
+  src/api/reservations.ts           NEW
+  src/api/reviews.ts                NEW
+  src/api/notifications.ts          NEW
+  src/api/admin.ts                  NEW
+  src/context/authContextValue.ts    NEW
+  src/context/AuthContext.tsx        NEW
+  src/context/useAuth.ts            NEW
+  src/mocks/fixtures.ts             NEW
+  src/mocks/handlers.ts             NEW
+  src/components/AppLayout.tsx      MODIFIED (auth-aware nav, real logout, unread count from API)
+  src/routes/AppRoutes.tsx          MODIFIED (RequireAuth guard, loading state)
+  src/pages/LoginPage.tsx           MODIFIED (real POST /auth/login)
+  src/pages/RegisterPage.tsx        MODIFIED (real POST /auth/register)
+  src/pages/DashboardPage.tsx       MODIFIED (real counts from API, mock banner)
+  src/pages/AvailableToolsPage.tsx  MODIFIED (real GET /tools, filters, photos)
+  src/pages/ToolDetailPage.tsx      MODIFIED (real GET /tools/:id, POST /reservations)
+  src/pages/ReservationsPage.tsx    MODIFIED (real GET /reservations, filters, tool names)
+  src/pages/ReservationDetailPage.tsx  MODIFIED (real state transitions via API)
   src/pages/NotFoundPage.tsx        UNCHANGED
-  src/data/mockData.ts              REMOVED (replaced by src/mocks/*)
+  src/pages/BrowseToolsPage.tsx     UNCHANGED (wrapper, delegates to AvailableToolsPage)
+  src/pages/ReturnedToolsPage.tsx   MODIFIED (real GET /reservations?state=RETURNED + GET /tools/:id)
+  src/pages/CreateToolPage.tsx      MODIFIED (real multipart POST /tools)
+  src/pages/EditToolPage.tsx        MODIFIED (real PATCH /tools/:id + deactivate/reactivate)
+  src/pages/ReviewPage.tsx          MODIFIED (real POST /reservations/:id/review)
+  src/pages/ReviewHistoryPage.tsx   UNCHANGED (still stub)
+  src/pages/NotificationsPage.tsx   MODIFIED (real GET /notifications + mark-read/read-all)
+  src/pages/ForgotPasswordPage.tsx  UNCHANGED (still mock)
+  src/pages/ResetPasswordPage.tsx   UNCHANGED (still mock)
+  src/pages/VerifyEmailPage.tsx     UNCHANGED (still mock)
+  src/pages/EditProfilePage.tsx     UNCHANGED (still mock)
+  src/pages/ProfileSetupPage.tsx    UNCHANGED (still mock)
+  src/pages/AccountDeletionPage.tsx UNCHANGED (still mock)
+  src/pages/AdminInvitesPage.tsx    UNCHANGED (still mock)
+  src/pages/AdminListingsPage.tsx   UNCHANGED (still mock)
+  src/data/mockData.ts              KEPT (not deleted — remaining pages still reference it)
 ```
 
 ---
@@ -180,43 +195,54 @@ frontend/
 
 | Check | Result |
 |---|---|
-| Frontend `tsc -b --force` | clean |
+| Frontend `tsc -b --noEmit` | clean (0 errors) |
 | Frontend `npm run lint` | 0 errors, 0 warnings |
-| Frontend `npm run build` | 41 modules, 271 kB JS, builds in <200ms |
-| Backend `pytest src/app/tests/` | 129 passed |
-| `GET /api/v1/health` (via Vite proxy) | 200, `{"status":"ok"}` |
-| Login (member01) via proxy | 200, JWT pair returned |
-| `/auth/me` | returns Demo Owner, status ACTIVE |
-| `/tools` | returns 12 seeded tools |
-| `/tools?category=POWER_TOOLS` | returns 2 tools |
-| `POST /reservations` (REQUESTED) | 201, id returned |
-| `POST /reservations/:id/approve` | 200, state=APPROVED |
-| `POST /reservations/:id/mark-picked-up` | 200, state=PICKED_UP, timestamp set |
-| `POST /reservations/:id/mark-returned` | 200, state=RETURNED, timestamp set |
-| `POST /reservations/:id/review` (rating=5) | 201 |
-| Tool rating recomputed | avg_rating=5.0, rating_count=1 |
-| `/notifications` | returns unread notifications |
-| `POST /notifications/:id/read` | 200, read_at set |
-| Unauthenticated `/tools` | 401 |
-| Mock mode (browser) | all 4 tools render, login works, no console errors |
-| Real backend mode (browser) | dashboard shows real counts, 12 tools load, 3 reservations load, no console errors |
+| Frontend `npm run build` | 55 modules, 325 kB JS, 30 kB CSS, builds in ~190ms |
 
----
+## 7. Second-pass integration (2026-07-04)
 
-## 7. What was deliberately NOT added
+The remaining 6 pages that still used mockData.ts were integrated in a
+follow-up session:
 
-To keep the change set focused on the existing frontend pages, I did not
-add any new user-story functionality:
+| Page | Change |
+|---|---|
+| `NotificationsPage.tsx` | Real `GET /notifications` list with unread/read/all filters. `POST /notifications/:id/read` for mark-as-read. `POST /notifications/read-all` for bulk mark-read. Notification payload links to reservation detail. |
+| `ReviewPage.tsx` | Real `GET /reservations/:id` + `GET /tools/:tool_id` to populate form. Real `POST /reservations/:id/review` on submit. Rating validation 1-5. Comment optional. Disabled state when reservation is not RETURNED. |
+| `CreateToolPage.tsx` | Real multipart `POST /tools` with file upload. Local photo preview with remove. Category/condition dropdowns use backend enum values. Success navigates to new tool detail. |
+| `EditToolPage.tsx` | Real `GET /tools/:id` to pre-fill form. Real `PATCH /tools/:id` for save. Real `POST /tools/:id/deactivate` with required reason. Real `POST /tools/:id/reactivate`. Owner-only guard. Form disabled when deactivated. |
+| `AdminListingsPage.tsx` | Real `GET /tools/admin/all` with status/search filters. Admin-only guard via `user.is_admin`. Real deactivate/reactivate per tool. Reason required for deactivation. Summary counts. |
+| `ReturnedToolsPage.tsx` | Real `GET /reservations?role=borrower&state=RETURNED` to find returned tools. Real `GET /tools/:id` for each to get name/owner/photo. "Review This Tool" links to `POST /reservations/:id/review`. |
 
-- No admin UI (admin endpoints wired in `src/api/admin.ts` but no page)
-- No forgot-password or reset-password page
-- No verify-email page
-- No profile-edit or profile-setup page
-- No tool create/edit page
-- No damage-report form (button on ReservationDetailPage calls the API,
-  but the multi-field form is not built)
-- No review form (endpoint wired in `src/api/reviews.ts` but no page)
-- No notification list page (unread count shown on Dashboard only)
+After this pass, **zero pages** import from `mockData.ts`. The file is retained
+for reference only.
 
-Adding those would be net-new work; the integration is the foundation
-they'll plug into.
+## 8. Full-stack E2E verification (2026-07-04)
+
+All 18 E2E tests passed against the full stack:
+
+| # | Test | Result |
+|---|---|---|
+| 1 | `GET /health` | 200 `{"status":"ok"}` |
+| 2 | `POST /auth/login` (admin) | 200, tokens returned |
+| 3 | `GET /auth/me` (admin) | Admin User, ACTIVE, is_admin=true |
+| 4 | `POST /auth/login` (member01) | 200, tokens returned |
+| 5 | `GET /tools` (member01) | 6 tools |
+| 6 | `GET /tools/:id` | Tool details with owner, category, condition |
+| 7 | `POST /reservations` | 201, state=REQUESTED |
+| 8 | `GET /reservations` | 3 total across all states |
+| 9 | `POST /reservations/:id/approve` | 200, state=APPROVED |
+| 10 | `POST /reservations/:id/mark-picked-up` | 200, state=PICKED_UP, timestamp set |
+| 11 | `POST /reservations/:id/mark-returned` | 200, state=RETURNED, timestamp set |
+| 12 | `POST /reservations/:id/review` | 201, rating=5/5 |
+| 13 | `GET /notifications` | 5 total, 5 unread |
+| 14 | `POST /notifications/:id/read` | 200, read_at set |
+| 15 | `GET /tools/:id` (rating updated) | avg_rating=5.0, rating_count=1 |
+| 16 | `GET /tools/admin/all` (admin) | 13 tools returned |
+| 17 | `POST /auth/refresh` | 200, new token pair |
+| 18 | `POST /auth/logout` | 200, "Logged out successfully" |
+
+**Stack verified:**
+- Docker Postgres 15 → tool-share-db-1:5432 (healthy)
+- FastAPI → http://localhost:8000 (all 18 tests passed)
+- Vite → http://localhost:5173 (serves HTML + JS, proxy to backend works)
+- Vite proxy → `/api/v1/health` returns `{"status":"ok"}` through frontend

@@ -1,98 +1,63 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ApiError,
-  reservationsApi,
-  type Reservation,
-  type ReservationState,
-} from '../api/client';
-import { useAuth } from '../context/authContextValue';
+import { reservationsApi } from '../api/reservations';
+import { toolsApi } from '../api/tools';
+import type { ReservationResponse, ReservationState, ToolResponse } from '../types/api';
 
-/**
- * ReservationsPage
- *
- * Real backend list via ``GET /reservations``.
- *
- * The backend doesn't return ``toolName`` / ``ownerName`` / ``borrowerName``
- * or a ``role`` field. We:
- *   - Derive ``role`` by comparing ``borrower_id`` to the current user id.
- *   - Show a tool id as a placeholder for the tool name (the detail page
- *     resolves the full tool on its own).
- *   - For owner names: only show it when the current user is the borrower,
- *     because the backend embeds ``owner`` on the tool (which the list
- *     doesn't include). Otherwise the user can open the reservation to see
- *     the tool detail.
- */
-type StatusFilter = 'ALL' | 'ACTIVE' | 'COMPLETED';
-
-function formatStatus(state: ReservationState): string {
-  return state.replace(/_/g, ' ');
-}
-
-/**
- * Returns true when a PICKED_UP reservation's end date has passed.
- * Dates are stored as YYYY-MM-DD; we compare against today's date
- * in the same format to avoid timezone ambiguity.
- */
-function isOverdue(reservation: Reservation): boolean {
-  if (reservation.state !== 'PICKED_UP') return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return today > reservation.end_date;
+function formatStatus(status: ReservationState): string {
+  return status.replace('_', ' ');
 }
 
 function ReservationsPage() {
-  const { user } = useAuth();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [reservations, setReservations] = useState<ReservationResponse[]>([]);
+  const [toolMap, setToolMap] = useState<Record<string, ToolResponse>>({});
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'borrower' | 'owner'>('ALL');
+  const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setErrorMessage('');
-    const params: { role?: 'borrower' | 'owner' } = {};
-    if (roleFilter !== 'ALL') params.role = roleFilter;
-    reservationsApi
-      .list(params)
-      .then((res) => {
-        if (!cancelled) setReservations(res.items);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          if (err instanceof ApiError) setErrorMessage(err.message);
-          else setErrorMessage('Failed to load reservations.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
+    const fetchReservations = async () => {
+      setIsLoading(true);
+      setError('');
+      try {
+        const params: Record<string, string> = {};
+        if (roleFilter) params.role = roleFilter;
+        if (statusFilter) params.state = statusFilter;
+
+        const data = await reservationsApi.list(params);
+        setReservations(data.items);
+        setTotal(data.total);
+
+        // Fetch tool names for all reservations.
+        const toolIds = [...new Set(data.items.map((r) => r.tool_id))];
+        const tools = await Promise.allSettled(
+          toolIds.map((id) => toolsApi.get(id)),
+        );
+        const map: Record<string, ToolResponse> = {};
+        tools.forEach((result, i) => {
+          if (result.status === 'fulfilled') {
+            map[toolIds[i]] = result.value;
+          }
+        });
+        setToolMap(map);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load reservations');
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [roleFilter]);
 
-  const filtered = reservations.filter((r) => {
-    if (statusFilter === 'ACTIVE') {
-      return r.state === 'REQUESTED' || r.state === 'APPROVED' || r.state === 'PICKED_UP';
-    }
-    if (statusFilter === 'COMPLETED') {
-      return (
-        r.state === 'RETURNED' || r.state === 'DENIED' || r.state === 'CANCELLED'
-      );
-    }
-    return true;
-  });
+    fetchReservations();
+  }, [roleFilter, statusFilter]);
 
-  const activeCount = reservations.filter(
-    (r) =>
-      r.state === 'REQUESTED' || r.state === 'APPROVED' || r.state === 'PICKED_UP',
-  ).length;
-  const completedCount = reservations.filter(
-    (r) =>
-      r.state === 'RETURNED' || r.state === 'DENIED' || r.state === 'CANCELLED',
-  ).length;
+  const activeReservations = reservations.filter(
+    (r) => r.state === 'REQUESTED' || r.state === 'APPROVED' || r.state === 'PICKED_UP',
+  );
+  const completedReservations = reservations.filter(
+    (r) => r.state === 'RETURNED' || r.state === 'DENIED' || r.state === 'CANCELLED',
+  );
 
   return (
     <section className="page-section">
@@ -101,8 +66,7 @@ function ReservationsPage() {
           <p className="eyebrow">Reservations</p>
           <h1>Reservation Dashboard</h1>
           <p className="page-description">
-            Review your reservations as borrower and owner. Open one to take
-            action or leave a review.
+            Review your borrower and owner reservations, check current status, and manage your workflow.
           </p>
         </div>
       </div>
@@ -110,187 +74,87 @@ function ReservationsPage() {
       <div className="filter-panel">
         <select
           value={roleFilter}
-          onChange={(event) =>
-            setRoleFilter(event.target.value as 'ALL' | 'borrower' | 'owner')
-          }
-          aria-label="Filter by role"
+          onChange={(event) => setRoleFilter(event.target.value)}
         >
-          <option value="ALL">All roles</option>
-          <option value="borrower">As borrower</option>
-          <option value="owner">As owner</option>
+          <option value="">All roles</option>
+          <option value="borrower">As Borrower</option>
+          <option value="owner">As Owner</option>
         </select>
 
         <select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-          aria-label="Filter by status"
+          onChange={(event) => setStatusFilter(event.target.value)}
         >
-          <option value="ALL">All statuses</option>
-          <option value="ACTIVE">Active (REQUESTED, APPROVED, PICKED_UP)</option>
-          <option value="COMPLETED">Completed (RETURNED, DENIED, CANCELLED)</option>
+          <option value="">All statuses</option>
+          <option value="REQUESTED">Requested</option>
+          <option value="APPROVED">Approved</option>
+          <option value="PICKED_UP">Picked Up</option>
+          <option value="RETURNED">Returned</option>
+          <option value="DENIED">Denied</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
 
+      {error && <p className="form-error">{error}</p>}
+
       <div className="dashboard-summary-grid">
         <div className="summary-card">
-          <span className="summary-number">{reservations.length}</span>
+          <span className="summary-number">{total}</span>
           <span className="summary-label">Total Reservations</span>
         </div>
-
         <div className="summary-card">
-          <span className="summary-number">{activeCount}</span>
+          <span className="summary-number">{activeReservations.length}</span>
           <span className="summary-label">Active</span>
         </div>
-
         <div className="summary-card">
-          <span className="summary-number">{completedCount}</span>
+          <span className="summary-number">{completedReservations.length}</span>
           <span className="summary-label">Completed or Closed</span>
         </div>
       </div>
 
-      {isLoading ? (
-        <p>Loading…</p>
-      ) : errorMessage ? (
-        <p className="error-message" role="alert">
-          {errorMessage}
-        </p>
-      ) : filtered.length === 0 ? (
+      {isLoading && <p>Loading reservations...</p>}
+
+      {!isLoading && reservations.length === 0 && (
         <div className="empty-state-card">
           <p className="eyebrow">No Reservations</p>
-          <h2>No reservations match the current filters.</h2>
-          <p>Browse available tools to submit a new reservation request.</p>
-          <Link className="primary-link" to="/tools">
-            Browse Tools
-          </Link>
+          <h2>No reservations found.</h2>
+          <p>Try changing filters or browse tools to make a new request.</p>
         </div>
-      ) : (
-        <ReservationGrids reservations={filtered} currentUserId={user?.id} />
       )}
-    </section>
-  );
-}
 
-/**
- * Renders reservations split into "Active workflow" (REQUESTED,
- * APPROVED, PICKED_UP) and "Completed or closed" (RETURNED, DENIED,
- * CANCELLED). The split is visible, not just decorative — matches
- * the summary cards above.
- */
-function ReservationGrids({
-  reservations,
-  currentUserId,
-}: {
-  reservations: Reservation[];
-  currentUserId: string | undefined;
-}) {
-  const isActive = (state: ReservationState) =>
-    state === 'REQUESTED' || state === 'APPROVED' || state === 'PICKED_UP';
-  const active = reservations.filter((r) => isActive(r.state));
-  const completed = reservations.filter((r) => !isActive(r.state));
+      <div className="reservation-grid">
+        {reservations.map((reservation) => {
+          const tool = toolMap[reservation.tool_id];
+          return (
+            <article className="reservation-card" key={reservation.id}>
+              <div className="reservation-card-header">
+                <div>
+                  <h2>{tool?.name || `Tool ${reservation.tool_id.slice(0, 8)}`}</h2>
+                </div>
+                <span className={`workflow-status status-${reservation.state.toLowerCase()}`}>
+                  {formatStatus(reservation.state)}
+                </span>
+              </div>
 
-  return (
-    <>
-      <section className="reservation-section">
-        <h2 className="reservation-section-header">
-          Active workflow <span className="reservation-section-count">({active.length})</span>
-        </h2>
-        {active.length === 0 ? (
-          <p className="empty-state">No active reservations.</p>
-        ) : (
-          <div className="reservation-grid">
-            {active.map((reservation) => (
-              <ReservationCard
-                key={reservation.id}
-                reservation={reservation}
-                currentUserId={currentUserId}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+              <dl className="reservation-meta-grid">
+                <div>
+                  <dt>Start Date</dt>
+                  <dd>{reservation.start_date}</dd>
+                </div>
+                <div>
+                  <dt>End Date</dt>
+                  <dd>{reservation.end_date}</dd>
+                </div>
+              </dl>
 
-      <section className="reservation-section">
-        <h2 className="reservation-section-header">
-          Completed or closed{' '}
-          <span className="reservation-section-count">({completed.length})</span>
-        </h2>
-        {completed.length === 0 ? (
-          <p className="empty-state">No completed or closed reservations.</p>
-        ) : (
-          <div className="reservation-grid">
-            {completed.map((reservation) => (
-              <ReservationCard
-                key={reservation.id}
-                reservation={reservation}
-                currentUserId={currentUserId}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    </>
-  );
-}
-
-function ReservationCard({
-  reservation,
-  currentUserId,
-}: {
-  reservation: Reservation;
-  currentUserId: string | undefined;
-}) {
-  const isBorrower = currentUserId === reservation.borrower_id;
-  const roleLabel = isBorrower ? 'Borrower View' : 'Owner View';
-  const overdue = isOverdue(reservation);
-  return (
-    <article className="reservation-card" key={reservation.id}>
-      <div className="reservation-card-header">
-        <div>
-          <p className="eyebrow">{roleLabel}</p>
-          <h2>Tool #{reservation.tool_id.slice(0, 8)}</h2>
-        </div>
-
-        <span
-          className={`workflow-status status-${reservation.state.toLowerCase()}`}
-        >
-          {formatStatus(reservation.state)}
-        </span>
+              <Link className="primary-link" to={`/reservations/${reservation.id}`}>
+                View Reservation
+              </Link>
+            </article>
+          );
+        })}
       </div>
-
-      {overdue && (
-        <p className="overdue-banner" role="alert">
-          ⚠ Overdue — the end date has passed. Please return the tool as soon as possible.
-        </p>
-      )}
-
-      <dl className="reservation-meta-grid">
-        <div>
-          <dt>Start Date</dt>
-          <dd>{reservation.start_date}</dd>
-        </div>
-
-        <div>
-          <dt>End Date</dt>
-          <dd>{reservation.end_date}</dd>
-        </div>
-
-        <div>
-          <dt>Borrower</dt>
-          <dd>
-            {reservation.borrower_id === currentUserId
-              ? 'You'
-              : `User #${reservation.borrower_id.slice(0, 8)}`}
-          </dd>
-        </div>
-      </dl>
-
-      <Link
-        className="primary-link"
-        to={`/reservations/${reservation.id}`}
-      >
-        View Reservation
-      </Link>
-    </article>
+    </section>
   );
 }
 

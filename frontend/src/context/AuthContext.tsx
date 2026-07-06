@@ -1,89 +1,89 @@
-/**
- * AuthContext
- *
- * Centralized authentication state for the R1 frontend.
- *
- * The context object lives in ``authContextObject.ts`` and the value
- * type / hook in ``authContextValue.ts`` so this file only exports
- * the provider component (keeps react-refresh HMR happy).
- */
+// AuthProvider — wraps app with auth state, login/logout functions.
+import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import { ApiError, authApi, tokenStore, type UserProfile } from '../api/client';
-import { AuthContext } from './authContextObject';
-import type { AuthContextValue } from './authContextValue';
+import { authApi } from '../api/auth';
+import { clearTokens, hasTokens } from '../api/client';
+import type { LoginRequest, RegisterRequest } from '../types/api';
+import { AuthContext } from './authContextValue';
+import type { AuthState } from './authContextValue';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isInitializing, setIsInitializing] = useState<boolean>(tokenStore.hasAccess());
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+    error: null,
+  });
 
-  const refreshProfile = useCallback(async () => {
-    if (!tokenStore.hasAccess()) {
-      setUser(null);
+  const refreshUser = useCallback(async () => {
+    if (!hasTokens()) {
+      setState({ user: null, isLoading: false, isAuthenticated: false, error: null });
       return;
     }
     try {
-      const profile = await authApi.me();
-      setUser(profile);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setUser(null);
-      } else {
-        setUser(null);
-      }
+      const user = await authApi.me();
+      setState({ user, isLoading: false, isAuthenticated: true, error: null });
+    } catch {
+      clearTokens();
+      setState({ user: null, isLoading: false, isAuthenticated: false, error: null });
     }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      await refreshProfile();
-      if (!cancelled) setIsInitializing(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshProfile]);
+  const login = useCallback(async (data: LoginRequest) => {
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    try {
+      await authApi.login(data);
+      const user = await authApi.me();
+      setState({ user, isLoading: false, isAuthenticated: true, error: null });
+      window.dispatchEvent(new Event('auth-change'));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setState((s) => ({ ...s, isLoading: false, error: message }));
+      throw err;
+    }
+  }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const tokens = await authApi.login(email, password);
-      tokenStore.set(tokens.access_token, tokens.refresh_token);
-      const profile = await authApi.me();
-      setUser(profile);
-    },
-    [],
-  );
+  const register = useCallback(async (data: RegisterRequest) => {
+    setState((s) => ({ ...s, isLoading: true, error: null }));
+    try {
+      await authApi.register(data);
+      setState((s) => ({ ...s, isLoading: false }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration failed';
+      setState((s) => ({ ...s, isLoading: false, error: message }));
+      throw err;
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     try {
-      // Best-effort: tell the backend. If it fails, we still clear locally.
       await authApi.logout();
     } catch {
-      // ignore — keep the UX responsive on logout
-    } finally {
-      tokenStore.clear();
-      setUser(null);
+      // Even if the server call fails, clear local state.
     }
+    clearTokens();
+    setState({ user: null, isLoading: false, isAuthenticated: false, error: null });
+    window.dispatchEvent(new Event('auth-change'));
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      isAuthenticated: user !== null,
-      isInitializing,
-      login,
-      logout,
-      refreshProfile,
-    }),
-    [user, isInitializing, login, logout, refreshProfile],
-  );
+  // On mount, check for existing tokens and load user.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshUser();
+  }, [refreshUser]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }

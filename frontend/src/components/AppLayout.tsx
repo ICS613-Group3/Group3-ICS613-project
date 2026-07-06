@@ -1,26 +1,43 @@
-import { useNavigate } from 'react-router-dom';
-import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/authContextValue';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
+import { notificationsApi } from '../api/notifications';
 
-/**
- * AppLayout
- *
- * Shared layout for:
- * - Header
- * - Top navigation
- * - Page content through <Outlet />
- *
- * Reads auth state from ``AuthContext`` instead of localStorage so it
- * stays in sync with the API client (token refresh, logout, etc.).
- */
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
+
 function AppLayout() {
   const navigate = useNavigate();
-  const { isAuthenticated, isInitializing, user, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchUnread = async () => {
+      try {
+        const data = await notificationsApi.list({ page_size: 1 });
+        setUnreadCount(data.unread_count);
+      } catch {
+        // Silently handle — notifications may not be loaded.
+      }
+    };
+
+    fetchUnread();
+
+    // Listen for auth-change events to refresh counts.
+    const handler = () => fetchUnread();
+    window.addEventListener('auth-change', handler);
+    return () => window.removeEventListener('auth-change', handler);
+  }, [isAuthenticated]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  const getNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    isActive ? 'nav-link active' : 'nav-link';
 
   return (
     <div className="app-shell">
@@ -30,84 +47,90 @@ function AppLayout() {
           <h1>Neighborhood Tool Sharing</h1>
         </div>
 
-        <nav className="app-nav">
-          <NavLink className="nav-link" to="/dashboard">
-            Dashboard
-          </NavLink>
-
-          <div className="nav-dropdown">
-            <span className="nav-link nav-dropdown-toggle">Browse Tools</span>
-
-            <div className="nav-dropdown-menu">
-              <NavLink className="nav-dropdown-item" to="/tools">
-                Available Tools
-              </NavLink>
-
-              <NavLink className="nav-dropdown-item" to="/tools?view=returned">
-                Returned Tools
-              </NavLink>
-
-              <NavLink className="nav-dropdown-item" to="/tools/new">
-                Add New Tools
-              </NavLink>
-
-              <NavLink className="nav-dropdown-item" to="/tools/me">
-                My Listings
-              </NavLink>
-            </div>
-          </div>
-
-          <NavLink className="nav-link" to="/reservations">
-            Reservations
-          </NavLink>
-
-          <NavLink className="nav-link" to="/reviews/history">
-            Review History
-          </NavLink>
-
-          {isInitializing ? null : isAuthenticated ? (
+        <nav className="app-nav" aria-label="Main navigation">
+          {isAuthenticated ? (
             <>
+              {USE_MOCKS && (
+                <span className="mock-banner">MOCK MODE</span>
+              )}
+
+              <span className="nav-user-greeting">
+                {user?.full_name || user?.email || 'User'}
+              </span>
+
+              <NavLink className={getNavLinkClass} to="/dashboard">
+                Dashboard
+              </NavLink>
+
               <div className="nav-dropdown">
-                <span className="nav-link nav-dropdown-toggle">
-                  {user?.full_name ?? user?.email ?? 'Account'}
-                </span>
-                <div className="nav-dropdown-menu nav-dropdown-menu-right">
-                  <NavLink className="nav-dropdown-item" to="/profile">
-                    Profile
+                <NavLink className="nav-link nav-dropdown-toggle" to="/tools">
+                  Browse Tools
+                </NavLink>
+                <div className="nav-dropdown-menu">
+                  <NavLink className="nav-dropdown-item" to="/tools">
+                    Available Tools
                   </NavLink>
-                  <NavLink className="nav-dropdown-item" to="/notifications">
-                    Notifications
+                  <NavLink className="nav-dropdown-item" to="/tools?view=returned">
+                    Returned Tools
                   </NavLink>
-                  {user?.is_admin && (
-                    <>
-                      <NavLink className="nav-dropdown-item" to="/admin/listings">
-                        Admin · Listings
-                      </NavLink>
-                      <NavLink className="nav-dropdown-item" to="/admin/invites">
-                        Admin · Invites
-                      </NavLink>
-                      <NavLink className="nav-dropdown-item" to="/admin/audit-log">
-                        Admin · Audit Log
-                      </NavLink>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    className="nav-dropdown-item nav-dropdown-button"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </button>
+                  <NavLink className="nav-dropdown-item" to="/tools/new">
+                    Add New Tools
+                  </NavLink>
                 </div>
               </div>
+
+              <NavLink className={getNavLinkClass} to="/reservations">
+                Reservations
+              </NavLink>
+
+              <NavLink className={getNavLinkClass} to="/reviews/history">
+                Review History
+              </NavLink>
+
+              <NavLink className={getNavLinkClass} to="/notifications">
+                <span className="notification-nav-label">
+                  Notifications
+                  {unreadCount > 0 && (
+                    <span className="nav-notification-badge">
+                      {unreadCount}
+                    </span>
+                  )}
+                </span>
+              </NavLink>
+
+              <NavLink className={getNavLinkClass} to="/profile/edit">
+                Profile
+              </NavLink>
+
+              <NavLink className={getNavLinkClass} to="/account/delete">
+                Delete Account
+              </NavLink>
+
+              {user?.is_admin && (
+                <>
+                  <NavLink className={getNavLinkClass} to="/admin/invites">
+                    Admin Invites
+                  </NavLink>
+                  <NavLink className={getNavLinkClass} to="/admin/listings">
+                    Admin Listings
+                  </NavLink>
+                </>
+              )}
+
+              <button
+                className="nav-link nav-button"
+                type="button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <NavLink className="nav-link" to="/login">
+              <NavLink className={getNavLinkClass} to="/login">
                 Login
               </NavLink>
-
-              <NavLink className="nav-link" to="/register">
+              <NavLink className={getNavLinkClass} to="/register">
                 Register
               </NavLink>
             </>
