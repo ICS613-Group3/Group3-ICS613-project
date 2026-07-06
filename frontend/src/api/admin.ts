@@ -35,10 +35,13 @@ export const adminApi = {
     apiRequest<UserProfile>('GET', `/admin/users/${userId}`),
 
   suspendUser: (userId: string) =>
-    apiRequest<UserProfile>('POST', `/admin/users/${userId}/suspend`),
+    apiRequest<UserProfile>('POST', `/admin/users/${userId}/deactivate`),
 
   unsuspendUser: (userId: string) =>
-    apiRequest<UserProfile>('POST', `/admin/users/${userId}/unsuspend`),
+    apiRequest<UserProfile>('POST', `/admin/users/${userId}/reactivate`),
+
+  deleteUser: (userId: string, reason: string) =>
+    apiRequest<void>('DELETE', `/admin/users/${userId}`, { reason }),
 
   getAuditLog: (params?: {
     action?: string;

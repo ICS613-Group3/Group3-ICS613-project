@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/admin';
 import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
 import type { UserProfile } from '../types/api';
 
 const statusLabels: Record<string, string> = {
@@ -17,8 +18,16 @@ function AdminMembersPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Per-user action state
+  const [actingUserId, setActingUserId] = useState<string | null>(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendTarget, setSuspendTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
@@ -40,6 +49,54 @@ function AdminMembersPage() {
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  const handleSuspend = async (userId: string) => {
+    if (!suspendReason.trim()) return;
+    setActingUserId(userId);
+    setActionMessage('');
+    try {
+      await adminApi.suspendUser(userId);
+      setActionMessage('User suspended successfully.');
+      setSuspendTarget(null);
+      setSuspendReason('');
+      await fetchMembers();
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Suspend failed.');
+    } finally {
+      setActingUserId(null);
+    }
+  };
+
+  const handleReactivate = async (userId: string) => {
+    setActingUserId(userId);
+    setActionMessage('');
+    try {
+      await adminApi.unsuspendUser(userId);
+      setActionMessage('User reactivated successfully.');
+      await fetchMembers();
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Reactivation failed.');
+    } finally {
+      setActingUserId(null);
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    if (!deleteReason.trim()) return;
+    setActingUserId(userId);
+    setActionMessage('');
+    try {
+      await adminApi.deleteUser(userId, deleteReason.trim());
+      setActionMessage('User deleted successfully.');
+      setDeleteTarget(null);
+      setDeleteReason('');
+      await fetchMembers();
+    } catch (err) {
+      setActionMessage(err instanceof ApiRequestError ? err.detail : 'Deletion failed.');
+    } finally {
+      setActingUserId(null);
+    }
+  };
 
   if (!user?.is_admin) {
     return (
@@ -90,6 +147,7 @@ function AdminMembersPage() {
         </label>
       </div>
 
+      {actionMessage && <p className={actionMessage.includes('failed') ? 'form-error' : 'success-message'}>{actionMessage}</p>}
       {error && <p className="form-error">{error}</p>}
       {isLoading && <p>Loading members...</p>}
 
@@ -107,6 +165,7 @@ function AdminMembersPage() {
                 <th>Status</th>
                 <th>Admin</th>
                 <th>Joined</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -121,6 +180,87 @@ function AdminMembersPage() {
                   </td>
                   <td>{m.is_admin ? 'Yes' : 'No'}</td>
                   <td>{new Date(m.created_at).toLocaleDateString()}</td>
+                  <td>
+                    {m.id === user?.id ? (
+                      <span className="muted-text">Yourself</span>
+                    ) : m.is_admin ? (
+                      <span className="muted-text">Admin</span>
+                    ) : m.status === 'SUSPENDED' ? (
+                      <button
+                        type="button"
+                        className="action-button approve-button"
+                        disabled={actingUserId === m.id}
+                        onClick={() => handleReactivate(m.id)}
+                      >
+                        {actingUserId === m.id ? '...' : 'Reactivate'}
+                      </button>
+                    ) : suspendTarget === m.id ? (
+                      <div className="inline-action-form">
+                        <input
+                          type="text"
+                          value={suspendReason}
+                          onChange={(e) => setSuspendReason(e.target.value)}
+                          placeholder="Reason *"
+                        />
+                        <button
+                          type="button"
+                          className="action-button danger-button"
+                          disabled={!suspendReason.trim() || actingUserId === m.id}
+                          onClick={() => handleSuspend(m.id)}
+                        >
+                          {actingUserId === m.id ? '...' : 'Confirm'}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => { setSuspendTarget(null); setSuspendReason(''); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : deleteTarget === m.id ? (
+                      <div className="inline-action-form">
+                        <input
+                          type="text"
+                          value={deleteReason}
+                          onChange={(e) => setDeleteReason(e.target.value)}
+                          placeholder="Reason *"
+                        />
+                        <button
+                          type="button"
+                          className="action-button danger-button"
+                          disabled={!deleteReason.trim() || actingUserId === m.id}
+                          onClick={() => handleDelete(m.id)}
+                        >
+                          {actingUserId === m.id ? '...' : 'Confirm Delete'}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => { setDeleteTarget(null); setDeleteReason(''); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-action-group">
+                        <button
+                          type="button"
+                          className="action-button danger-button"
+                          onClick={() => setSuspendTarget(m.id)}
+                        >
+                          Suspend
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button danger-button"
+                          onClick={() => setDeleteTarget(m.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
