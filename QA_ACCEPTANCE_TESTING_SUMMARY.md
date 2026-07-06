@@ -145,5 +145,5 @@ One test initially looked like it caught a bug (a photo delete not reflected on 
 ## Next steps
 
 1. Decide with the team which of the findings above are pre-demo blockers vs. tracked follow-up work — the damage-report-flags-wrong-user and suspended-members-cannot-log-in bugs are probably worth fixing regardless of demo timing.
-2. Wire this suite into GitHub Actions (still no CI/CD pipeline exists for this repo).
+2. Maintain/extend the GitHub Actions CI workflow (see `/.github/workflows/ci.yml`) so the acceptance suite stays continuously validated.
 3. Consider a small Playwright pass for the golden-path UI flow (login → browse → reserve → pickup → return → review) as a complement to this API-level suite.
