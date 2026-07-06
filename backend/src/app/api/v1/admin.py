@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.admin import (
     AdminUserDeactivate,
     AdminUserDelete,
+    AdminUserReactivate,
     AuditLogResponse,
 )
 from app.schemas.common import PaginatedResponse
@@ -74,11 +75,14 @@ async def deactivate_user(
 @router.post("/users/{user_id}/reactivate", status_code=status.HTTP_200_OK)
 async def reactivate_user(
     user_id: uuid.UUID,
+    request_data: AdminUserReactivate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_admin_user)],
 ) -> dict:
     """Admin reactivates a suspended member account."""
-    await AdminService().reactivate_user(db, admin=current_user, target_user_id=user_id)
+    await AdminService().reactivate_user(
+        db, admin=current_user, target_user_id=user_id, reason=request_data.reason
+    )
     return {"message": "User reactivated successfully"}
 
 

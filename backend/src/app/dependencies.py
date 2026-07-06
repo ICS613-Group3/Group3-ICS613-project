@@ -84,6 +84,20 @@ async def get_current_member(
     return user
 
 
+async def get_current_member_read_only(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Require a known member (ACTIVE or SUSPENDED).
+
+    Suspended members can still log in and access read-only pages
+    (browse tools, view own reservations, check notifications) so they
+    can see their suspension notice and appeal information.
+    """
+    if user.status.value not in ("ACTIVE", "SUSPENDED"):
+        raise PermissionDeniedError("Account status does not permit this action")
+    return user
+
+
 async def get_current_admin_user(
     user: Annotated[User, Depends(get_current_member)],
 ) -> User:

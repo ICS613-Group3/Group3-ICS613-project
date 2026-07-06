@@ -247,10 +247,14 @@ class AuthService:
         # result here is always an active or status-pending user.
         if user is None:
             raise AuthenticationError("Invalid email or password")
-        if (
-            user.status != UserStatus.ACTIVE
-            or not verify_password(password, user.hashed_password)
-        ):
+
+        # SUSPENDED users may log in so they can see a suspension notice.
+        # EMAIL_PENDING and DELETED users cannot authenticate.
+        if user.status == UserStatus.EMAIL_PENDING:
+            raise AuthenticationError("Invalid email or password")
+        if user.status not in (UserStatus.ACTIVE, UserStatus.SUSPENDED):
+            raise AuthenticationError("Invalid email or password")
+        if not verify_password(password, user.hashed_password):
             raise AuthenticationError("Invalid email or password")
 
         return {
@@ -277,7 +281,9 @@ class AuthService:
         user = await UserService().get_by_id(db, uuid.UUID(user_id))
         if user is None or user.deleted_at is not None:
             raise AuthenticationError("User not found")
-        if user.status != UserStatus.ACTIVE:
+        if user.status == UserStatus.EMAIL_PENDING:
+            raise AuthenticationError("Account is not active")
+        if user.status not in (UserStatus.ACTIVE, UserStatus.SUSPENDED):
             raise AuthenticationError("Account is not active")
 
         return {

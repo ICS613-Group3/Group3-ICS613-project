@@ -70,6 +70,7 @@ class TestAdminReactivateUser:
         token = create_access_token(admin.id)
         response = await client.post(
             f"/api/v1/admin/users/{target.id}/reactivate",
+            json={"reason": "Admin reactivation"},
             headers={"Authorization": f"Bearer {token}"},
         )
 
