@@ -81,6 +81,7 @@ class AdminService:
         *,
         admin: User,
         target_user_id: uuid.UUID,
+        reason: str = "Admin reactivation",
     ) -> User:
         """Admin reactivates a suspended member."""
         if not admin.is_admin:
@@ -102,7 +103,7 @@ class AdminService:
             action_type="USER_REACTIVATE",
             target_type="user",
             target_id=target.id,
-            reason="Admin reactivation",
+            reason=reason,
         )
 
         await NotificationService().create(

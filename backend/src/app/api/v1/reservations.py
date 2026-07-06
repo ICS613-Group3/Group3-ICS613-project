@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_admin_user, get_current_member, get_db
+from app.api.deps import get_current_admin_user, get_current_member, get_current_member_read_only, get_db
 from app.core.exceptions import PermissionDeniedError, parse_enum_or_raise
 from app.models.enums import ReservationState
 from app.models.user import User
@@ -47,7 +47,7 @@ async def create_reservation(
 @router.get("", response_model=PaginatedResponse[ReservationResponse])
 async def list_reservations(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
     role: Annotated[str | None, Query(description="Filter: 'borrower' or 'owner'")] = None,
     state: Annotated[str | None, Query(description="Filter by reservation state")] = None,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -75,7 +75,7 @@ async def list_reservations(
 async def get_reservation(
     reservation_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
 ) -> ReservationResponse:
     """Get a single reservation by ID.
 

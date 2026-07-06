@@ -45,7 +45,7 @@ class ReservationService:
             NotFoundError: if the tool is not active.
         """
         # Business rules
-        if start_date >= end_date:
+        if start_date > end_date:
             raise ValidationError("start_date must be before end_date")
         if start_date < date.today():
             raise ValidationError("Cannot request a reservation starting in the past")
@@ -432,21 +432,20 @@ class ReservationService:
                 actor_role="damage_report",
             )
 
-            # Increment the owner's damage counter atomically. A read-modify-write
+            # Increment the borrower's damage counter atomically. A read-modify-write
             # (``counter = counter + 1``) loses increments under concurrent calls;
             # the SQL ``SET col = col + 1`` is a single statement and atomic at
-            # the row level. Refresh afterwards so callers see the new value.
+            # the row level.
             from sqlalchemy import update
 
             await db.execute(
                 update(User)
-                .where(User.id == tool.owner_id)
+                .where(User.id == reservation.borrower_id)
                 .values(
                     damage_reported=User.damage_reported + 1,
                     updated_at=datetime.now(UTC),
                 )
             )
-            await db.refresh(owner)
 
             # Auto-cancel pending reservations.
             # Materialize the scalar result into a list once — SQLAlchemy
