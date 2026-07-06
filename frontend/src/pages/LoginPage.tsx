@@ -102,6 +102,11 @@ function LoginPage() {
         </p>
 
         <p className="auth-helper-text">
+          Need to verify your email?{' '}
+          <Link to="/verify-email">Verify here</Link>.
+        </p>
+
+        <p className="auth-helper-text">
           Need an account? <Link to="/register">Register here</Link>.
         </p>
       </form>

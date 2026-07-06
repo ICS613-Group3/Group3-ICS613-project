@@ -46,7 +46,7 @@ function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register({ email, password, full_name: fullName, invite_token: inviteToken });
-      setSuccessMessage('Registration successful! Please check your email to verify your account.');
+      setSuccessMessage('Registration successful! Please check your email and verify your account at /verify-email.');
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setErrorMessage(err.detail);
