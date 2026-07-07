@@ -128,13 +128,12 @@ class ReviewService:
         """
         if role not in ("given", "received"):
             from app.core.exceptions import ValidationError
+
             raise ValidationError("role must be 'given' or 'received'")
 
         column = Review.reviewee_id if role == "received" else Review.reviewer_id
 
-        count_result = await db.execute(
-            select(func.count(Review.id)).where(column == user_id)
-        )
+        count_result = await db.execute(select(func.count(Review.id)).where(column == user_id))
         total = count_result.scalar() or 0
 
         query = (
@@ -156,9 +155,7 @@ class ReviewService:
         reservation_id: uuid.UUID,
     ) -> list[Review]:
         """Get all reviews for a specific reservation."""
-        result = await db.execute(
-            select(Review).where(Review.reservation_id == reservation_id)
-        )
+        result = await db.execute(select(Review).where(Review.reservation_id == reservation_id))
         return list(result.scalars().all())
 
     async def update_review(
@@ -248,9 +245,7 @@ class ReviewService:
 
         # User trust_score (same as average received rating)
         user_result = await db.execute(
-            select(func.coalesce(func.avg(Review.rating), 0)).where(
-                Review.reviewee_id == user_id
-            )
+            select(func.coalesce(func.avg(Review.rating), 0)).where(Review.reviewee_id == user_id)
         )
         trust = user_result.scalar() or 0.0
         user = await db.get(User, user_id)

@@ -200,9 +200,7 @@ class TestVerifyEmail:
             )
         verification_token = (
             await db_session.execute(
-                select(EmailVerificationToken).where(
-                    EmailVerificationToken.user_id == user.id
-                )
+                select(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
             )
         ).scalar_one()
 
@@ -275,9 +273,7 @@ class TestGetByEmailExcludesDeleted:
     service's contract is "active user lookup" by default.
     """
 
-    async def test_active_user_is_returned(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_active_user_is_returned(self, db_session: AsyncSession) -> None:
         from app.services.user import UserService
 
         await UserFactory.create_async(db_session, email="alive@example.com")
@@ -285,9 +281,7 @@ class TestGetByEmailExcludesDeleted:
         assert result is not None
         assert result.email == "alive@example.com"
 
-    async def test_soft_deleted_user_is_excluded(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_soft_deleted_user_is_excluded(self, db_session: AsyncSession) -> None:
         """A user with deleted_at set is no longer found by email."""
         from app.services.user import UserService
 
@@ -308,9 +302,7 @@ class TestGetByEmailExcludesDeleted:
 class TestRateLimiting:
     """Auth endpoints throttle excessive requests with 429."""
 
-    async def test_login_returns_429_after_limit(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_login_returns_429_after_limit(self, client, db_session: AsyncSession) -> None:
         """After exceeding the per-minute login limit, further attempts 429."""
         from app.config import get_settings
 

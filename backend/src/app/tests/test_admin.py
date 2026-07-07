@@ -63,9 +63,7 @@ class TestAdminReactivateUser:
     ) -> None:
         """Admin can reactivate a suspended user."""
         admin = await AdminFactory.create_async(db_session)
-        target = await UserFactory.create_async(
-            db_session, status=UserStatus.SUSPENDED
-        )
+        target = await UserFactory.create_async(db_session, status=UserStatus.SUSPENDED)
 
         token = create_access_token(admin.id)
         response = await client.post(
@@ -187,9 +185,7 @@ class TestAdminAuditLog:
 class TestAdminSelfProtection:
     """M3 — admins cannot suspend / delete themselves or other admins."""
 
-    async def test_admin_cannot_suspend_self(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_admin_cannot_suspend_self(self, client, db_session: AsyncSession) -> None:
         """POST /api/v1/admin/users/{admin.id}/deactivate returns 409."""
         admin = await AdminFactory.create_async(db_session)
         token = create_access_token(admin.id)
@@ -218,9 +214,7 @@ class TestAdminSelfProtection:
         assert response.status_code == 409
         assert "another admin" in response.json()["detail"].lower()
 
-    async def test_admin_cannot_delete_self(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_admin_cannot_delete_self(self, client, db_session: AsyncSession) -> None:
         """DELETE /api/v1/admin/users/{admin.id} returns 409 for self."""
         admin = await AdminFactory.create_async(db_session)
         token = create_access_token(admin.id)

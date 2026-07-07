@@ -30,7 +30,7 @@ def _fake_image_bytes() -> bytes:
         b"\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00"
         b"\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xc4\x00"
         b"\xb5\x10\x00\x02\x01\x03\x03\x02\x04\x03\x05\x05\x04\x04\x00\x00"
-        b"\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa\x07\"q\x142"
+        b'\x01}\x01\x02\x03\x00\x04\x11\x05\x12!1A\x06\x13Qa\x07"q\x142'
         b"\x81\x91\xa1\x08#B\xb1\xc1\x15R\xd1\xf0$3br\x82\t\n\x16\x17\x18"
         b"\x19\x1a%&'()*456789:CDEFGHIJSTUVWXYZcdefghijstuvwxyz"
         b"\x83\x84\x85\x86\x87\x88\x89\x8a\x92\x93\x94\x95\x96\x97\x98\x99"
@@ -980,9 +980,7 @@ class TestPhotoUploadSecurity:
             for d in (detail if isinstance(detail, list) else [detail])
         )
 
-    async def test_upload_rejects_non_image_bytes(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_upload_rejects_non_image_bytes(self, client, db_session: AsyncSession) -> None:
         """Plain text with image/png Content-Type is rejected."""
         from app.tests.factories import UserFactory
 
@@ -1011,9 +1009,7 @@ class TestAddPhotosResponseShape:
     the test below catches it.
     """
 
-    async def test_added_photos_appear_in_response(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_added_photos_appear_in_response(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         owner_token = create_access_token(owner.id)
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -1027,12 +1023,9 @@ class TestAddPhotosResponseShape:
         body = response.json()
         assert body["id"] == str(tool.id)
         assert "photos" in body, f"Response missing 'photos' key: {body}"
-        assert len(body["photos"]) == 1, (
-            f"Expected 1 photo in response, got {body['photos']!r}"
-        )
+        assert len(body["photos"]) == 1, f"Expected 1 photo in response, got {body['photos']!r}"
         assert body["photos"][0]["url"].startswith("/uploads/")
         assert body["photos"][0]["url"].endswith(".jpg")
-
 
 
 class TestToolModerationAuditLog:
@@ -1049,9 +1042,7 @@ class TestToolModerationAuditLog:
     ) -> None:
         """POST /api/v1/tools/{id}/deactivate by owner → TOOL_DEACTIVATED audit row."""
         owner = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session, owner_id=owner.id, name="OwnerAuditTest"
-        )
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id, name="OwnerAuditTest")
         token = create_access_token(owner.id)
 
         response = await client.post(
@@ -1079,9 +1070,7 @@ class TestToolModerationAuditLog:
         """Admin deactivating a tool → TOOL_DEACTIVATED with actor_role=admin."""
         owner = await UserFactory.create_async(db_session)
         admin = await AdminFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session, owner_id=owner.id, name="AdminDeactAudit"
-        )
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id, name="AdminDeactAudit")
         token = create_access_token(admin.id)
 
         response = await client.post(
@@ -1229,12 +1218,18 @@ class TestAdminListAllTools:
         owner = await UserFactory.create_async(db_session)
 
         await ToolFactory.create_async(
-            db_session, owner_id=owner.id, name="Drill",
-            category=ToolCategory.POWER_TOOLS, is_active=True
+            db_session,
+            owner_id=owner.id,
+            name="Drill",
+            category=ToolCategory.POWER_TOOLS,
+            is_active=True,
         )
         await ToolFactory.create_async(
-            db_session, owner_id=owner.id, name="Rake",
-            category=ToolCategory.GARDEN_TOOLS, is_active=True
+            db_session,
+            owner_id=owner.id,
+            name="Rake",
+            category=ToolCategory.GARDEN_TOOLS,
+            is_active=True,
         )
 
         response = await client.get(

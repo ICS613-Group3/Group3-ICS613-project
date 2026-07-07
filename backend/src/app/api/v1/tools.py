@@ -53,8 +53,12 @@ async def list_tools(
     current_user: Annotated[User, Depends(get_current_member)],
     category: Annotated[str | None, Query(description="Filter by tool category")] = None,
     search: Annotated[str | None, Query(description="Search by name or description")] = None,
-    available_start: Annotated[str | None, Query(description="Availability start date (YYYY-MM-DD)")] = None,
-    available_end: Annotated[str | None, Query(description="Availability end date (YYYY-MM-DD)")] = None,
+    available_start: Annotated[
+        str | None, Query(description="Availability start date (YYYY-MM-DD)")
+    ] = None,
+    available_end: Annotated[
+        str | None, Query(description="Availability end date (YYYY-MM-DD)")
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ToolResponse]:
@@ -65,7 +69,9 @@ async def list_tools(
     """
     from datetime import date
 
-    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
+    cat_enum = (
+        ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
+    )
     start = date.fromisoformat(available_start) if available_start else None
     end = date.fromisoformat(available_end) if available_end else None
 
@@ -82,9 +88,7 @@ async def list_tools(
     )
     items = [ToolResponse.model_validate(t) for t in tools]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.get("/me", response_model=PaginatedResponse[ToolResponse])
@@ -101,9 +105,7 @@ async def list_my_tools(
     )
     items = [ToolResponse.model_validate(t) for t in tools]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.get("/admin/all", response_model=PaginatedResponse[ToolResponse])
@@ -124,7 +126,9 @@ async def admin_list_all_tools(
     elif status_filter == "inactive":
         include_active = False
 
-    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
+    cat_enum = (
+        ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
+    )
 
     service = ToolService()
     tools, total = await service.list_all_tools(
@@ -138,9 +142,7 @@ async def admin_list_all_tools(
     )
     items = [ToolResponse.model_validate(t) for t in tools]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.get("/{tool_id}", response_model=ToolResponse)

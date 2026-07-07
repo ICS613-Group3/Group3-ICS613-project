@@ -206,7 +206,11 @@ class ToolService:
                 .where(
                     Reservation.tool_id == Tool.id,
                     Reservation.state.in_(
-                        [ReservationState.REQUESTED, ReservationState.APPROVED, ReservationState.PICKED_UP]
+                        [
+                            ReservationState.REQUESTED,
+                            ReservationState.APPROVED,
+                            ReservationState.PICKED_UP,
+                        ]
                     ),
                     Reservation.start_date < available_end,
                     Reservation.end_date > available_start,
@@ -221,8 +225,7 @@ class ToolService:
 
         # Load with photos and owner
         query = (
-            query
-            .options(selectinload(Tool.photos), selectinload(Tool.owner))
+            query.options(selectinload(Tool.photos), selectinload(Tool.owner))
             .order_by(Tool.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -245,9 +248,7 @@ class ToolService:
             Tool.owner_id == owner.id,
             Tool.deleted_at.is_(None),
         )
-        count_result = await db.execute(
-            select(func.count(Tool.id)).where(base_where)
-        )
+        count_result = await db.execute(select(func.count(Tool.id)).where(base_where))
         total = count_result.scalar() or 0
 
         query = (
@@ -303,8 +304,7 @@ class ToolService:
         total = count_result.scalar() or 0
 
         query = (
-            query
-            .options(selectinload(Tool.photos), selectinload(Tool.owner))
+            query.options(selectinload(Tool.photos), selectinload(Tool.owner))
             .order_by(Tool.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -339,10 +339,12 @@ class ToolService:
 
         # Block edit when any reservation is in PICKED_UP state
         active_pickup = await db.execute(
-            select(Reservation.id).where(
+            select(Reservation.id)
+            .where(
                 Reservation.tool_id == tool.id,
                 Reservation.state == ReservationState.PICKED_UP,
-            ).limit(1)
+            )
+            .limit(1)
         )
         if active_pickup.scalar_one_or_none() is not None:
             raise ConflictError(
@@ -379,17 +381,21 @@ class ToolService:
             raise PermissionDeniedError("You can only delete your own tool listings")
 
         active_reservation = await db.execute(
-            select(Reservation.id).where(
+            select(Reservation.id)
+            .where(
                 Reservation.tool_id == tool.id,
                 Reservation.state.in_(
-                    [ReservationState.REQUESTED, ReservationState.APPROVED, ReservationState.PICKED_UP]
+                    [
+                        ReservationState.REQUESTED,
+                        ReservationState.APPROVED,
+                        ReservationState.PICKED_UP,
+                    ]
                 ),
-            ).limit(1)
+            )
+            .limit(1)
         )
         if active_reservation.scalar_one_or_none() is not None:
-            raise ConflictError(
-                "Cannot delete a tool with active or requested reservations"
-            )
+            raise ConflictError("Cannot delete a tool with active or requested reservations")
 
         # Delete photo files from disk
         for photo in tool.photos:
@@ -524,7 +530,5 @@ class ToolService:
     # ------------------------------------------------------------------
     @staticmethod
     async def _photo_count(db: AsyncSession, tool_id: uuid.UUID) -> int:
-        result = await db.execute(
-            select(func.count(Photo.id)).where(Photo.tool_id == tool_id)
-        )
+        result = await db.execute(select(func.count(Photo.id)).where(Photo.tool_id == tool_id))
         return result.scalar() or 0

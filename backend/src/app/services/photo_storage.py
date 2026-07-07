@@ -9,9 +9,7 @@ from pathlib import Path
 
 from app.config import get_settings
 
-ALLOWED_CONTENT_TYPES = frozenset(
-    {"image/jpeg", "image/png", "image/webp", "image/gif"}
-)
+ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/gif"})
 MAX_PHOTOS_PER_TOOL = 5
 
 _CONTENT_TYPE_TO_EXT: dict[str, str] = {
@@ -78,8 +76,7 @@ class PhotoStorageService:
 
         if content_type not in ALLOWED_CONTENT_TYPES:
             raise ValidationError(
-                f"Unsupported file type: {content_type}. "
-                "Allowed: JPEG, PNG, WebP, GIF."
+                f"Unsupported file type: {content_type}. Allowed: JPEG, PNG, WebP, GIF."
             )
         if file_size > settings.max_upload_size_bytes:
             max_mb = settings.max_upload_size_bytes / (1024 * 1024)

@@ -54,7 +54,9 @@ async def list_reservations(
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ReservationResponse]:
     """List reservations for the current user."""
-    state_enum = ReservationState(parse_enum_or_raise(state, ReservationState, "state")) if state else None
+    state_enum = (
+        ReservationState(parse_enum_or_raise(state, ReservationState, "state")) if state else None
+    )
     service = ReservationService()
     reservations, total = await service.list_reservations(
         db,
@@ -66,9 +68,7 @@ async def list_reservations(
     )
     items = [ReservationResponse.model_validate(r) for r in reservations]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.get("/{reservation_id}", response_model=ReservationResponse)
@@ -146,9 +146,7 @@ async def mark_picked_up(
     """Mark an APPROVED reservation as PICKED_UP."""
     service = ReservationService()
     reservation = await service.get_reservation(db, reservation_id=reservation_id)
-    updated = await service.mark_picked_up(
-        db, reservation=reservation, borrower=current_user
-    )
+    updated = await service.mark_picked_up(db, reservation=reservation, borrower=current_user)
     return ReservationResponse.model_validate(updated)
 
 
@@ -161,9 +159,7 @@ async def mark_returned(
     """Mark a PICKED_UP reservation as RETURNED."""
     service = ReservationService()
     reservation = await service.get_reservation(db, reservation_id=reservation_id)
-    updated = await service.mark_returned(
-        db, reservation=reservation, borrower=current_user
-    )
+    updated = await service.mark_returned(db, reservation=reservation, borrower=current_user)
     return ReservationResponse.model_validate(updated)
 
 

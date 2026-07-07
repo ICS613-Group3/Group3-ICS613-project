@@ -79,9 +79,7 @@ class AuthService:
 
     async def list_invites(self, db: AsyncSession) -> list[InviteToken]:
         """List all invite tokens, newest first (admin-only)."""
-        result = await db.execute(
-            select(InviteToken).order_by(InviteToken.created_at.desc())
-        )
+        result = await db.execute(select(InviteToken).order_by(InviteToken.created_at.desc()))
         return list(result.scalars().all())
 
     # ------------------------------------------------------------------
@@ -247,10 +245,7 @@ class AuthService:
         # result here is always an active or status-pending user.
         if user is None:
             raise AuthenticationError("Invalid email or password")
-        if (
-            user.status != UserStatus.ACTIVE
-            or not verify_password(password, user.hashed_password)
-        ):
+        if user.status != UserStatus.ACTIVE or not verify_password(password, user.hashed_password):
             raise AuthenticationError("Invalid email or password")
 
         return {

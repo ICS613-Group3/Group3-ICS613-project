@@ -246,8 +246,7 @@ class AdminService:
         total = count_result.scalar() or 0
 
         query = (
-            query
-            .order_by(AdminAuditLog.created_at.desc())
+            query.order_by(AdminAuditLog.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

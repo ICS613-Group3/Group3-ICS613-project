@@ -42,31 +42,19 @@ class Tool(Base):
         ENUM(ToolCondition, name="tool_condition"),
         nullable=False,
     )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, index=True
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
     # deactivation audit
     deactivated_by: Mapped[DeactivationActor | None] = mapped_column(
         ENUM(DeactivationActor, name="deactivation_actor"),
         nullable=True,
     )
-    deactivated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    deactivation_reason: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deactivation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     # rating aggregates (populated on review changes)
-    avg_rating: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0
-    )
-    rating_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
+    avg_rating: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    rating_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # soft-delete
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
