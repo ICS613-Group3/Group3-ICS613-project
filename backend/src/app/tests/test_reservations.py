@@ -1218,7 +1218,6 @@ class TestReservationModerationAuditLog:
         owner_token = create_access_token(owner.id)
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
         borrower = await UserFactory.create_async(db_session, email=_make_email())
-        borrower_token = create_access_token(borrower.id)
 
         from datetime import UTC, datetime, timedelta
 
@@ -1315,8 +1314,8 @@ class TestMarkDamagedAutoCancelNotifications:
     ) -> None:
         from sqlalchemy import select
 
-        from app.models.notification import Notification
         from app.models.enums import NotificationType
+        from app.models.notification import Notification
 
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -1382,8 +1381,8 @@ class TestForceReturnOwnerNotification:
     ) -> None:
         from sqlalchemy import select
 
-        from app.models.notification import Notification
         from app.models.enums import NotificationType
+        from app.models.notification import Notification
 
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
