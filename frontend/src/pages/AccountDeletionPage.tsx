@@ -120,14 +120,6 @@ function AccountDeletionPage() {
       return;
     }
 
-    // Mock account deletion behavior:
-    // - Clear mock auth.
-    // - Clear mock profile.
-    // - Notify AppLayout to update the nav.
-    localStorage.removeItem(mockAuthKey);
-    localStorage.removeItem(mockProfileKey);
-    window.dispatchEvent(new Event('mock-auth-change'));
-
     // Show success message before redirecting.
     setSuccessMessage(
       'Your account deletion request was submitted. You will be redirected to Login.',
@@ -137,8 +129,20 @@ function AccountDeletionPage() {
     // In the R1 mock page, this value is not sent anywhere.
     console.info('Mock account deletion reason:', deleteReason.trim() || 'No reason given');
 
-    // Redirect to login after a short delay so the success message is visible.
+    // Mock account deletion behavior:
+    // - Clear mock auth.
+    // - Clear mock profile.
+    // - Notify AppLayout to update the nav.
+    //
+    // This is deferred until the redirect fires (rather than done immediately)
+    // because AccountDeletionPage re-checks localStorage on every render and
+    // redirects unauthenticated users to /login. Clearing auth immediately
+    // would trigger that redirect on this same render pass, before the user
+    // ever sees the success message above.
     window.setTimeout(() => {
+      localStorage.removeItem(mockAuthKey);
+      localStorage.removeItem(mockProfileKey);
+      window.dispatchEvent(new Event('mock-auth-change'));
       navigate('/login');
     }, 900);
   }
