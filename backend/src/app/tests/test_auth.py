@@ -1,7 +1,7 @@
 """Tests for authentication endpoints."""
 
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ class TestCreateInvite:
         token = create_access_token(admin.id)
         email = _example_email()
 
-        with patch.object(EmailService, "send_invite_email", AsyncMock()):
+        with patch.object(EmailService, "send_invite_email", MagicMock()):
             response = await client.post(
                 "/api/v1/auth/invites",
                 json={"email": email},
@@ -137,7 +137,7 @@ class TestRegister:
             created_by=admin.id,
         )
 
-        with patch.object(EmailService, "send_verification_email", AsyncMock()):
+        with patch.object(EmailService, "send_verification_email", MagicMock()):
             response = await client.post(
                 "/api/v1/auth/register",
                 json={
@@ -190,7 +190,7 @@ class TestVerifyEmail:
             created_by=admin.id,
         )
         service = AuthService(email_service=EmailService())
-        with patch.object(EmailService, "send_verification_email", AsyncMock()):
+        with patch.object(EmailService, "send_verification_email", MagicMock()):
             user = await service.register(
                 db_session,
                 email=unique_email,

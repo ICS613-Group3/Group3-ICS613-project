@@ -1,6 +1,6 @@
 """User Story 1 — Register with Invite Token."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -23,7 +23,7 @@ class TestScenario1RegisterWithValidInviteToken:
         email = unique_email()
         token = await invite_email(db_session, email, admin)
 
-        with patch.object(EmailService, "send_verification_email", AsyncMock()) as mock_send:
+        with patch.object(EmailService, "send_verification_email", MagicMock()) as mock_send:
             response = await client.post(
                 "/api/v1/auth/register",
                 json={
@@ -68,7 +68,7 @@ class TestScenario2RegisterWithInvalidOrUsedToken:
         email = unique_email()
         token = await invite_email(db_session, email, admin)
 
-        with patch.object(EmailService, "send_verification_email", AsyncMock()):
+        with patch.object(EmailService, "send_verification_email", MagicMock()):
             first = await client.post(
                 "/api/v1/auth/register",
                 json={"email": email, "password": "Password123!", "invite_token": token},

@@ -3,7 +3,7 @@
 Source: User Stories doc, Section 1, "Admin Invites a New Member (New Added)".
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +22,7 @@ class TestScenario1AdminInvitesNewMember:
         admin = await make_admin(db_session)
         email = unique_email()
 
-        with patch.object(EmailService, "send_invite_email", AsyncMock()) as mock_send:
+        with patch.object(EmailService, "send_invite_email", MagicMock()) as mock_send:
             response = await client.post(
                 "/api/v1/auth/invites",
                 json={"email": email},

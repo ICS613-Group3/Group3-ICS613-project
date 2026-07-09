@@ -58,6 +58,12 @@ check_untyped_defs = false
 source = ["app"]
 branch = true
 omit = ["src/app/tests/*"]
+# "app" gets imported a second time via a different sys.path entry when the
+# pytest-github-actions-annotate-failures plugin resolves failure file paths
+# (only active in CI, where GITHUB_ACTIONS is set). Coverage still measures
+# everything correctly -- verified identical report totals with and without
+# this warning firing -- so it's safe to silence.
+disable_warnings = ["module-not-measured"]
 
 [tool.coverage.report]
 show_missing = true

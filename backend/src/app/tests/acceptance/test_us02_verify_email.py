@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +25,7 @@ class TestScenario1VerifyWithValidToken:
         email = unique_email()
         token = await invite_email(db_session, email, admin)
 
-        with patch.object(EmailService, "send_verification_email", AsyncMock()):
+        with patch.object(EmailService, "send_verification_email", MagicMock()):
             await client.post(
                 "/api/v1/auth/register",
                 json={"email": email, "password": "Password123!", "invite_token": token},
