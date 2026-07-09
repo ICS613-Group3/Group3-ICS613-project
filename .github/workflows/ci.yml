@@ -67,7 +67,9 @@ jobs:
       - name: Run backend test suite (unit + acceptance)
         run: |
           set -o pipefail
-          pytest src/app/tests -q -rxXs | tee pytest-output.log
+          pytest src/app/tests -q -rxXs \
+            --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html \
+            | tee pytest-output.log
 
       - name: Write test summary
         if: always()
@@ -85,7 +87,30 @@ jobs:
             awk '/short test summary info/{flag=1} flag' pytest-output.log | sed '$d'
             echo '```'
             echo "</details>"
+            echo
+            echo "<details><summary>Coverage report</summary>"
+            echo
+            echo '```'
+            awk '/^Name /{flag=1} flag' pytest-output.log
+            echo '```'
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-html
+          path: backend/htmlcov/
+          retention-days: 14
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-xml
+          path: backend/coverage.xml
+          retention-days: 14
 
   backend-lint:
     name: Backend lint, format, type-check
