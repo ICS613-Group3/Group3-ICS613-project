@@ -46,7 +46,7 @@ class ReservationService:
         """
         # Business rules
         if start_date > end_date:
-            raise ValidationError("start_date must be before end_date")
+            raise ValidationError("start_date must be on or before end_date")
         if start_date < date.today():
             raise ValidationError("Cannot request a reservation starting in the past")
 
