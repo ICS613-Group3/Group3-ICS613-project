@@ -38,7 +38,7 @@ async def deactivate_user(
 @router.post("/users/{user_id}/reactivate", status_code=status.HTTP_200_OK)
 async def reactivate_user(
     user_id: uuid.UUID,
-    request_data: AdminUserReactivate,
+    request_data: AdminUserReactivate = AdminUserReactivate(),
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_admin_user)],
 ) -> dict:
