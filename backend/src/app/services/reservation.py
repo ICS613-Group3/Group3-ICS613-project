@@ -311,13 +311,7 @@ class ReservationService:
             reservation.tool.owner_id if is_borrower else reservation.borrower_id
         )
         tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
-        recipient_name = (
-            reservation.borrower.full_name or reservation.borrower.email
-            if is_owner
-            else (reservation.tool.owner.full_name or reservation.tool.owner.email)
-            if hasattr(reservation.tool, 'owner') and reservation.tool.owner
-            else "The other party"
-        )
+        # recipient_name not needed; notification is addressed to the recipient implicitly
         await NotificationService().create(
             db,
             user_id=recipient_id,
