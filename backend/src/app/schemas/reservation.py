@@ -1,6 +1,7 @@
 """Reservation request/response schemas."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -46,7 +47,7 @@ class ReservationResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _extract_names(cls, data):
+    def _extract_names(cls, data: Any) -> Any:
         """Extract display names from ORM relationships before validation."""
         if isinstance(data, dict):
             return data
