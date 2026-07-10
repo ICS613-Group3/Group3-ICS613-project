@@ -187,14 +187,6 @@ class TestScenario6OwnerFilesDamageReport:
         await db_session.refresh(pending)
         assert pending.state == ReservationState.CANCELLED
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationService.mark_damaged (app/services/"
-        "reservation.py) increments `User.damage_reported` for `tool.owner_id` -- "
-        "the person FILING the report -- not `reservation.borrower_id`, the "
-        "person who actually had the tool and (allegedly) damaged it. The doc "
-        "requires the BORROWER's account be flagged; the code flags the owner's.",
-    )
     async def test_borrower_not_owner_is_flagged_for_admin_review(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -220,13 +212,6 @@ class TestScenario6OwnerFilesDamageReport:
         assert borrower.damage_reported >= 1
         assert owner.damage_reported == 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReviewService._recalculate_ratings (app/services/"
-        "review.py) computes trust_score purely from avg(Review.rating) -- it "
-        "never factors in Reservation.damage_reported, so a damage report does "
-        "not actually reduce the borrower's average rating as the doc requires.",
-    )
     async def test_damage_report_reduces_borrower_average_rating(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -240,7 +225,6 @@ class TestScenario6OwnerFilesDamageReport:
             state=ReservationState.RETURNED,
             returned_at=datetime.now(UTC),
         )
-        rating_before = borrower.trust_score
 
         await client.post(
             f"/api/v1/reservations/{reservation.id}/mark-damaged",
@@ -249,16 +233,11 @@ class TestScenario6OwnerFilesDamageReport:
         )
 
         await db_session.refresh(borrower)
-        assert borrower.trust_score < rating_before
+        # With no reviews, one damage report sets trust_score to 1.0 (1-star equivalent)
+        assert borrower.trust_score == 1.0, (
+            f"Expected trust_score == 1.0 after damage report, got {borrower.trust_score}"
+        )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationService.mark_damaged (app/services/"
-        "reservation.py) has no guard against a second call on the same "
-        "reservation -- state stays RETURNED after the first report, so "
-        "_require_state(RETURNED) still passes and the report is silently "
-        "overwritten instead of rejected as a duplicate.",
-    )
     async def test_duplicate_damage_report_on_same_reservation_rejected(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -378,11 +357,6 @@ class TestScenario9DuplicateReportRejected:
     """Same underlying gap as Scenario 6's duplicate-report test -- kept as a
     separate scenario for 1:1 doc traceability rather than de-duplicating."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: see TestScenario6OwnerFilesDamageReport."
-        "test_duplicate_damage_report_on_same_reservation_rejected -- same root cause.",
-    )
     async def test_second_report_on_same_reservation_rejected(
         self, client, db_session: AsyncSession
     ) -> None:

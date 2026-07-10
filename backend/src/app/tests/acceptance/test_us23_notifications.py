@@ -33,13 +33,6 @@ class TestScenario1OwnerNotifiedOfNewRequest:
         assert len(items) >= 1
         assert "Alex Borrower" in items[0]["body"]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationService.create_reservation's notification "
-        "body (app/services/reservation.py) says 'requested your tool for ...' -- "
-        "it never includes the tool's actual name, only the generic phrase "
-        "'your tool'. The tool_id is in the payload but not a human-readable name.",
-    )
     async def test_notification_includes_tool_name(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)

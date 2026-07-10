@@ -29,7 +29,9 @@ class TestScenario1AdminReactivatesSuspendedMember:
         await _suspend(client, admin, member)
 
         response = await client.post(
-            f"/api/v1/admin/users/{member.id}/reactivate", headers=auth_header(admin.id)
+            f"/api/v1/admin/users/{member.id}/reactivate",
+            json={"reason": "Admin reactivation"},
+            headers=auth_header(admin.id),
         )
 
         assert response.status_code == 200
@@ -46,14 +48,6 @@ class TestScenario1AdminReactivatesSuspendedMember:
         ).scalar_one()
         assert audit.actor_id == admin.id
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: POST /admin/users/{user_id}/reactivate (app/api/v1/"
-        "admin.py) takes no request body at all -- there is no "
-        "AdminUserReactivate schema, so an admin cannot submit a custom "
-        "reactivation reason. AdminService.reactivate_user hardcodes the audit "
-        "reason as the literal string 'Admin reactivation'.",
-    )
     async def test_admin_supplied_reason_is_recorded(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -85,7 +79,9 @@ class TestScenario2CannotReactivateNonSuspendedAccount:
         member = await UserFactory.create_async(db_session)
 
         response = await client.post(
-            f"/api/v1/admin/users/{member.id}/reactivate", headers=auth_header(admin.id)
+            f"/api/v1/admin/users/{member.id}/reactivate",
+            json={"reason": "Admin reactivation"},
+            headers=auth_header(admin.id),
         )
 
         assert response.status_code == 409
@@ -100,7 +96,9 @@ class TestScenario3ReactivatedMemberRegainsNormalAccess:
         member = await UserFactory.create_async(db_session)
         await _suspend(client, admin, member)
         await client.post(
-            f"/api/v1/admin/users/{member.id}/reactivate", headers=auth_header(admin.id)
+            f"/api/v1/admin/users/{member.id}/reactivate",
+            json={"reason": "Admin reactivation"},
+            headers=auth_header(admin.id),
         )
 
         response = await client.post(
@@ -124,7 +122,9 @@ class TestScenario4NonAdminCannotReactivateMember:
         await _suspend(client, admin, member)
 
         response = await client.post(
-            f"/api/v1/admin/users/{member.id}/reactivate", headers=auth_header(non_admin.id)
+            f"/api/v1/admin/users/{member.id}/reactivate",
+            json={"reason": "Admin reactivation"},
+            headers=auth_header(non_admin.id),
         )
 
         assert response.status_code == 403

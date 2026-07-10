@@ -122,13 +122,6 @@ class TestScenario4ConcurrentOverlappingSubmissionsFirstCommitWins:
 
 
 class TestScenario5OneDayRentalIsAllowed:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationService.create_reservation (app/services/"
-        "reservation.py) rejects start_date == end_date with 'start_date must be "
-        "before end_date' (strict '>=' check) -- the doc explicitly requires a "
-        "1-day rental with start_date == end_date to be accepted.",
-    )
     async def test_start_equals_end_date_is_accepted(
         self, client, db_session: AsyncSession
     ) -> None:

@@ -18,6 +18,12 @@ class AdminUserDelete(BaseModel):
     reason: str = Field(..., min_length=1, max_length=2000)
 
 
+class AdminUserReactivate(BaseModel):
+    """Admin reactivates a user account."""
+
+    reason: str = Field(default="Admin reactivation", min_length=1, max_length=2000)
+
+
 class AuditLogResponse(BaseModel):
     """Single audit log entry."""
 

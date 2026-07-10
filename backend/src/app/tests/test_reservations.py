@@ -742,12 +742,30 @@ class TestDamageCounterIsAtomic:
         )
         assert resp2.status_code == 200, resp2.text
 
-        # The owner's damage_reported counter should have incremented twice
+        # The borrower's damage_reported counter should have incremented once each
+        await db_session.refresh(borrower1)
+        result1 = await db_session.execute(select(User).where(User.id == borrower1.id))
+        refreshed1 = result1.scalar_one()
+        assert refreshed1.damage_reported == 1, (
+            f"Expected borrower1 counter == 1 after one damage report, got "
+            f"{refreshed1.damage_reported}"
+        )
+
+        await db_session.refresh(borrower2)
+        result2 = await db_session.execute(select(User).where(User.id == borrower2.id))
+        refreshed2 = result2.scalar_one()
+        assert refreshed2.damage_reported == 1, (
+            f"Expected borrower2 counter == 1 after one damage report, got "
+            f"{refreshed2.damage_reported}"
+        )
+
+        # The owner's counter should be unchanged
         await db_session.refresh(owner)
-        result = await db_session.execute(select(User).where(User.id == owner.id))
-        refreshed = result.scalar_one()
-        assert refreshed.damage_reported == 2, (
-            f"Expected counter == 2 after two damage reports, got {refreshed.damage_reported}"
+        result3 = await db_session.execute(select(User).where(User.id == owner.id))
+        refreshed3 = result3.scalar_one()
+        assert refreshed3.damage_reported == 0, (
+            f"Expected owner counter == 0 (damage is attributed to borrower), got "
+            f"{refreshed3.damage_reported}"
         )
 
 

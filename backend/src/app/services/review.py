@@ -239,16 +239,40 @@ class ReviewService:
         avg_rating, rating_count = tool_result.one()
         tool = await db.get(Tool, tool_id)
         if tool:
-            tool.avg_rating = float(avg_rating)
-            tool.rating_count = rating_count
+            tool.avg_rating = float(avg_rating) if avg_rating is not None else 0.0
+            tool.rating_count = int(rating_count) if rating_count is not None else 0
             db.add(tool)
 
-        # User trust_score (same as average received rating)
+        # User trust_score: average received rating, with damage reports
+        # counted as 1-star equivalents per the spec.
         user_result = await db.execute(
             select(func.coalesce(func.avg(Review.rating), 0)).where(Review.reviewee_id == user_id)
         )
-        trust = user_result.scalar() or 0.0
+        trust = float(user_result.scalar() or 0.0)
+
+        # Fetch damage report count for this user as a borrower.
+        damage_result = await db.execute(
+            select(func.count(Reservation.id)).where(
+                Reservation.borrower_id == user_id,
+                Reservation.damage_reported.is_(True),
+            )
+        )
+        damage_count = int(damage_result.scalar() or 0)
+
         user = await db.get(User, user_id)
         if user:
+            # Each damage report counts as a 1-star review.
+            # Weighted average: (sum_of_ratings + 1 * damage_count) / (review_count + damage_count)
+            review_count = int(
+                (
+                    await db.execute(
+                        select(func.count(Review.id)).where(Review.reviewee_id == user_id)
+                    )
+                ).scalar()
+                or 0
+            )
+            total_count = review_count + damage_count
+            if total_count > 0:
+                trust = (trust * review_count + 1.0 * damage_count) / total_count
             user.trust_score = float(trust)
             db.add(user)

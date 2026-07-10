@@ -72,15 +72,6 @@ class TestScenario2SuspendedMemberCannotUseRestrictedFeatures:
         )
         assert response.status_code == 403
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: get_current_member (app/dependencies.py) requires "
-        "status == ACTIVE for EVERY member-gated route, including read-only ones "
-        "-- GET /tools (browse) and GET /reservations (own history). The doc "
-        "explicitly requires suspended members retain read-only browse access "
-        "and can still view their own reservation history; today they get 403 "
-        "on those too, not just the write actions the doc means to restrict.",
-    )
     async def test_suspended_member_can_still_browse_read_only(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -97,14 +88,6 @@ class TestScenario2SuspendedMemberCannotUseRestrictedFeatures:
 
 
 class TestScenario3SuspendedMemberCanStillLogIn:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: AuthService.login (app/services/auth.py) rejects any "
-        "user whose status != ACTIVE with the same generic 'Invalid email or "
-        "password' error used for wrong credentials -- a suspended member cannot "
-        "log in at all today, let alone see a suspension notice. The doc "
-        "requires login to succeed and show the suspension notice/status.",
-    )
     async def test_suspended_member_login_succeeds(self, client, db_session: AsyncSession) -> None:
         admin = await make_admin(db_session)
         member = await UserFactory.create_async(db_session, email="suspended-us30@example.com")

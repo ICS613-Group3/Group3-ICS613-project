@@ -6,7 +6,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_admin_user, get_current_member, get_db
+from app.api.deps import (
+    get_current_admin_user,
+    get_current_member,
+    get_current_member_read_only,
+    get_db,
+)
 from app.core.exceptions import PermissionDeniedError, parse_enum_or_raise
 from app.models.enums import ToolCategory, ToolCondition
 from app.models.user import User
@@ -50,7 +55,7 @@ async def create_tool(
 @router.get("", response_model=PaginatedResponse[ToolResponse])
 async def list_tools(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
     category: Annotated[str | None, Query(description="Filter by tool category")] = None,
     search: Annotated[str | None, Query(description="Search by name or description")] = None,
     available_start: Annotated[
@@ -94,7 +99,7 @@ async def list_tools(
 @router.get("/me", response_model=PaginatedResponse[ToolResponse])
 async def list_my_tools(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ToolResponse]:
@@ -151,7 +156,7 @@ async def get_tool(
     db: Annotated[AsyncSession, Depends(get_db)],
     # Any authenticated member can view an active tool (read-only).
     # The dependency enforces auth; ownership is not required to read.
-    _current_user: Annotated[User, Depends(get_current_member)],
+    _current_user: Annotated[User, Depends(get_current_member_read_only)],
 ) -> ToolResponse:
     """Get a single active tool by ID."""
     service = ToolService()

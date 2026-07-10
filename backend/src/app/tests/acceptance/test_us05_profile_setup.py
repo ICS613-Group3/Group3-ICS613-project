@@ -40,13 +40,6 @@ class TestScenario1SetUpProfileAfterFirstLogin:
 
 
 class TestScenario2DisplayNameMissingOrBlank:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: UserService.update_profile (app/services/user.py) only "
-        "applies full_name when it is not None -- it never rejects blank/whitespace "
-        "values, and UserUpdate has no validator requiring non-blank full_name. A "
-        "whitespace-only name is currently accepted and saved as-is.",
-    )
     async def test_blank_display_name_is_rejected(self, client, db_session: AsyncSession) -> None:
         user = await UserFactory.create_async(db_session, full_name="Original Name")
 

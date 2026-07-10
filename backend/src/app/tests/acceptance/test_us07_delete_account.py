@@ -56,14 +56,6 @@ class TestScenario2ActiveReservationsBlockDeletion:
         assert response.status_code == 409
         assert "active reservations" in response.json()["detail"].lower()
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: UserService.soft_delete (app/services/user.py) only checks "
-        "reservations where the caller is the BORROWER. Its own docstring says 'Owners "
-        "can still soft-delete' -- but the doc requires blocking deletion when the "
-        "member's OWN LISTINGS have REQUESTED/APPROVED/PICKED_UP reservations on them "
-        "too, so a borrower mid-loan is currently left stranded if the owner deletes.",
-    )
     async def test_active_reservation_on_owned_listing_blocks_deletion(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -82,13 +74,6 @@ class TestScenario2ActiveReservationsBlockDeletion:
 
 
 class TestScenario3ReservationHistoryIntegrityPreserved:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: _anonymize_user (app/services/user.py) overwrites full_name "
-        "with the literal string 'Deleted User', destroying the display name entirely. "
-        "The doc requires the display name be the one PII field PRESERVED, specifically "
-        "so past reservation history and reviews still show who they were with.",
-    )
     async def test_display_name_is_preserved_after_deletion(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -102,14 +87,6 @@ class TestScenario3ReservationHistoryIntegrityPreserved:
 
 
 class TestScenario5SuspendedMemberCanStillDelete:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: DELETE /auth/me is gated by get_current_member "
-        "(app/dependencies.py), which requires status == ACTIVE and raises "
-        "403 PermissionDeniedError for any other status -- including SUSPENDED. "
-        "The doc explicitly requires suspended members retain the ability to "
-        "request account deletion.",
-    )
     async def test_suspended_member_can_delete_account(
         self, client, db_session: AsyncSession
     ) -> None:

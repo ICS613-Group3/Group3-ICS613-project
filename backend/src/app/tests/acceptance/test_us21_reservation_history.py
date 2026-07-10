@@ -36,14 +36,6 @@ class TestScenario1MemberViewsReservationsAsBorrower:
         assert listing["state"] == "REQUESTED"
         assert listing["start_date"] and listing["end_date"]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationResponse (app/schemas/reservation.py) exposes "
-        "only tool_id/borrower_id -- no tool name or owner name field, even though "
-        "ReservationService.list_reservations already selectinload()s both "
-        "Reservation.tool and Reservation.borrower. The doc requires the listing "
-        "show 'tool name, owner name, dates, and current status' directly.",
-    )
     async def test_listing_includes_tool_name_and_owner_name(
         self, client, db_session: AsyncSession
     ) -> None:

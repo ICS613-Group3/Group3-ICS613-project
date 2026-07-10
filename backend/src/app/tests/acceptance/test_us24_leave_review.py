@@ -46,13 +46,6 @@ class TestScenario1SubmitValidReview:
         assert data["reviewee_id"] == str(borrower.id)
         assert data["reviewer_id"] == str(owner.id)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReviewResponse (app/schemas/review.py) exposes only "
-        "reviewer_id/reviewee_id, not a reviewer display name -- the doc requires "
-        "the other party's profile show 'the rating, comment, and reviewer's "
-        "display name' directly on the review.",
-    )
     async def test_review_response_includes_reviewer_display_name(
         self, client, db_session: AsyncSession
     ) -> None:

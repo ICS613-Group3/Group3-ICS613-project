@@ -27,11 +27,6 @@ class TestScenario1UpdateProfileInformation:
 
 
 class TestScenario2DisplayNameCannotBeCleared:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: same root cause as US5 Scenario 2 -- "
-        "UserService.update_profile has no non-blank validation for full_name.",
-    )
     async def test_blank_display_name_rejected_and_previous_preserved(
         self, client, db_session: AsyncSession
     ) -> None:

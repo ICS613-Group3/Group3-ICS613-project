@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_member, get_db
+from app.api.deps import get_current_member, get_current_member_read_only, get_db
 from app.core.exceptions import NotFoundError
 from app.models.review import Review
 from app.models.user import User
@@ -49,7 +49,7 @@ async def create_review(
 async def get_reviews_for_reservation(
     reservation_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _current_user: Annotated[User, Depends(get_current_member)],
+    _current_user: Annotated[User, Depends(get_current_member_read_only)],
 ) -> list[ReviewResponse]:
     """Get all reviews for a specific reservation."""
     service = ReviewService()
@@ -66,7 +66,7 @@ async def get_reviews_for_reservation(
 )
 async def list_my_reviews(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
     role: Annotated[
         str,
         Query(description="'received' (default) or 'given'", pattern="^(given|received)$"),

@@ -138,12 +138,6 @@ class TestScenario4NonOverlappingRangesAccepted:
 
 
 class TestScenario5OneDayRentalHandledCorrectly:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: same as US13 Scenario 5 -- ReservationService."
-        "create_reservation rejects start_date == end_date outright, so a "
-        "1-day rental can never be submitted regardless of HST handling.",
-    )
     async def test_start_equals_end_accepted_as_single_day(
         self, client, db_session: AsyncSession
     ) -> None:
