@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_admin_user, get_current_member, get_db
+from app.api.deps import get_current_admin_user, get_current_member, get_current_member_read_only, get_current_user, get_db
 from app.dependencies_rate_limit import (
     rate_limit_forgot_password,
     rate_limit_login,
@@ -140,7 +140,7 @@ async def logout(
 
 @router.get("/me", response_model=UserProfile)
 async def get_me(
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
 ) -> UserProfile:
     """Return the current user's profile."""
     return UserProfile.model_validate(current_user)
@@ -168,9 +168,13 @@ async def update_me(
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_me(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    """Soft-delete the current user's account."""
+    """Soft-delete the current user's account.
+
+    Works for ACTIVE and SUSPENDED users. The service layer enforces
+    business rules (no active reservations, etc.).
+    """
     service = AuthService()
     await service.delete_me(db, current_user)
 

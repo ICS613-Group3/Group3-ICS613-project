@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_member, get_db
+from app.api.deps import get_current_member, get_current_member_read_only, get_db
 from app.models.user import User
 from app.schemas.notification import NotificationListResponse, NotificationResponse
 from app.services.notification import NotificationService
@@ -17,7 +17,7 @@ router = APIRouter()
 @router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_member)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
     unread_only: Annotated[bool, Query()] = False,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,

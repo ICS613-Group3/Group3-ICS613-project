@@ -45,8 +45,8 @@ class ReservationService:
             NotFoundError: if the tool is not active.
         """
         # Business rules
-        if start_date >= end_date:
-            raise ValidationError("start_date must be before end_date")
+        if start_date > end_date:
+            raise ValidationError("start_date must be on or before end_date")
         if start_date < date.today():
             raise ValidationError("Cannot request a reservation starting in the past")
 
@@ -81,7 +81,7 @@ class ReservationService:
             title="New reservation request",
             body=(
                 f"{borrower.full_name or borrower.email} requested your tool "
-                f"for {start_date} → {end_date}."
+                f"\"{tool.name}\" for {start_date} → {end_date}."
             ),
             payload={
                 "reservation_id": str(reservation.id),
@@ -220,12 +220,14 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_APPROVED,
             title="Reservation approved",
-            body=f"Your reservation for {reservation.start_date} → {reservation.end_date} was approved.",
+            body=f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was approved.",
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -248,13 +250,15 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_DENIED,
             title="Reservation denied",
             body=(
-                f"Your reservation for {reservation.start_date} → {reservation.end_date} was denied."
+                f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was denied."
                 + (f" Reason: {reason}" if reason else "")
             ),
             payload={"reservation_id": str(reservation.id)},
@@ -306,14 +310,17 @@ class ReservationService:
         recipient_id = (
             reservation.tool.owner_id if is_borrower else reservation.borrower_id
         )
+        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+        # recipient_name not needed; notification is addressed to the recipient implicitly
         await NotificationService().create(
             db,
             user_id=recipient_id,
             type_=NotificationType.RESERVATION_CANCELLED,
             title="Reservation cancelled",
             body=(
-                f"Reservation {reservation.id} was cancelled by the "
-                f"{'borrower' if is_borrower else 'owner'}. Reason: {reason}"
+                f"Reservation for \"{tool_name}\" was cancelled by the "
+                f"{'borrower' if is_borrower else 'owner'} ({actor.full_name or actor.email}). "
+                f"Reason: {reason}"
             ),
             payload={"reservation_id": str(reservation.id)},
         )
@@ -406,6 +413,9 @@ class ReservationService:
                 f"Must report within 7 days (returned {days_since_return} days ago)"
             )
 
+        if reservation.damage_reported:
+            raise ConflictError("Damage has already been reported for this reservation")
+
         reservation.damage_reported = True
         reservation.damage_description = description
         reservation.damage_reported_at = datetime.now(UTC)
@@ -432,21 +442,28 @@ class ReservationService:
                 actor_role="damage_report",
             )
 
-            # Increment the owner's damage counter atomically. A read-modify-write
+            # Increment the borrower's damage counter atomically. A read-modify-write
             # (``counter = counter + 1``) loses increments under concurrent calls;
             # the SQL ``SET col = col + 1`` is a single statement and atomic at
-            # the row level. Refresh afterwards so callers see the new value.
+            # the row level.
             from sqlalchemy import update
 
             await db.execute(
                 update(User)
-                .where(User.id == tool.owner_id)
+                .where(User.id == reservation.borrower_id)
                 .values(
                     damage_reported=User.damage_reported + 1,
                     updated_at=datetime.now(UTC),
                 )
             )
-            await db.refresh(owner)
+
+            # Recalculate the borrower's trust score — a damage report counts
+            # as a 1-star equivalent.
+            from app.services.review import ReviewService
+
+            await ReviewService._recalculate_ratings(
+                db, reservation.borrower_id, reservation.tool_id
+            )
 
             # Auto-cancel pending reservations.
             # Materialize the scalar result into a list once — SQLAlchemy
