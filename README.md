@@ -72,7 +72,7 @@ Data Layer (PostgreSQL 15)
 
 The API layer calls services only, keeping business logic centralized and testable.
 
-**Cross-cutting concerns:** JWT middleware (auth), APScheduler (background jobs), Email service (SMTP), Settings (pydantic-settings from `.env`).
+The application handles authentication (JWT), background scheduling (APScheduler), email notifications (SMTP), and environment-based configuration (pydantic-settings) across all layers.
 
 ### Architecture Diagram
 
@@ -155,7 +155,26 @@ The API layer calls services only, keeping business logic centralized and testab
 │   ├── .env                      # Local environment config (gitignored)
 │   └── .env.example              # Safe template — copy to .env
 ├── frontend/
-│   └── <!-- TODO: frontend lead to document structure -->
+│   ├── public/                   # Static assets served directly
+│   ├── src/
+│   │   ├── assets/               # Images, fonts, and other static files
+│   │   ├── components/           # Reusable UI components
+│   │   ├── data/                 # Mock data and frontend type definitions
+│   │   ├── pages/                # Page-level components
+│   │   ├── routes/               # Route definitions (AppRoutes.tsx)
+│   │   ├── app.css               # Global app styles
+│   │   ├── app.tsx               # Root application component
+│   │   ├── index.css             # Base/reset styles
+│   │   └── main.tsx              # Application entry point
+│   ├── .gitignore
+│   ├── eslint.config.js          # ESLint configuration
+│   ├── index.html                # HTML entry point
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── tsconfig.app.json         # TypeScript config for app code
+│   ├── tsconfig.json             # TypeScript root config
+│   ├── tsconfig.node.json        # TypeScript config for Node/Vite tooling
+│   └── vite.config.ts            # Vite configuration
 ├── docs/
 │   └── images/                   # Architecture and domain model diagrams
 └── README.md
@@ -221,7 +240,7 @@ python run.py --reload
 ```bash
 # 11. Set up the frontend (open in a new terminal from repo root)
 cd frontend
-# TODO: frontend lead to document npm install and start commands
+# Flag for additional documentation on npm install and start commands
 ```
 
 For full detail on each step — including Windows-specific commands, troubleshooting, and seed user credentials — see [`backend/BACKEND_SETUP.md`](backend/BACKEND_SETUP.md).
@@ -234,7 +253,7 @@ For full detail on each step — including Windows-specific commands, troublesho
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DATABASE_URL` | `postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing` | Main database connection (local dev default) |
+| `DATABASE_URL` | `postgresql+asyncpg://ics613user:ics613password @localhost:5432/toolsharing` | Main database connection (local dev default) |
 | `TEST_DATABASE_URL` | `…/toolsharing_test` | Test database connection |
 | `SECRET_KEY` | `change-me-…` (placeholder) | JWT signing key — placeholder accepted in `development`; **rejected in `production`** |
 | `ENVIRONMENT` | `development` | Controls startup validations (`development`, `test`, `production`) |
@@ -259,9 +278,9 @@ python run.py --reload
 ### Frontend
 ```bash
 cd frontend
-# TODO: frontend lead to document start command (e.g. npm run dev)
+# Flag for additional documentation to start command (e.g. npm run dev)
 ```
-- App: `<!-- TODO: e.g. http://localhost:5173 -->`
+- App: `http://localhost:5173`
 
 ### Docker containers (database only)
 
@@ -290,7 +309,7 @@ pytest src/app/tests/test_auth.py -v   # single file
 | Test Type | Owner | Where It Lives |
 |-----------|-------|----------------|
 | Unit / integration (automated) | Backend lead | `src/app/tests/` (pytest) |
-| Manual acceptance test cases | QA lead | Separate document (one case per user story scenario) |
+| Manual acceptance test cases | QA lead | Separate document (at least one case per user story scenario) |
 | E2E browser automation | QA lead | Playwright or similar — future work |
 
 
