@@ -147,6 +147,14 @@ jobs:
       - name: mypy
         run: mypy src/
 
+      # -c pyproject.toml is required: bandit does not auto-discover
+      # pyproject.toml the way ruff/mypy do, it must be pointed at it.
+      # Findings accepted as false positives are documented inline with
+      # `# nosec <check-id> -- <reason>` rather than silenced globally,
+      # so the check stays effective against future real findings.
+      - name: bandit
+        run: bandit -r src/app -c pyproject.toml
+
   frontend-checks:
     name: Frontend lint, typecheck, build
     runs-on: ubuntu-latest

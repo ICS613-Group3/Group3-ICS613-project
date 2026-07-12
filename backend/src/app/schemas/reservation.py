@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.enums import ReservationState
 
@@ -66,7 +67,9 @@ class ReservationResponse(BaseModel):
                 data.borrower_name = getattr(borrower, "full_name", None) or getattr(
                     borrower, "email", None
                 )
-        except Exception:
+        except SQLAlchemyError:
+            # Relationship not loaded / instance detached from its session --
+            # fall back to the base data without the enriched display names.
             pass
         return data
 

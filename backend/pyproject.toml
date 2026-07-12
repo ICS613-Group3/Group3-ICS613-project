@@ -77,3 +77,6 @@ exclude_lines = [
 
 [tool.coverage.xml]
 output = "coverage.xml"
+
+[tool.bandit]
+exclude_dirs = ["src/app/tests"]

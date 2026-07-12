@@ -44,3 +44,8 @@ ruff>=0.8,<1.0
 # mypy upper bound raised from <2.0 to <3.0: the SQLAlchemy 2.0 mypy plugin
 # requires mypy >= 1.0 and was tested up to 2.x; pinning to <2.0 would block it.
 mypy>=1.13,<3.0
+# Security static analysis: flags known-dangerous patterns (hardcoded
+# secrets, weak hashes, shell=True, etc). Config lives in [tool.bandit]
+# in pyproject.toml -- pass -c pyproject.toml when invoking, bandit does
+# not auto-discover it.
+bandit>=1.9,<2.0

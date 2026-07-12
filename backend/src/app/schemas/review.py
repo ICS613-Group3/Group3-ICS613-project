@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy.exc import SQLAlchemyError
 
 
 class ReviewCreate(BaseModel):
@@ -54,6 +55,8 @@ class ReviewResponse(BaseModel):
                 data.reviewee_name = getattr(reviewee, "full_name", None) or getattr(
                     reviewee, "email", None
                 )
-        except Exception:
+        except SQLAlchemyError:
+            # Relationship not loaded / instance detached from its session --
+            # fall back to the base data without the enriched display names.
             pass
         return data
