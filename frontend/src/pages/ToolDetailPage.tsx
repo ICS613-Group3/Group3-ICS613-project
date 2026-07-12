@@ -11,7 +11,6 @@ import {
   type MockReservation,
   type ReservationStatus,
 } from '../data/mockData';
-import { formatRating } from '../utils/formatRating';
 
 /**
  * Active reservation statuses that should block new overlapping reservation requests.
@@ -243,7 +242,7 @@ function ToolDetailPage() {
                 {categoryLabels[tool.category]}
               </span>
 
-              <span className="tool-rating">Rating: {formatRating(tool.rating)}/5</span>
+              <span className="tool-rating">Rating: {tool.rating}/5</span>
             </div>
 
             <h2>{tool.name}</h2>
