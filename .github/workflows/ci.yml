@@ -15,7 +15,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: ics613user
-          POSTGRES_PASSWORD: ics613password
+          POSTGRES_PASSWORD: ics613password  # pragma: allowlist secret -- throwaway CI-only Postgres container credential, not a real secret
           POSTGRES_DB: toolsharing_test
         ports:
           - 5432:5432
@@ -216,3 +216,78 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report/
           retention-days: 14
+
+  secrets-scan:
+    name: Secrets scan (detect-secrets)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install pre-commit
+        run: pip install 'pre-commit>=4.0,<5.0'
+
+      # Caches each hook's isolated environment (detect-secrets itself,
+      # pinned via `rev:` in .pre-commit-config.yaml) so this job doesn't
+      # reinstall it on every run.
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # Runs the same detect-secrets check contributors run locally via
+      # `pre-commit install`, against all tracked files (not just staged
+      # ones), so a PR can't slip a secret past CI even from a contributor
+      # who skipped installing the hook locally.
+      - name: pre-commit (detect-secrets)
+        run: pre-commit run --all-files --show-diff-on-failure detect-secrets
+
+  frontend-semgrep:
+    name: Frontend SAST (semgrep)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      # semgrep is pip-installed rather than declared in a requirements
+      # file because frontend/ has no Python dependency manifest -- this
+      # is the only Python tool that touches frontend/, so its version is
+      # pinned at the point of installation instead.
+      - name: Install semgrep
+        run: pip install 'semgrep>=1.169,<2.0'
+
+      # Scoped to frontend/src only (mirrors eslint.config.js's `files:
+      # ['src/**/*.{ts,tsx}']` scoping) -- e2e/ is Playwright test code,
+      # not app source. p/react + p/typescript: framework/language-
+      # specific rules. p/owasp-top-ten: broader web-vuln coverage not
+      # specific to React. Deliberately not running semgrep's Python
+      # rules -- bandit already covers backend/ (see backend-lint's
+      # bandit step) and they'd mostly duplicate it.
+      # `semgrep scan` (not `semgrep ci`) is used deliberately: `semgrep
+      # ci` needs a Semgrep App account/token this repo doesn't have
+      # configured. `--error` is required because `semgrep scan` exits 0
+      # on findings by default. Verified locally at introduction time: 0
+      # findings against frontend/src with this exact ruleset, so this
+      # starts as a real blocking gate rather than continue-on-error.
+      # Suppress genuine future false positives inline with a reasoned
+      # `// nosemgrep: <rule-id> -- reason` comment, mirroring bandit's
+      # `# nosec` convention, rather than disabling rules globally.
+      - name: semgrep (frontend SAST)
+        run: |
+          semgrep scan \
+            --config p/react \
+            --config p/typescript \
+            --config p/owasp-top-ten \
+            --error \
+            frontend/src

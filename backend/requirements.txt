@@ -49,3 +49,7 @@ mypy>=1.13,<3.0
 # in pyproject.toml -- pass -c pyproject.toml when invoking, bandit does
 # not auto-discover it.
 bandit>=1.9,<2.0
+# Pre-commit hook runner (config: .pre-commit-config.yaml at repo root).
+# Manages its own isolated environment per hook (detect-secrets is pinned
+# separately via `rev:` in that file, not here).
+pre-commit>=4.0,<5.0

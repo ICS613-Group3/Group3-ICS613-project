@@ -87,4 +87,23 @@ Each assignee will change the task status when they start and when they complete
 
 
 
+# Local security tooling setup
+
+This repo uses [pre-commit](https://pre-commit.com/) to catch committed
+secrets before they leave your machine. One-time setup after cloning:
+
+    pip install pre-commit
+    pre-commit install
+
+This installs a git hook that runs `detect-secrets` against staged files
+on every commit, checked against `.secrets.baseline`. If it flags a new
+finding that's a genuine false positive, update the baseline with:
+
+    detect-secrets scan --exclude-files 'package-lock\.json$' > .secrets.baseline
+
+and commit the updated file — do not delete `.secrets.baseline` to make
+the hook pass. If a finding looks like a real secret, treat it as an
+incident (rotate/remove the credential) instead of baselining it away.
+
+
 The README will be updated as the project progresses.
