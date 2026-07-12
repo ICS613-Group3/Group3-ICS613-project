@@ -391,6 +391,29 @@ class TestMyTools:
         assert data["total"] == 4
         assert data["pages"] == 2
 
+    async def test_list_my_tools_empty_state(
+        self,
+        client,
+        db_session: AsyncSession,
+    ) -> None:
+        """A member who owns no tools gets an empty list, not an error."""
+        owner = await UserFactory.create_async(db_session)
+
+        response = await client.get(
+            "/api/v1/tools/me",
+            headers=_bearer(owner),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+
+    async def test_list_my_tools_requires_auth(self, client) -> None:
+        """Unauthenticated requests to /tools/me are rejected."""
+        response = await client.get("/api/v1/tools/me")
+        assert response.status_code == 401
+
 
 # ── Get single ────────────────────────────────────────────────────────────
 

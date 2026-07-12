@@ -183,3 +183,37 @@ class TestScenario5ViewDetailedInformation:
     )
     async def test_lending_rules_return_time_and_availability_calendar_shown(self) -> None:
         raise NotImplementedError
+
+
+class TestScenario6SearchYieldsZeroMatchingResults:
+    @pytest.mark.skip(
+        reason="not implemented: the QA doc requires the exact empty-state copy 'No "
+        "tools found matching your search. Try a different keyword or browse all "
+        "tools.' -- this string exists nowhere in the backend (it returns a bare "
+        "empty items=[] list, 200 OK) or the frontend. This is UI copy, not an API "
+        "contract, and has not been built on either side."
+    )
+    async def test_zero_results_returns_empty_list_with_no_error(self) -> None:
+        raise NotImplementedError
+
+
+class TestScenario7CategoryFilterYieldsNoMatchingResults:
+    @pytest.mark.skip(
+        reason="not implemented: the QA doc requires the exact empty-state copy 'No "
+        "tools in this category yet. Browse all categories.' plus a removable filter "
+        "chip -- neither the message text nor a filter-chip concept exists in the "
+        "backend response; this is frontend-only presentation that hasn't been built."
+    )
+    async def test_category_filter_empty_returns_empty_list(self) -> None:
+        raise NotImplementedError
+
+
+class TestScenario8BrowseWhenNoActiveListingsExist:
+    @pytest.mark.skip(
+        reason="not implemented: the QA doc requires the exact empty-state copy 'No "
+        "tools available right now. Be the first to list a tool!' plus a create-"
+        "listing call-to-action -- neither exists in the backend response; this is "
+        "frontend-only presentation that hasn't been built."
+    )
+    async def test_no_active_listings_returns_empty_list(self) -> None:
+        raise NotImplementedError

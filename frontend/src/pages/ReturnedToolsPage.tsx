@@ -5,6 +5,7 @@ import {
   mockTools,
   type ToolCategory,
 } from '../data/mockData';
+import { formatRating } from '../utils/formatRating';
 
 /**
  * ReturnedToolMockInfo
@@ -243,7 +244,7 @@ function ReturnedToolsPage() {
                     <span className="status-badge">
                       {categoryLabels[tool.category]}
                     </span>
-                    <span className="rating">Rating: {tool.rating}/5</span>
+                    <span className="rating">Rating: {formatRating(tool.rating)}/5</span>
                   </div>
 
                   <h2>{tool.name}</h2>
