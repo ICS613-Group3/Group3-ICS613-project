@@ -155,7 +155,7 @@ function AvailableToolsPage() {
                   <span className="status-badge">
                     {categoryLabels[tool.category]}
                   </span>
-                  <span className="rating">Rating: {tool.rating}/5</span>
+                  <span className="rating">Rating: {(Math.trunc(Number(tool.rating) * 100) / 100).toFixed(2)}/5</span>
                 </div>
 
                 <h2>{tool.name}</h2>
