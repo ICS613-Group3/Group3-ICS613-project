@@ -31,9 +31,7 @@ class TestAdminListUsers:
     async def test_filter_by_status(self, client, db_session: AsyncSession) -> None:
         """Admin can filter the user list by status."""
         admin = await AdminFactory.create_async(db_session)
-        suspended = await UserFactory.create_async(
-            db_session, status=UserStatus.SUSPENDED
-        )
+        suspended = await UserFactory.create_async(db_session, status=UserStatus.SUSPENDED)
         await UserFactory.create_async(db_session, status=UserStatus.ACTIVE)
 
         token = create_access_token(admin.id)
@@ -66,9 +64,7 @@ class TestAdminListUsers:
         ids = {item["id"] for item in data["items"]}
         assert str(target.id) in ids
 
-    async def test_non_admin_cannot_list_users(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_non_admin_cannot_list_users(self, client, db_session: AsyncSession) -> None:
         """Non-admin users receive a 403 when listing users."""
         regular_user = await UserFactory.create_async(db_session)
         token = create_access_token(regular_user.id)
@@ -114,9 +110,7 @@ class TestAdminGetUser:
 
         assert response.status_code == 404
 
-    async def test_non_admin_cannot_get_user(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_non_admin_cannot_get_user(self, client, db_session: AsyncSession) -> None:
         """Non-admin users receive a 403 when fetching a user by ID."""
         regular_user = await UserFactory.create_async(db_session)
         target = await UserFactory.create_async(db_session)

@@ -42,9 +42,7 @@ async def list_users(
     )
     items = [UserProfile.model_validate(u) for u in users]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.get("/users/{user_id}", response_model=UserProfile)
