@@ -207,7 +207,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing_e2e
+      DATABASE_URL: postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing_e2e  # pragma: allowlist secret -- throwaway CI-only Postgres connection string, not a real secret
       SECRET_KEY: test-secret-key-for-e2e-only-32-chars-min-ok  # pragma: allowlist secret -- throwaway CI-only JWT signing key, not a real secret
       DISABLE_SCHEDULER: "true"
       # Fixed (not randomly generated) so login.spec.ts can log in as a
