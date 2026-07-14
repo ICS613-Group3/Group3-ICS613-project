@@ -1,0 +1,10 @@
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        # package-lock.json's integrity hashes are long base64 blobs that
+        # trip the high-entropy-string detector; excluded rather than
+        # baselined so future lockfile churn doesn't need re-auditing.
+        exclude: package-lock\.json$

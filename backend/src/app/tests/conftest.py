@@ -18,9 +18,7 @@ import os
 os.environ.setdefault("DISABLE_SCHEDULER", "true")
 # 48-char test key — meets the minimum length validator (>=32) and avoids
 # the dev-placeholder check ("change-me", "replace-with", ...).
-os.environ.setdefault(
-    "SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok"
-)
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok")
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing_test",
@@ -61,9 +59,7 @@ def _configure_test_env() -> None:
     ``DATABASE_URL`` in case a different process mutated it.
     """
     os.environ["DISABLE_SCHEDULER"] = "true"
-    os.environ.setdefault(
-        "SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok"
-    )
+    os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok")
     os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
     # Force the cached engine to be re-built with the test DATABASE_URL.
     reset_engine_cache()

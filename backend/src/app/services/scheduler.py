@@ -196,11 +196,13 @@ class SchedulerService:
             for res in soft_result.scalars().all():
                 # Dedup: any recent RESERVATION_OVERDUE notification for this user?
                 existing = await db.execute(
-                    select(Notification.id).where(
+                    select(Notification.id)
+                    .where(
                         Notification.user_id == res.borrower_id,
                         Notification.type == NotificationType.RESERVATION_OVERDUE,
                         Notification.created_at >= dedup_cutoff,
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 if existing.scalar_one_or_none() is not None:
                     continue

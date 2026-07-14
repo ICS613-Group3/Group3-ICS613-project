@@ -59,7 +59,7 @@ def _handle_app_error(_request: Request, exc: AppError) -> JSONResponse:
         (NotFoundError, status.HTTP_404_NOT_FOUND),
         (PermissionDeniedError, status.HTTP_403_FORBIDDEN),
         (ConflictError, status.HTTP_409_CONFLICT),
-        (ValidationError, status.HTTP_422_UNPROCESSABLE_ENTITY),
+        (ValidationError, status.HTTP_422_UNPROCESSABLE_CONTENT),
         (VerifyTokenError, status.HTTP_400_BAD_REQUEST),
         (AuthenticationError, status.HTTP_401_UNAUTHORIZED),
         (TooManyRequestsError, status.HTTP_429_TOO_MANY_REQUESTS),

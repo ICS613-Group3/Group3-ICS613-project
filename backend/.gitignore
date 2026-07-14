@@ -60,6 +60,7 @@ alembic/__pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
 
 # mypy
 .mypy_cache/

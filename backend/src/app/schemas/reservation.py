@@ -1,9 +1,11 @@
 """Reservation request/response schemas."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.enums import ReservationState
 
@@ -46,7 +48,7 @@ class ReservationResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _extract_names(cls, data):
+    def _extract_names(cls, data: Any) -> Any:
         """Extract display names from ORM relationships before validation."""
         if isinstance(data, dict):
             return data
@@ -57,11 +59,17 @@ class ReservationResponse(BaseModel):
                 data.tool_name = getattr(tool, "name", None)
                 owner = getattr(tool, "owner", None)
                 if owner is not None:
-                    data.owner_name = getattr(owner, "full_name", None) or getattr(owner, "email", None)
+                    data.owner_name = getattr(owner, "full_name", None) or getattr(
+                        owner, "email", None
+                    )
             borrower = getattr(data, "borrower", None)
             if borrower is not None:
-                data.borrower_name = getattr(borrower, "full_name", None) or getattr(borrower, "email", None)
-        except Exception:
+                data.borrower_name = getattr(borrower, "full_name", None) or getattr(
+                    borrower, "email", None
+                )
+        except SQLAlchemyError:
+            # Relationship not loaded / instance detached from its session --
+            # fall back to the base data without the enriched display names.
             pass
         return data
 

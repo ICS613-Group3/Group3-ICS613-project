@@ -4,7 +4,7 @@ import uuid
 from contextlib import asynccontextmanager
 from io import BytesIO
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -107,7 +107,7 @@ async def register_and_verify(
     admin = admin or await make_admin(db_session)
     token = await invite_email(db_session, email, admin)
 
-    with patch.object(EmailService, "send_verification_email", AsyncMock()):
+    with patch.object(EmailService, "send_verification_email", MagicMock()):
         response = await client.post(
             "/api/v1/auth/register",
             json={

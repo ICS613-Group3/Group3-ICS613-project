@@ -38,9 +38,9 @@ async def deactivate_user(
 @router.post("/users/{user_id}/reactivate", status_code=status.HTTP_200_OK)
 async def reactivate_user(
     user_id: uuid.UUID,
-    request_data: AdminUserReactivate = AdminUserReactivate(),
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_admin_user)],
+    request_data: AdminUserReactivate = AdminUserReactivate(),
 ) -> dict:
     """Admin reactivates a suspended member account."""
     await AdminService().reactivate_user(
@@ -83,6 +83,4 @@ async def list_audit_log(
     )
     items = [AuditLogResponse.model_validate(e) for e in entries]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)

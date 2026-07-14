@@ -79,9 +79,7 @@ class AuthService:
 
     async def list_invites(self, db: AsyncSession) -> list[InviteToken]:
         """List all invite tokens, newest first (admin-only)."""
-        result = await db.execute(
-            select(InviteToken).order_by(InviteToken.created_at.desc())
-        )
+        result = await db.execute(select(InviteToken).order_by(InviteToken.created_at.desc()))
         return list(result.scalars().all())
 
     # ------------------------------------------------------------------
@@ -178,7 +176,7 @@ class AuthService:
         return {
             "access_token": create_access_token(user.id),
             "refresh_token": create_refresh_token(user.id),
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105 -- OAuth2 scheme name, not a credential
         }
 
     async def resend_verification(
@@ -260,7 +258,7 @@ class AuthService:
         return {
             "access_token": create_access_token(user.id),
             "refresh_token": create_refresh_token(user.id),
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105 -- OAuth2 scheme name, not a credential
         }
 
     async def refresh(
@@ -289,7 +287,7 @@ class AuthService:
         return {
             "access_token": create_access_token(user.id),
             "refresh_token": create_refresh_token(user.id),
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105 -- OAuth2 scheme name, not a credential
         }
 
     async def logout(self, db: AsyncSession, user: User) -> None:
@@ -377,7 +375,7 @@ class AuthService:
         return {
             "access_token": create_access_token(user.id),
             "refresh_token": create_refresh_token(user.id),
-            "token_type": "bearer",
+            "token_type": "bearer",  # nosec B105 -- OAuth2 scheme name, not a credential
         }
 
     # ------------------------------------------------------------------

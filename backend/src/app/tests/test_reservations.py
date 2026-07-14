@@ -18,12 +18,11 @@ def _make_email() -> str:
 
 # ── Create Reservation ─────────────────────────────────────────────────────
 
+
 class TestCreateReservation:
     """Tests for POST /api/v1/reservations."""
 
-    async def test_create_reservation_happy_path(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_create_reservation_happy_path(self, client, db_session: AsyncSession) -> None:
         """A borrower can create a reservation for someone else's tool."""
         # Create owner with tool
         owner = await UserFactory.create_async(db_session, email=_make_email())
@@ -74,7 +73,9 @@ class TestCreateReservation:
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
-        assert response.status_code == 409, f"Expected 409, got {response.status_code}: {response.json()}"
+        assert response.status_code == 409, (
+            f"Expected 409, got {response.status_code}: {response.json()}"
+        )
         assert "own tool" in response.json()["detail"].lower()
 
     async def test_create_overlapping_reservation_returns_409(
@@ -112,7 +113,9 @@ class TestCreateReservation:
             headers={"Authorization": f"Bearer {borrower2_token}"},
         )
 
-        assert response.status_code == 409, f"Expected 409, got {response.status_code}: {response.json()}"
+        assert response.status_code == 409, (
+            f"Expected 409, got {response.status_code}: {response.json()}"
+        )
         assert "already reserved" in response.json()["detail"].lower()
 
     async def test_create_reservation_start_after_end_returns_422(
@@ -135,7 +138,9 @@ class TestCreateReservation:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.json()}"
+        assert response.status_code == 422, (
+            f"Expected 422, got {response.status_code}: {response.json()}"
+        )
 
     async def test_create_reservation_past_date_returns_422(
         self, client, db_session: AsyncSession
@@ -157,17 +162,18 @@ class TestCreateReservation:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.json()}"
+        assert response.status_code == 422, (
+            f"Expected 422, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Approve Reservation ────────────────────────────────────────────────────
 
+
 class TestApproveReservation:
     """Tests for POST /api/v1/reservations/{id}/approve."""
 
-    async def test_owner_can_approve(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_owner_can_approve(self, client, db_session: AsyncSession) -> None:
         """The tool owner can approve a REQUESTED reservation."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -216,7 +222,9 @@ class TestApproveReservation:
             headers={"Authorization": f"Bearer {stranger_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
     async def test_borrower_cannot_approve_returns_403(
         self, client, db_session: AsyncSession
@@ -240,17 +248,18 @@ class TestApproveReservation:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Deny Reservation ───────────────────────────────────────────────────────
 
+
 class TestDenyReservation:
     """Tests for POST /api/v1/reservations/{id}/deny."""
 
-    async def test_owner_can_deny_with_reason(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_owner_can_deny_with_reason(self, client, db_session: AsyncSession) -> None:
         """The tool owner can deny a REQUESTED reservation with a reason."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -276,9 +285,7 @@ class TestDenyReservation:
         assert data["state"] == "DENIED"
         assert data["denied_reason"] == "Tool is under maintenance"
 
-    async def test_owner_can_deny_without_reason(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_owner_can_deny_without_reason(self, client, db_session: AsyncSession) -> None:
         """Deny works without a reason (reason is optional)."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -327,17 +334,18 @@ class TestDenyReservation:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Cancel Reservation ─────────────────────────────────────────────────────
 
+
 class TestCancelReservation:
     """Tests for POST /api/v1/reservations/{id}/cancel."""
 
-    async def test_borrower_can_cancel_requested(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_borrower_can_cancel_requested(self, client, db_session: AsyncSession) -> None:
         """The borrower can cancel their own REQUESTED reservation."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -364,9 +372,7 @@ class TestCancelReservation:
         assert data["cancelled_by_type"] == "borrower"
         assert data["cancelled_reason"] == "No longer needed"
 
-    async def test_owner_can_cancel_approved(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_owner_can_cancel_approved(self, client, db_session: AsyncSession) -> None:
         """The tool owner can cancel an APPROVED reservation."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -416,7 +422,9 @@ class TestCancelReservation:
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
-        assert response.status_code == 409, f"Expected 409, got {response.status_code}: {response.json()}"
+        assert response.status_code == 409, (
+            f"Expected 409, got {response.status_code}: {response.json()}"
+        )
         assert "deny" in response.json()["detail"].lower()
 
     async def test_stranger_cannot_cancel_returns_403(
@@ -444,17 +452,18 @@ class TestCancelReservation:
             headers={"Authorization": f"Bearer {stranger_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Mark Picked Up ─────────────────────────────────────────────────────────
 
+
 class TestMarkPickedUp:
     """Tests for POST /api/v1/reservations/{id}/mark-picked-up."""
 
-    async def test_borrower_can_mark_picked_up(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_borrower_can_mark_picked_up(self, client, db_session: AsyncSession) -> None:
         """The borrower can mark an APPROVED reservation as PICKED_UP."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -506,7 +515,9 @@ class TestMarkPickedUp:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.json()}"
+        assert response.status_code == 422, (
+            f"Expected 422, got {response.status_code}: {response.json()}"
+        )
         assert "start date" in response.json()["detail"].lower()
 
     async def test_non_borrower_cannot_mark_picked_up_returns_403(
@@ -533,17 +544,18 @@ class TestMarkPickedUp:
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Mark Returned ──────────────────────────────────────────────────────────
 
+
 class TestMarkReturned:
     """Tests for POST /api/v1/reservations/{id}/mark-returned."""
 
-    async def test_borrower_can_mark_returned(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_borrower_can_mark_returned(self, client, db_session: AsyncSession) -> None:
         """The borrower can mark a PICKED_UP reservation as RETURNED."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -592,17 +604,18 @@ class TestMarkReturned:
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Full Lifecycle ─────────────────────────────────────────────────────────
 
+
 class TestFullLifecycle:
     """Test the complete reservation lifecycle: REQUESTED → APPROVED → PICKED_UP → RETURNED."""
 
-    async def test_full_lifecycle(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_full_lifecycle(self, client, db_session: AsyncSession) -> None:
         """Walk through the entire reservation lifecycle end-to-end."""
         # 1. Setup: owner with tool, borrower
         owner = await UserFactory.create_async(db_session, email=_make_email())
@@ -758,6 +771,7 @@ class TestDamageCounterIsAtomic:
 
 # ── Report Damage ──────────────────────────────────────────────────────────
 
+
 class TestReportDamage:
     """Tests for POST /api/v1/reservations/{id}/mark-damaged."""
 
@@ -820,10 +834,13 @@ class TestReportDamage:
             headers={"Authorization": f"Bearer {borrower_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── List / Get Reservations ────────────────────────────────────────────────
+
 
 class TestExceptionHandlerRouting:
     """Regression tests for the central AppError → HTTP mapping.
@@ -845,9 +862,7 @@ class TestExceptionHandlerRouting:
             """Subclass used to test isinstance-based routing."""
 
         # Minimal request stand-in; the handler does not use it.
-        request = Request(
-            scope={"type": "http", "method": "GET", "path": "/", "headers": []}
-        )
+        request = Request(scope={"type": "http", "method": "GET", "path": "/", "headers": []})
         response = _handle_app_error(request, _ToolNotFoundError("tool is missing"))
         assert response.status_code == 404
         import json
@@ -866,9 +881,7 @@ class TestExceptionHandlerRouting:
         class _ToolUnavailableError(ConflictError):
             pass
 
-        request = Request(
-            scope={"type": "http", "method": "GET", "path": "/", "headers": []}
-        )
+        request = Request(scope={"type": "http", "method": "GET", "path": "/", "headers": []})
         response = _handle_app_error(request, _ToolUnavailableError("tool is being repaired"))
         assert response.status_code == 409
 
@@ -879,9 +892,7 @@ class TestExceptionHandlerRouting:
         from app.core.exceptions import NotFoundError
         from app.main import _handle_app_error
 
-        request = Request(
-            scope={"type": "http", "method": "GET", "path": "/", "headers": []}
-        )
+        request = Request(scope={"type": "http", "method": "GET", "path": "/", "headers": []})
         response = _handle_app_error(request, NotFoundError("missing"))
         assert response.status_code == 404
 
@@ -889,9 +900,7 @@ class TestExceptionHandlerRouting:
 class TestGetReservation:
     """Tests for GET /api/v1/reservations/{id}."""
 
-    async def test_borrower_can_get_own_reservation(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_borrower_can_get_own_reservation(self, client, db_session: AsyncSession) -> None:
         """A borrower can view their own reservation."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -930,9 +939,7 @@ class TestGetReservation:
         assert response.status_code == 200
         assert response.json()["id"] == str(reservation.id)
 
-    async def test_non_party_cannot_get_reservation(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_non_party_cannot_get_reservation(self, client, db_session: AsyncSession) -> None:
         """A user who is neither borrower nor owner gets 403.
 
         Regression: before the access check was added, any authenticated member
@@ -961,9 +968,7 @@ class TestGetReservation:
 class TestListReservations:
     """Tests for GET /api/v1/reservations."""
 
-    async def test_list_reservations_as_borrower(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_list_reservations_as_borrower(self, client, db_session: AsyncSession) -> None:
         """List reservations filtered by borrower role."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -988,9 +993,7 @@ class TestListReservations:
         assert data["total"] >= 1
         assert len(data["items"]) >= 1
 
-    async def test_list_reservations_as_owner(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_list_reservations_as_owner(self, client, db_session: AsyncSession) -> None:
         """List reservations filtered by owner role."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -1051,9 +1054,7 @@ class TestListReservations:
         for item in data["items"]:
             assert item["state"] == "APPROVED"
 
-    async def test_get_single_reservation(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_get_single_reservation(self, client, db_session: AsyncSession) -> None:
         """Get a reservation by ID."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -1092,17 +1093,18 @@ class TestListReservations:
             headers={"Authorization": f"Bearer {user_token}"},
         )
 
-        assert response.status_code == 404, f"Expected 404, got {response.status_code}: {response.json()}"
+        assert response.status_code == 404, (
+            f"Expected 404, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Admin Force Return ─────────────────────────────────────────────────────
 
+
 class TestAdminForceReturn:
     """Tests for POST /api/v1/reservations/{id}/admin-force-return."""
 
-    async def test_admin_can_force_return(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_admin_can_force_return(self, client, db_session: AsyncSession) -> None:
         """Admin can force-return a PICKED_UP reservation."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -1156,10 +1158,13 @@ class TestAdminForceReturn:
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
-        assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.json()}"
+        assert response.status_code == 403, (
+            f"Expected 403, got {response.status_code}: {response.json()}"
+        )
 
 
 # ── Unauthenticated Access ─────────────────────────────────────────────────
+
 
 class TestUnauthenticated:
     """Tests for unauthenticated access to reservation endpoints."""
@@ -1175,7 +1180,9 @@ class TestUnauthenticated:
             },
         )
 
-        assert response.status_code == 401, f"Expected 401, got {response.status_code}: {response.json()}"
+        assert response.status_code == 401, (
+            f"Expected 401, got {response.status_code}: {response.json()}"
+        )
 
     async def test_approve_without_auth_returns_401(self, client) -> None:
         """Approving without auth returns 401."""
@@ -1183,7 +1190,9 @@ class TestUnauthenticated:
             f"/api/v1/reservations/{uuid.uuid4()}/approve",
         )
 
-        assert response.status_code == 401, f"Expected 401, got {response.status_code}: {response.json()}"
+        assert response.status_code == 401, (
+            f"Expected 401, got {response.status_code}: {response.json()}"
+        )
 
 
 class TestCancellerTypeConstraint:
@@ -1226,16 +1235,13 @@ class TestReservationModerationAuditLog:
     deactivate and reactivate" would silently fail for these paths.
     """
 
-    async def test_mark_damaged_creates_audit_entry(
-        self, client, db_session: AsyncSession
-    ) -> None:
+    async def test_mark_damaged_creates_audit_entry(self, client, db_session: AsyncSession) -> None:
         """A damage report that auto-deactivates the tool also writes
         a TOOL_DEACTIVATED row in the admin audit log."""
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
         borrower = await UserFactory.create_async(db_session, email=_make_email())
-        borrower_token = create_access_token(borrower.id)
 
         from datetime import UTC, datetime, timedelta
 
@@ -1332,8 +1338,8 @@ class TestMarkDamagedAutoCancelNotifications:
     ) -> None:
         from sqlalchemy import select
 
-        from app.models.notification import Notification
         from app.models.enums import NotificationType
+        from app.models.notification import Notification
 
         owner = await UserFactory.create_async(db_session, email=_make_email())
         owner_token = create_access_token(owner.id)
@@ -1399,8 +1405,8 @@ class TestForceReturnOwnerNotification:
     ) -> None:
         from sqlalchemy import select
 
-        from app.models.notification import Notification
         from app.models.enums import NotificationType
+        from app.models.notification import Notification
 
         owner = await UserFactory.create_async(db_session, email=_make_email())
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
@@ -1431,6 +1437,5 @@ class TestForceReturnOwnerNotification:
         )
         owner_notif_list = owner_notifs.scalars().all()
         assert len(owner_notif_list) >= 1, (
-            "Tool owner should receive a notification when their tool is "
-            "force-returned by an admin"
+            "Tool owner should receive a notification when their tool is force-returned by an admin"
         )

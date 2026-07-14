@@ -24,7 +24,7 @@ def _anonymize_user(user: User) -> None:
     reviews and reservation history remain linked to a recognisable name.
     """
     user.email = f"deleted+{user.id}@example.com"
-    user.hashed_password = ""
+    user.hashed_password = ""  # nosec B105 -- clearing the hash on delete, not setting one
     user.bio = None
     user.neighborhood = None
     user.photo_url = None

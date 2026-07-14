@@ -105,9 +105,12 @@ class EmailService:
             self._backend.send(to_email, subject, body)
         except (smtplib.SMTPException, OSError) as exc:
             from app.core.logging import get_logger
+
             get_logger(__name__).warning(
                 "Email send failed (to=%s subject=%s): %s",
-                to_email, subject, exc,
+                to_email,
+                subject,
+                exc,
             )
 
     def send_verification_email(self, to_email: str, token: str) -> None:
