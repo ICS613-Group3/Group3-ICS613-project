@@ -16,10 +16,15 @@ import { ApiRequestError } from '../api/client';
  *
  * Frontend issues covered:
  * - #81 Create the login UI.
- * - #83 Display an error for an unverified account.
  * - #85 Display a generic invalid-login message.
  * - #89 Provide a forgot-password link.
- * - #110 Display an account-not-found message.
+ *
+ * #83 (unverified account) and #110 (account not found) are intentionally
+ * NOT distinguished from a wrong password: the backend's /auth/login
+ * always returns the same generic 401 "Invalid email or password" for any
+ * failure reason, to avoid revealing account existence/status to an
+ * unauthenticated caller (see AuthService.login). All three cases surface
+ * through the same #85 generic-message branch below.
  */
 function LoginPage() {
   const navigate = useNavigate();
@@ -82,15 +87,11 @@ function LoginPage() {
       navigate('/dashboard');
     } catch (error) {
       if (error instanceof ApiRequestError) {
-        const detail = error.detail.toLowerCase();
-
-        // Handle an account that still needs email verification.
-        if (detail.includes('verify') || detail.includes('pending')) {
-          setErrorMessage(
-            'Your account is pending email verification. Please verify your email or request a new verification email.',
-          );
-        } else if (error.status === 401 || error.status === 404) {
-          // Use a generic response so account existence is not exposed.
+        if (error.status === 401) {
+          // Generic response for every login failure reason (unknown
+          // email, unverified/deleted account, wrong password) — the
+          // backend deliberately doesn't distinguish these so account
+          // existence/status is never exposed to an unauthenticated caller.
           setErrorMessage('Invalid email or password.');
         } else if (error.status === 429) {
           setErrorMessage(
