@@ -1,135 +1,159 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
+// Import real backend authentication functions and token helpers.
+import { authApi } from '../api/auth';
+import { clearTokens, hasTokens } from '../api/client';
+
+// Notifications still use mock data until notification API integration is completed.
 import { mockNotifications } from '../data/mockData';
 
 /**
  * AppLayout
  *
- * Shared layout for:
- * - Header
- * - Top navigation
- * - Page content through <Outlet />
+ * Shared application layout containing:
+ * - Project header
+ * - Navigation
+ * - Authentication-aware links
+ * - Notification badge
+ * - Child page content through <Outlet />
  *
- * Current R1 mock auth behavior:
- * - If user is not logged in, show only Login and Register.
- * - If user is logged in, show member navigation and Logout.
+ * Authentication behavior:
+ * - Real API login stores JWT access and refresh tokens.
+ * - Logged-in navigation is shown when valid tokens are stored.
+ * - Logout calls the backend and clears local tokens.
  *
- * Task 4 notification behavior:
- * - Shows unread notification count beside the Notifications nav link.
- * - Listens for localStorage changes from NotificationsPage.
- *
- * Important:
- * - This is frontend-only mock auth and mock notification behavior.
- * - Later, real AuthContext/backend auth can replace localStorage.
+ * Temporary compatibility:
+ * - mockAuthStatus is still recognized because some pages, such as
+ *   registration and profile pages, have not yet been connected to the API.
+ * - Notifications still use mock data and localStorage.
  */
 function AppLayout() {
-  // React Router navigation for redirecting after mock logout.
+  // React Router navigation for redirecting after logout.
   const navigate = useNavigate();
 
-  // localStorage key used by LoginPage and RegisterPage for mock auth.
+  // Temporary localStorage key used by remaining mock authentication pages.
   const mockAuthKey = 'mockAuthStatus';
 
-  // localStorage key used by NotificationsPage for frontend-only read state.
+  // localStorage key used by the mock notification read state.
   const notificationReadStateKey = 'mockNotificationReadState';
 
   /**
-   * getStoredNotificationReadState
-   *
-   * Reads frontend-only notification read state from localStorage.
+   * Read the frontend-only notification state from localStorage.
    */
-  function getStoredNotificationReadState() {
+  function getStoredNotificationReadState(): Record<string, boolean> {
     const storedValue = localStorage.getItem(notificationReadStateKey);
 
     if (!storedValue) {
-      return {} as Record<string, boolean>;
+      return {};
     }
 
     try {
       return JSON.parse(storedValue) as Record<string, boolean>;
     } catch {
-      return {} as Record<string, boolean>;
+      return {};
     }
   }
 
   /**
-   * getUnreadNotificationCount
+   * Calculate the unread notification count.
    *
-   * Calculates unread notification count using:
-   * - mockData.ts default read values
-   * - localStorage override from NotificationsPage
+   * This currently combines:
+   * - Default notification values from mockData.ts
+   * - Read-state overrides saved by NotificationsPage
    */
-  function getUnreadNotificationCount() {
+  function getUnreadNotificationCount(): number {
     const storedReadState = getStoredNotificationReadState();
 
     return mockNotifications.filter((notification) => {
-      const isRead = storedReadState[notification.id] ?? notification.read;
+      const isRead =
+        storedReadState[notification.id] ?? notification.read;
+
       return !isRead;
     }).length;
   }
 
   /**
-   * Mock login state.
+   * Authentication state.
    *
-   * If localStorage contains mockAuthStatus = "logged-in",
-   * the user sees member-only nav links.
+   * A user is treated as logged in when:
+   * - Real JWT tokens are stored, or
+   * - The temporary mockAuthStatus flag exists
    */
   const [isLoggedIn, setIsLoggedIn] = useState(
-    () => localStorage.getItem(mockAuthKey) === 'logged-in',
+    () =>
+      hasTokens() ||
+      localStorage.getItem(mockAuthKey) === 'logged-in',
   );
 
-  // Store unread notification count for the nav badge.
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(
-    getUnreadNotificationCount,
-  );
+  // Store the current unread notification count for the navigation badge.
+  const [unreadNotificationCount, setUnreadNotificationCount] =
+    useState(getUnreadNotificationCount);
 
   /**
-   * Listen for mock login/register/logout changes.
+   * Keep navigation synchronized with authentication changes.
    *
-   * LoginPage and RegisterPage dispatch "mock-auth-change"
-   * after mock login/register.
+   * auth-change:
+   * - Used for real API authentication changes.
    *
-   * Logout also dispatches the same event after clearing localStorage.
+   * mock-auth-change:
+   * - Temporarily used by pages that still use mock authentication.
+   *
+   * storage:
+   * - Detects authentication changes made in another browser tab.
    */
   useEffect(() => {
-    const syncMockAuth = () => {
-      setIsLoggedIn(localStorage.getItem(mockAuthKey) === 'logged-in');
+    const syncAuth = () => {
+      const authenticated =
+        hasTokens() ||
+        localStorage.getItem(mockAuthKey) === 'logged-in';
+
+      setIsLoggedIn(authenticated);
     };
 
-    // Listen for same-tab mock auth changes.
-    window.addEventListener('mock-auth-change', syncMockAuth);
+    // Listen for real API authentication changes.
+    window.addEventListener('auth-change', syncAuth);
 
-    // Listen for localStorage changes from another browser tab.
-    window.addEventListener('storage', syncMockAuth);
+    // Temporarily listen for remaining mock authentication changes.
+    window.addEventListener('mock-auth-change', syncAuth);
 
-    // Clean up listeners when layout unmounts.
+    // Listen for localStorage updates from other browser tabs.
+    window.addEventListener('storage', syncAuth);
+
+    // Synchronize state when the layout first mounts.
+    syncAuth();
+
+    // Remove listeners when the component unmounts.
     return () => {
-      window.removeEventListener('mock-auth-change', syncMockAuth);
-      window.removeEventListener('storage', syncMockAuth);
+      window.removeEventListener('auth-change', syncAuth);
+      window.removeEventListener('mock-auth-change', syncAuth);
+      window.removeEventListener('storage', syncAuth);
     };
   }, []);
 
   /**
-   * Listen for notification read/unread changes.
+   * Keep the notification badge synchronized with mock notification changes.
    *
-   * NotificationsPage dispatches "mock-notifications-change"
-   * after marking notifications read or resetting the demo.
+   * This will later be replaced by notificationsApi.
    */
   useEffect(() => {
     const syncNotificationCount = () => {
       setUnreadNotificationCount(getUnreadNotificationCount());
     };
 
-    // Listen for same-tab notification changes.
-    window.addEventListener('mock-notifications-change', syncNotificationCount);
+    // Listen for notification changes made in the current browser tab.
+    window.addEventListener(
+      'mock-notifications-change',
+      syncNotificationCount,
+    );
 
-    // Listen for localStorage changes from another tab.
+    // Listen for notification changes made in another browser tab.
     window.addEventListener('storage', syncNotificationCount);
 
-    // Set the latest count when layout mounts.
+    // Calculate the current count when the layout mounts.
     syncNotificationCount();
 
-    // Clean up listeners when layout unmounts.
+    // Remove listeners when the component unmounts.
     return () => {
       window.removeEventListener(
         'mock-notifications-change',
@@ -140,29 +164,58 @@ function AppLayout() {
   }, []);
 
   /**
-   * Shared NavLink class helper.
-   *
-   * React Router gives us isActive.
-   * Active links receive both "nav-link" and "active".
+   * Return the appropriate CSS class for active navigation links.
    */
-  const getNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+  const getNavLinkClass = ({
+    isActive,
+  }: {
+    isActive: boolean;
+  }): string =>
     isActive ? 'nav-link active' : 'nav-link';
 
   /**
-   * Mock logout for R1 frontend demo.
+   * Log out the current user.
    *
-   * This clears the mock login flag, updates the nav,
-   * and redirects the user back to Login.
+   * Process:
+   * 1. Notify the backend when JWT tokens exist.
+   * 2. Clear local access and refresh tokens.
+   * 3. Clear the temporary mock authentication flag.
+   * 4. Update the navigation.
+   * 5. Redirect to the login page.
+   *
+   * Local cleanup still occurs if the backend logout request fails.
    */
-  const handleLogout = () => {
-    localStorage.removeItem(mockAuthKey);
-    window.dispatchEvent(new Event('mock-auth-change'));
-    navigate('/login');
+  const handleLogout = async (): Promise<void> => {
+    try {
+      // Call POST /api/v1/auth/logout only for a real API session.
+      if (hasTokens()) {
+        await authApi.logout();
+      }
+    } catch (error) {
+      // Logout should still complete locally if the server is unavailable.
+      console.warn(
+        'Backend logout failed. Local authentication data will still be cleared.',
+        error,
+      );
+    } finally {
+      // Remove real API access and refresh tokens.
+      clearTokens();
+
+      // Remove temporary mock authentication status.
+      localStorage.removeItem(mockAuthKey);
+
+      // Notify the current browser tab that authentication changed.
+      window.dispatchEvent(new Event('auth-change'));
+      window.dispatchEvent(new Event('mock-auth-change'));
+
+      // Return the user to the login page.
+      navigate('/login');
+    }
   };
 
   return (
     <div className="app-shell">
-      {/* App header with project title and top navigation. */}
+      {/* Application header containing branding and navigation. */}
       <header className="app-header">
         {/* Project branding. */}
         <div>
@@ -170,51 +223,78 @@ function AppLayout() {
           <h1>Neighborhood Tool Sharing</h1>
         </div>
 
-        {/* Top navigation. */}
+        {/* Authentication-aware top navigation. */}
         <nav className="app-nav" aria-label="Main navigation">
           {isLoggedIn ? (
             <>
-              {/* Member dashboard link. */}
-              <NavLink className={getNavLinkClass} to="/dashboard">
+              {/* Member dashboard. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/dashboard"
+              >
                 Dashboard
               </NavLink>
 
               {/* Browse Tools dropdown. */}
               <div className="nav-dropdown">
-                <NavLink className="nav-link nav-dropdown-toggle" to="/tools">
+                <NavLink
+                  className="nav-link nav-dropdown-toggle"
+                  to="/tools"
+                >
                   Browse Tools
                 </NavLink>
 
-                {/* Tool-related dropdown links. */}
                 <div className="nav-dropdown-menu">
-                  <NavLink className="nav-dropdown-item" to="/tools">
+                  {/* Available tools. */}
+                  <NavLink
+                    className="nav-dropdown-item"
+                    to="/tools"
+                  >
                     Available Tools
                   </NavLink>
 
-                  <NavLink className="nav-dropdown-item" to="/tools?view=returned">
+                  {/* Returned tools. */}
+                  <NavLink
+                    className="nav-dropdown-item"
+                    to="/tools?view=returned"
+                  >
                     Returned Tools
                   </NavLink>
 
-                  <NavLink className="nav-dropdown-item" to="/tools/new">
+                  {/* Create a new tool listing. */}
+                  <NavLink
+                    className="nav-dropdown-item"
+                    to="/tools/new"
+                  >
                     Add New Tools
                   </NavLink>
                 </div>
               </div>
 
-              {/* Reservation workflow link. */}
-              <NavLink className={getNavLinkClass} to="/reservations">
+              {/* Reservation workflow. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/reservations"
+              >
                 Reservations
               </NavLink>
 
-              {/* Review history link. */}
-              <NavLink className={getNavLinkClass} to="/reviews/history">
+              {/* Review history. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/reviews/history"
+              >
                 Review History
               </NavLink>
 
-              {/* Notifications link with unread badge. */}
-              <NavLink className={getNavLinkClass} to="/notifications">
+              {/* Notifications with the current unread badge. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/notifications"
+              >
                 <span className="notification-nav-label">
                   Notifications
+
                   {unreadNotificationCount > 0 && (
                     <span className="nav-notification-badge">
                       {unreadNotificationCount}
@@ -223,27 +303,39 @@ function AppLayout() {
                 </span>
               </NavLink>
 
-              {/* Profile edit link for frontend issue #102. */}
-              <NavLink className={getNavLinkClass} to="/profile/edit">
+              {/* Profile editing. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/profile/edit"
+              >
                 Profile
               </NavLink>
 
-              {/* Account deletion link for frontend issues #105 and #107. */}
-              <NavLink className={getNavLinkClass} to="/account/delete">
+              {/* Account deletion. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/account/delete"
+              >
                 Delete Account
               </NavLink>
 
-              {/* Admin invite management link for frontend issues #62, #63, and #64. */}
-              <NavLink className={getNavLinkClass} to="/admin/invites">
+              {/* Admin invitation management. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/admin/invites"
+              >
                 Admin Invites
               </NavLink>
 
-              {/* US11 admin listing controls link. */}
-              <NavLink className={getNavLinkClass} to="/admin/listings">
+              {/* Admin listing management. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/admin/listings"
+              >
                 Admin Listings
               </NavLink>
 
-              {/* Logout action button styled like a nav tab. */}
+              {/* Real logout action. */}
               <button
                 className="nav-link nav-button"
                 type="button"
@@ -254,13 +346,19 @@ function AppLayout() {
             </>
           ) : (
             <>
-              {/* Public login link. */}
-              <NavLink className={getNavLinkClass} to="/login">
+              {/* Public login page. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/login"
+              >
                 Login
               </NavLink>
 
-              {/* Public register link. */}
-              <NavLink className={getNavLinkClass} to="/register">
+              {/* Public registration page. */}
+              <NavLink
+                className={getNavLinkClass}
+                to="/register"
+              >
                 Register
               </NavLink>
             </>
@@ -268,7 +366,7 @@ function AppLayout() {
         </nav>
       </header>
 
-      {/* Page content rendered by React Router child routes. */}
+      {/* Render the current child route. */}
       <main className="app-main">
         <Outlet />
       </main>
