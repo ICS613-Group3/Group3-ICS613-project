@@ -7,6 +7,129 @@ from app.models.enums import UserStatus
 from app.tests.factories import AdminFactory, UserFactory
 
 
+class TestAdminListUsers:
+    """GET /api/v1/admin/users"""
+
+    async def test_admin_lists_users(self, client, db_session: AsyncSession) -> None:
+        """Admin can list all non-deleted users."""
+        admin = await AdminFactory.create_async(db_session)
+        await UserFactory.create_async(db_session, full_name="Alice Borrower")
+        await UserFactory.create_async(db_session, full_name="Bob Owner")
+
+        token = create_access_token(admin.id)
+        response = await client.get(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Includes the admin plus the two created users.
+        assert data["total"] >= 3
+        assert len(data["items"]) >= 3
+
+    async def test_filter_by_status(self, client, db_session: AsyncSession) -> None:
+        """Admin can filter the user list by status."""
+        admin = await AdminFactory.create_async(db_session)
+        suspended = await UserFactory.create_async(
+            db_session, status=UserStatus.SUSPENDED
+        )
+        await UserFactory.create_async(db_session, status=UserStatus.ACTIVE)
+
+        token = create_access_token(admin.id)
+        response = await client.get(
+            "/api/v1/admin/users",
+            params={"status": "suspended"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        ids = {item["id"] for item in data["items"]}
+        assert str(suspended.id) in ids
+        assert all(item["status"] == "SUSPENDED" for item in data["items"])
+
+    async def test_search_by_name_or_email(self, client, db_session: AsyncSession) -> None:
+        """Admin can search users by email or full name."""
+        admin = await AdminFactory.create_async(db_session)
+        target = await UserFactory.create_async(db_session, full_name="Zephyr Unique")
+
+        token = create_access_token(admin.id)
+        response = await client.get(
+            "/api/v1/admin/users",
+            params={"search": "Zephyr"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        ids = {item["id"] for item in data["items"]}
+        assert str(target.id) in ids
+
+    async def test_non_admin_cannot_list_users(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """Non-admin users receive a 403 when listing users."""
+        regular_user = await UserFactory.create_async(db_session)
+        token = create_access_token(regular_user.id)
+
+        response = await client.get(
+            "/api/v1/admin/users",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+
+
+class TestAdminGetUser:
+    """GET /api/v1/admin/users/{id}"""
+
+    async def test_admin_gets_user(self, client, db_session: AsyncSession) -> None:
+        """Admin can fetch a single user's profile by ID."""
+        admin = await AdminFactory.create_async(db_session)
+        target = await UserFactory.create_async(db_session)
+
+        token = create_access_token(admin.id)
+        response = await client.get(
+            f"/api/v1/admin/users/{target.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(target.id)
+        assert data["email"] == target.email
+
+    async def test_get_user_not_found(self, client, db_session: AsyncSession) -> None:
+        """Fetching a nonexistent user returns 404."""
+        import uuid
+
+        admin = await AdminFactory.create_async(db_session)
+        token = create_access_token(admin.id)
+
+        response = await client.get(
+            f"/api/v1/admin/users/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 404
+
+    async def test_non_admin_cannot_get_user(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """Non-admin users receive a 403 when fetching a user by ID."""
+        regular_user = await UserFactory.create_async(db_session)
+        target = await UserFactory.create_async(db_session)
+        token = create_access_token(regular_user.id)
+
+        response = await client.get(
+            f"/api/v1/admin/users/{target.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+
+
 class TestAdminDeactivateUser:
     """POST /api/v1/admin/users/{id}/deactivate"""
 
