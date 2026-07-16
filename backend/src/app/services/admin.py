@@ -18,6 +18,63 @@ class AdminService:
     """Moderation actions performed by admins. Every action is audited."""
 
     # ------------------------------------------------------------------
+    # User listing (admin dashboard)
+    # ------------------------------------------------------------------
+    async def get_user(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+    ) -> User:
+        """Fetch a single non-deleted user by ID. Raises 404 if not found."""
+        result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise NotFoundError("User not found")
+        return user
+
+    async def list_users(
+        self,
+        db: AsyncSession,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[User], int]:
+        """List all non-deleted users with optional filters.
+
+        Admins can filter by status (ACTIVE, SUSPENDED, EMAIL_PENDING) and
+        search by email or full_name.
+        """
+        query = select(User).where(User.deleted_at.is_(None))
+        count_q = select(func.count(User.id)).where(User.deleted_at.is_(None))
+
+        if status:
+            try:
+                status_enum = UserStatus(status.upper())
+                query = query.where(User.status == status_enum)
+                count_q = count_q.where(User.status == status_enum)
+            except ValueError:
+                pass
+
+        if search:
+            pattern = f"%{search.strip()}%"
+            query = query.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
+            count_q = count_q.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
+
+        count_result = await db.execute(count_q)
+        total = count_result.scalar() or 0
+
+        query = (
+            query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+        )
+        result = await db.execute(query)
+        users = list(result.scalars().all())
+
+        return users, total
+
+    # ------------------------------------------------------------------
     # User management
     # ------------------------------------------------------------------
     async def deactivate_user(
