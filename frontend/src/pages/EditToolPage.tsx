@@ -501,29 +501,6 @@ function EditToolPage() {
     );
   }
 
-  /**
-   * US10 mock reactivate handler.
-   *
-   * This is useful for the demo so the team can see the status change both ways.
-   * Real backend can later connect this to an admin or owner reactivation endpoint.
-   */
-  function handleReactivateListing() {
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!isCurrentUserOwner) {
-      setErrorMessage('Only the tool owner can reactivate this listing.');
-      return;
-    }
-
-    if (isListingDeleted) {
-      setErrorMessage('This listing has been deleted and cannot be reactivated.');
-      return;
-    }
-
-    setListingState('ACTIVE');
-    setSuccessMessage('Mock listing reactivated and visible again.');
-  }
 
   /**
    * US10 mock delete handler.
@@ -589,10 +566,10 @@ function EditToolPage() {
       <section className={`listing-state-banner listing-state-${listingState.toLowerCase()}`}>
         <strong>Mock Listing Status:</strong> {listingState}
         {listingState === 'DEACTIVATED' && (
-          <span> — This listing is hidden from borrowers in the mock demo.</span>
+          <span> Ã¢â‚¬â€ This listing is hidden from borrowers in the mock demo.</span>
         )}
         {listingState === 'DELETED' && (
-          <span> — This listing is treated as removed in the mock demo.</span>
+          <span> Ã¢â‚¬â€ This listing is treated as removed in the mock demo.</span>
         )}
       </section>
 
@@ -924,7 +901,7 @@ function EditToolPage() {
                   {activeReservationsForTool.map((reservation) => (
                     <li key={reservation.id}>
                       <strong>
-                        {reservation.toolName} — {reservation.status}
+                        {reservation.toolName} Ã¢â‚¬â€ {reservation.status}
                       </strong>
                       <span>
                         {reservation.startDate} to {reservation.endDate}
@@ -976,15 +953,11 @@ function EditToolPage() {
               </button>
             </form>
 
-            {/* Reactivate button is demo-only helper after deactivation. */}
+            {/* Owners cannot reactivate listings. Reactivation is admin-only. */}
             {listingState === 'DEACTIVATED' && (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleReactivateListing}
-              >
-                Reactivate Mock Listing
-              </button>
+              <p className="workflow-note">
+                This listing is deactivated. Reactivation must be completed by an administrator.
+              </p>
             )}
 
             {/* Delete confirmation for US10. */}
