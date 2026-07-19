@@ -24,6 +24,10 @@ const activeReservationStatuses: ReservationStatus[] = [
   'PICKED_UP',
 ];
 
+// Mock logged-in member used by the current frontend demo.
+// Replace this with authenticated user data during real API integration.
+const currentMockUserId = 'user-1';
+
 /**
  * datesOverlap
  *
@@ -88,6 +92,9 @@ function ToolDetailPage() {
   // Find the matching tool from mock data.
   const tool = mockTools.find((mockTool) => mockTool.id === toolId);
 
+  // Owners cannot submit reservation requests for their own listings.
+  const isCurrentUserOwner = tool?.ownerId === currentMockUserId;
+
   // Local form state for the mock reservation request form.
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -148,6 +155,11 @@ function ToolDetailPage() {
       return;
     }
 
+    if (isCurrentUserOwner) {
+      setErrorMessage('You cannot request a reservation for your own tool.');
+      return;
+    }
+
     // Basic frontend validation for the mock demo.
     if (!startDate || !endDate) {
       setErrorMessage('Please select both a start date and an end date.');
@@ -172,7 +184,7 @@ function ToolDetailPage() {
 
     if (conflictingReservation) {
       setErrorMessage(
-        `Tool is not available for those dates. Please choose another date range. Conflict: ${conflictingReservation.startDate} to ${conflictingReservation.endDate} HST, status ${formatStatus(conflictingReservation.status)}. Future backend response: 409 Conflict.`,
+        `This tool is not available for the selected dates. Please choose another date range. The conflicting reservation is ${conflictingReservation.startDate} to ${conflictingReservation.endDate} HST.`,
       );
       return;
     }
@@ -299,13 +311,18 @@ function ToolDetailPage() {
             form shows the planned REQUESTED workflow using mock data.
           </p>
 
+          {isCurrentUserOwner && (
+            <p className="form-error">
+              You cannot request a reservation for your own tool.
+            </p>
+          )}
+
           {/* Backend-ready conflict explanation */}
           <section className="reservation-conflict-info-panel">
             <strong>Conflict check</strong>
             <p>
-              If the selected dates overlap an active reservation, the frontend
-              shows the same type of message expected from a future backend
-              <code> 409 Conflict </code> response.
+              If the selected dates overlap an active reservation, you will be
+              asked to choose another date range.
             </p>
           </section>
 
@@ -358,7 +375,7 @@ function ToolDetailPage() {
                   {activeReservationsForTool.map(
                     (reservation: MockReservation) => (
                       <li key={reservation.id}>
-                        {reservation.startDate} to {reservation.endDate} HST —{' '}
+                        {reservation.startDate} to {reservation.endDate} HST â€”{' '}
                         {formatStatus(reservation.status)}
                       </li>
                     ),
@@ -371,7 +388,11 @@ function ToolDetailPage() {
             {errorMessage && <p className="form-error">{errorMessage}</p>}
             {successMessage && <p className="success-message">{successMessage}</p>}
 
-            <button type="submit">Submit Reservation Request</button>
+            <button type="submit" disabled={isCurrentUserOwner}>
+              {isCurrentUserOwner
+                ? 'Owner Cannot Request'
+                : 'Submit Reservation Request'}
+            </button>
           </form>
         </aside>
       </div>
