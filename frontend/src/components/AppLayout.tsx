@@ -335,6 +335,30 @@ function AppLayout() {
                 Admin Listings
               </NavLink>
 
+              {/* Admin: Member Moderation profile management. */}
+              <NavLink
+                  className={getNavLinkClass}
+                  to="/admin/AdminModerationProfiles"
+              >
+                Member Moderation Profiles
+              </NavLink>
+
+              {/* Admin Moderation history. */}
+              <NavLink
+                  className={getNavLinkClass}
+                  to="/admin/ModerationHistoryPage"
+              >
+                Admin Moderation History
+              </NavLink>
+
+              {/* Admin Active Reservation management. */}
+              <NavLink
+                  className={getNavLinkClass}
+                  to="/admin/AdminReservationPage"
+              >
+                Admin Reservations
+              </NavLink>
+
               {/* Real logout action. */}
               <button
                 className="nav-link nav-button"

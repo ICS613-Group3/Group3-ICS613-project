@@ -705,6 +705,11 @@ select {
   margin-top: 1rem;
 }
 
+.moderation-reason-input {
+  width: 100%;
+  width: 400px;
+}
+
 .action-button {
   border: none;
   border-radius: 10px;
@@ -2707,7 +2712,9 @@ select {
   .tool-detail-title-row .tool-rating {
     margin-left: 0;
   }
+
 }
+
 
 /* ================================
    Task 5B Tool Form HST Polish

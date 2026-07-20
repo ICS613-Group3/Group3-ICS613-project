@@ -118,6 +118,7 @@ export interface UserProfile {
   violation_count: number;
   created_at: string;
   is_admin: boolean;
+  is_suspended: boolean;
 }
 
 export interface UserUpdate {

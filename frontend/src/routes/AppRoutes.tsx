@@ -6,6 +6,10 @@ import AppLayout from '../components/AppLayout';
 // Import admin pages.
 import AdminInvitesPage from '../pages/AdminInvitesPage';
 import AdminListingsPage from '../pages/AdminListingsPage';
+import AdminReservationPage from '../pages/AdminReservationPage';
+import ModerationHistoryPage from "../pages/ModerationHistoryPage";
+import AdminModerationProfiles from '../pages/AdminModerationProfiles';
+import AdminModerationIndivialProfile from '../pages/AdminModerationIndividualProfile';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -102,6 +106,16 @@ function AppRoutes() {
 
         {/* US11 admin listing controls route. */}
         <Route path="/admin/listings" element={<AdminListingsPage />} />
+
+        {/* US 30 and 31 amin suspend and reactivate member account*/}
+        <Route path="/admin/AdminModerationProfiles" element={<AdminModerationProfiles />} />
+        <Route path="/admin/AdminModerationProfiles/:memberId" element={<AdminModerationIndivialProfile />} />
+
+        {/* US 32 admin views moderation history */}
+        <Route path="/admin/ModerationHistoryPage" element={<ModerationHistoryPage />} />
+
+        {/* US 34 admin views all active reservations */}
+        <Route path="/admin/AdminReservationPage" element={<AdminReservationPage />} />
 
         {/* Mock authentication routes for R1 frontend demo. */}
         <Route path="/login" element={<LoginPage />} />
