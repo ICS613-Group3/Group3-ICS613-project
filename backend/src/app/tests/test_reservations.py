@@ -1378,7 +1378,7 @@ class TestMarkDamagedAutoCancelNotifications:
         notif_result = await db_session.execute(
             select(Notification).where(
                 Notification.user_id == borrower2.id,
-                Notification.type == NotificationType.RESERVATION_CANCELLED,
+                Notification.type == NotificationType.RESERVATION_CANCELLED.value,
             )
         )
         notifs = notif_result.scalars().all()
@@ -1426,7 +1426,7 @@ class TestForceReturnOwnerNotification:
         owner_notifs = await db_session.execute(
             select(Notification).where(
                 Notification.user_id == owner.id,
-                Notification.type == NotificationType.RESERVATION_RETURNED,
+                Notification.type == NotificationType.RESERVATION_RETURNED.value,
             )
         )
         owner_notif_list = owner_notifs.scalars().all()

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_current_member, get_current_member_read_only, get_db
 from app.core.exceptions import PermissionDeniedError, parse_enum_or_raise
-from app.models.enums import ToolCategory, ToolCondition
+from app.models.enums import ToolCondition
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.tool import (
@@ -29,8 +29,8 @@ async def create_tool(
     name: Annotated[str, Form(min_length=1, max_length=255)],
     category: Annotated[str, Form()],
     condition: Annotated[str, Form()],
-    description: Annotated[str | None, Form(max_length=5000)] = None,
-    photos: Annotated[list[UploadFile] | None, File()] = None,
+    description: Annotated[str, Form(min_length=1, max_length=5000)],
+    photos: Annotated[list[UploadFile], File()],
 ) -> ToolResponse:
     """Create a new tool listing with optional photos (multipart form)."""
     service = ToolService()
@@ -39,7 +39,7 @@ async def create_tool(
         owner=current_user,
         name=name,
         description=description,
-        category=ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")),
+        category=category,
         condition=ToolCondition(parse_enum_or_raise(condition, ToolCondition, "condition")),
         photos=photos,
     )
@@ -55,28 +55,36 @@ async def list_tools(
     search: Annotated[str | None, Query(description="Search by name or description")] = None,
     available_start: Annotated[str | None, Query(description="Availability start date (YYYY-MM-DD)")] = None,
     available_end: Annotated[str | None, Query(description="Availability end date (YYYY-MM-DD)")] = None,
+    condition: Annotated[str | None, Query(description="Filter by tool condition")] = None,
+    min_rating: Annotated[float | None, Query(description="Minimum average rating (0-5)")] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ToolResponse]:
-    """List active tools with optional filters.
+    """List active tools with optional filters (R2.B advanced search).
 
     Excludes tools owned by the current user so members never see
     their own listings in browse/search results.
+
+    Advanced filters (R2.B):
+      - condition: filter by ToolCondition enum value
+      - min_rating: only tools with avg_rating >= this value
     """
     from datetime import date
 
-    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
+    cond_enum = ToolCondition(parse_enum_or_raise(condition, ToolCondition, "condition")) if condition else None
     start = date.fromisoformat(available_start) if available_start else None
     end = date.fromisoformat(available_end) if available_end else None
 
     service = ToolService()
     tools, total = await service.list_tools(
         db,
-        category=cat_enum,
+        category=category,
         search=search,
         available_start=start,
         available_end=end,
         exclude_owner_id=current_user.id,
+        condition=cond_enum,
+        min_rating=min_rating,
         page=page,
         page_size=page_size,
     )
@@ -124,14 +132,13 @@ async def admin_list_all_tools(
     elif status_filter == "inactive":
         include_active = False
 
-    cat_enum = ToolCategory(parse_enum_or_raise(category, ToolCategory, "category")) if category else None
 
     service = ToolService()
     tools, total = await service.list_all_tools(
         db,
         include_active=include_active,
         include_inactive=include_inactive,
-        category=cat_enum,
+        category=category,
         search=search,
         page=page,
         page_size=page_size,

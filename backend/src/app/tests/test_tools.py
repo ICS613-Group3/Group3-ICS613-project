@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.models.admin_audit_log import AdminAuditLog
-from app.models.enums import ToolCategory, ToolCondition
+from app.models.enums import ToolCondition
 from app.tests.factories import AdminFactory, ToolFactory, UserFactory
 
 # ── helpers ──────────────────────────────────────────────────────────────
@@ -104,6 +104,7 @@ class TestCreateTool:
                 "name": "Lawn Mower",
                 "category": "GARDEN_TOOLS",
                 "condition": "FAIR",
+                "description": "A gas-powered lawn mower.",
             },
             files=[("photos", _fake_upload_file("mower.jpg"))],
             headers=_bearer(user),
@@ -129,7 +130,9 @@ class TestCreateTool:
                 "name": "Hammer",
                 "category": "HAND_TOOLS",
                 "condition": "GOOD",
+                "description": "A sturdy hammer.",
             },
+            files=[("photos", _fake_upload_file("hammer.jpg"))],
         )
         assert response.status_code == 401
 
@@ -153,7 +156,7 @@ class TestListTools:
                 db_session,
                 owner_id=owner.id,
                 name=f"Public Tool {i}",
-                category=ToolCategory.HAND_TOOLS,
+                category="HAND_TOOLS",
                 is_active=True,
             )
 
@@ -191,14 +194,14 @@ class TestListTools:
             db_session,
             owner_id=owner.id,
             name="Drill",
-            category=ToolCategory.POWER_TOOLS,
+            category="POWER_TOOLS",
             is_active=True,
         )
         await ToolFactory.create_async(
             db_session,
             owner_id=owner.id,
             name="Rake",
-            category=ToolCategory.GARDEN_TOOLS,
+            category="GARDEN_TOOLS",
             is_active=True,
         )
 
@@ -225,7 +228,7 @@ class TestListTools:
             owner_id=owner.id,
             name="Electric Saw",
             description="Cuts wood cleanly",
-            category=ToolCategory.POWER_TOOLS,
+            category="POWER_TOOLS",
             is_active=True,
         )
         await ToolFactory.create_async(
@@ -233,7 +236,7 @@ class TestListTools:
             owner_id=owner.id,
             name="Garden Shovel",
             description="Digs holes easily",
-            category=ToolCategory.GARDEN_TOOLS,
+            category="GARDEN_TOOLS",
             is_active=True,
         )
 
@@ -409,7 +412,7 @@ class TestGetTool:
             db_session,
             owner_id=user.id,
             name="Precision Screwdriver Set",
-            category=ToolCategory.HAND_TOOLS,
+            category="HAND_TOOLS",
             condition=ToolCondition.NEW,
             is_active=True,
         )
@@ -489,7 +492,7 @@ class TestUpdateTool:
             owner_id=user.id,
             name="Old Name",
             description="Old desc",
-            category=ToolCategory.HAND_TOOLS,
+            category="HAND_TOOLS",
             condition=ToolCondition.GOOD,
         )
 
@@ -544,7 +547,7 @@ class TestUpdateTool:
             db_session,
             owner_id=user.id,
             name="Original",
-            category=ToolCategory.CLEANING_TOOLS,
+            category="CLEANING_TOOLS",
             condition=ToolCondition.FAIR,
         )
 
@@ -835,7 +838,9 @@ class TestToolEdgeCases:
                 "name": "",
                 "category": "HAND_TOOLS",
                 "condition": "GOOD",
+                "description": "A hand tool for testing.",
             },
+            files=[("photos", _fake_upload_file("tool.jpg"))],
             headers=_bearer(user),
         )
 
@@ -926,6 +931,7 @@ class TestToolEdgeCases:
                 "name": "Visual Tool",
                 "category": "CLEANING_TOOLS",
                 "condition": "GOOD",
+                "description": "A tool for visual testing.",
             },
             files=[("photos", _fake_upload_file("img1.jpg"))],
             headers=_bearer(user),
@@ -968,6 +974,7 @@ class TestPhotoUploadSecurity:
                 "name": "Trojan Drill",
                 "category": "POWER_TOOLS",
                 "condition": "GOOD",
+                "description": "An evil tool.",
             },
             files=[("photos", ("evil.jpg", BytesIO(fake_elf), "image/jpeg"))],
             headers=_bearer(user),
@@ -995,6 +1002,7 @@ class TestPhotoUploadSecurity:
                 "name": "Text Disguised as PNG",
                 "category": "HAND_TOOLS",
                 "condition": "GOOD",
+                "description": "A fake PNG test.",
             },
             files=[("photos", ("fake.png", BytesIO(fake_text), "image/png"))],
             headers=_bearer(user),
@@ -1230,11 +1238,11 @@ class TestAdminListAllTools:
 
         await ToolFactory.create_async(
             db_session, owner_id=owner.id, name="Drill",
-            category=ToolCategory.POWER_TOOLS, is_active=True
+            category="POWER_TOOLS", is_active=True
         )
         await ToolFactory.create_async(
             db_session, owner_id=owner.id, name="Rake",
-            category=ToolCategory.GARDEN_TOOLS, is_active=True
+            category="GARDEN_TOOLS", is_active=True
         )
 
         response = await client.get(

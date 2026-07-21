@@ -102,6 +102,15 @@ async def async_engine() -> AsyncGenerator:
     await conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
     await conn.run_sync(Base.metadata.drop_all)
     await conn.run_sync(Base.metadata.create_all)
+    # Seed default tool categories so tool-creation tests pass (US28).
+    await conn.execute(text(
+        "INSERT INTO tool_categories (id, name, created_at) VALUES "
+        "(gen_random_uuid(), 'HAND_TOOLS', now()), "
+        "(gen_random_uuid(), 'POWER_TOOLS', now()), "
+        "(gen_random_uuid(), 'GARDEN_TOOLS', now()), "
+        "(gen_random_uuid(), 'CLEANING_TOOLS', now()), "
+        "(gen_random_uuid(), 'OUTDOOR_GEAR', now())"
+    ))
     await conn.close()
     try:
         yield engine

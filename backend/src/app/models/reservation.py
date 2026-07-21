@@ -21,6 +21,7 @@ from app.db.base import Base
 from app.models.enums import ReservationState
 
 if TYPE_CHECKING:
+    from app.models.message import Message
     from app.models.tool import Tool
     from app.models.user import User
 
@@ -140,4 +141,11 @@ class Reservation(Base):
     )
     borrower: Mapped["User"] = relationship(
         "User", foreign_keys=[borrower_id], back_populates="borrowed_reservations"
+    )
+    messages: Mapped[list["Message"]] = relationship(
+        "Message",
+        back_populates="reservation",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+        lazy="selectin",
     )

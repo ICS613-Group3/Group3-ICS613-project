@@ -1,5 +1,6 @@
 """Authentication and identity endpoints."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -54,6 +55,22 @@ async def create_invite(
     invite = await service.create_invite(
         db,
         email=request_data.email,
+        admin_user=admin_user,
+    )
+    return InviteResponse.model_validate(invite)
+
+
+@router.post("/invites/{invite_id}/revoke", response_model=InviteResponse)
+async def revoke_invite(
+    invite_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin_user: Annotated[User, Depends(get_current_admin_user)],
+) -> InviteResponse:
+    """Admin-only: revoke an invite token so it can no longer be used."""
+    service = AuthService()
+    invite = await service.revoke_invite(
+        db,
+        invite_id=invite_id,
         admin_user=admin_user,
     )
     return InviteResponse.model_validate(invite)

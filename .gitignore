@@ -110,3 +110,9 @@ docker-compose.override.yaml
 
 # ─── Alembic cache ─────────────────────────────────────────────
 **/alembic/__pycache__/
+
+# ─── Local deployment configs ──────────────────────────────────
+deploy/
+
+# ─── Local test scripts (not part of the repo) ─────────────────
+scripts/

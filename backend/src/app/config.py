@@ -31,7 +31,7 @@ class Settings(BaseSettings):
         description=(
             "Deployment environment name. Set to ``development`` or ``test`` "
             "to relax the SECRET_KEY dev-placeholder check. "
-            "(env: TOOLSHARING_ENVIRONMENT)"
+            "(env: ENVIRONMENT)"
         ),
     )
 
@@ -42,20 +42,20 @@ class Settings(BaseSettings):
         description=(
             "HMAC signing key for JWT tokens. **Required.** Must be at least 32 chars. "
             "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(48))' "
-            "(env: TOOLSHARING_SECRET_KEY)."
+            "(env: SECRET_KEY)."
         ),
     )
     access_token_expire_minutes: int = Field(
         default=60,
-        description="Access token lifetime in minutes (env: TOOLSHARING_ACCESS_TOKEN_EXPIRE_MINUTES).",
+        description="Access token lifetime in minutes (env: ACCESS_TOKEN_EXPIRE_MINUTES).",
     )
     refresh_token_expire_days: int = Field(
         default=7,
-        description="Refresh token lifetime in days (env: TOOLSHARING_REFRESH_TOKEN_EXPIRE_DAYS).",
+        description="Refresh token lifetime in days (env: REFRESH_TOKEN_EXPIRE_DAYS).",
     )
     algorithm: str = Field(
         default="HS256",
-        description="JWT signing algorithm (env: TOOLSHARING_ALGORITHM).",
+        description="JWT signing algorithm (env: ALGORITHM).",
     )
     # JWT audience and issuer. ``aud`` and ``iss`` are standard claims that
     # bind tokens to this service. If you ever federate (e.g. share auth with
@@ -67,21 +67,21 @@ class Settings(BaseSettings):
         default="toolsharing-api",
         description=(
             "JWT ``aud`` claim — must match on decode. "
-            "(env: TOOLSHARING_JWT_AUDIENCE)"
+            "(env: JWT_AUDIENCE)"
         ),
     )
     jwt_issuer: str = Field(
         default="toolsharing-api",
         description=(
             "JWT ``iss`` claim — must match on decode. "
-            "(env: TOOLSHARING_JWT_ISSUER)"
+            "(env: JWT_ISSUER)"
         ),
     )
 
     # Database (asyncpg)
     database_url: str = Field(
         default="postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing",
-        description="AsyncPG connection string (env: TOOLSHARING_DATABASE_URL).",
+        description="AsyncPG connection string (env: DATABASE_URL).",
     )
 
     # CORS — ``NoDecode`` keeps pydantic-settings from JSON-decoding the
@@ -91,44 +91,50 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"],
         description=(
             "Comma-separated list of allowed CORS origins "
-            "(env: TOOLSHARING_CORS_ORIGINS, e.g. 'http://localhost:3000,https://app.example.com')."
+            "(env: CORS_ORIGINS, e.g. 'http://localhost:3000,https://app.example.com')."
         ),
+    )
+
+    # Frontend / deployment
+    base_url: str = Field(
+        default="http://localhost:3000",
+        description="Base URL of the frontend, used in email links (env: BASE_URL).",
     )
 
     # Static/media uploads
     media_dir: Path = Field(
         default=Path("media"),
-        description="Directory for uploaded tool photos, relative to the working directory (env: TOOLSHARING_MEDIA_DIR).",
+        description="Directory for uploaded tool photos, relative to the working directory (env: MEDIA_DIR).",
     )
     max_upload_size_bytes: int = Field(
         default=5 * 1024 * 1024,  # 5 MB
-        description="Maximum size per uploaded file in bytes (env: TOOLSHARING_MAX_UPLOAD_SIZE_BYTES, default 5 MB).",
+        description="Maximum size per uploaded file in bytes (env: MAX_UPLOAD_SIZE_BYTES, default 5 MB).",
     )
 
     # Email (SMTP)
     smtp_host: str = Field(
         default="localhost",
-        description="SMTP server hostname (env: TOOLSHARING_SMTP_HOST). Set to a real host in production.",
+        description="SMTP server hostname (env: SMTP_HOST). Set to a real host in production.",
     )
     smtp_port: int = Field(
         default=1025,
-        description="SMTP server port (env: TOOLSHARING_SMTP_PORT). Default 1025 for MailHog; 587 for real SMTP with TLS.",
+        description="SMTP server port (env: SMTP_PORT). Default 1025 for MailHog; 587 for real SMTP with TLS.",
     )
     smtp_user: str | None = Field(
         default=None,
-        description="SMTP username (env: TOOLSHARING_SMTP_USER). Required for real SMTP.",
+        description="SMTP username (env: SMTP_USER). Required for real SMTP.",
     )
     smtp_password: SecretStr | None = Field(
         default=None,
-        description="SMTP password (env: TOOLSHARING_SMTP_PASSWORD). Required for real SMTP.",
+        description="SMTP password (env: SMTP_PASSWORD). Required for real SMTP.",
     )
     smtp_tls: bool = Field(
         default=False,
-        description="Enable STARTTLS for SMTP (env: TOOLSHARING_SMTP_TLS, default false for local MailHog).",
+        description="Enable STARTTLS for SMTP (env: SMTP_TLS, default false for local MailHog).",
     )
     smtp_from: str = Field(
         default="noreply@example.com",
-        description="Sender address for outgoing emails (env: TOOLSHARING_SMTP_FROM).",
+        description="Sender address for outgoing emails (env: SMTP_FROM).",
     )
 
     # Scheduler
@@ -144,7 +150,7 @@ class Settings(BaseSettings):
         description=(
             "Days after a reservation's start_date before an un-picked-up "
             "APPROVED reservation is auto-cancelled. "
-            "(env: TOOLSHARING_SCHEDULER_GRACE_PERIOD_DAYS)"
+            "(env: SCHEDULER_GRACE_PERIOD_DAYS)"
         ),
     )
     scheduler_escalation_days: int = Field(
@@ -153,7 +159,7 @@ class Settings(BaseSettings):
         description=(
             "Days after a reservation's end_date before a PICKED_UP reservation "
             "is escalated (overdue notification sent to borrower). "
-            "(env: TOOLSHARING_SCHEDULER_ESCALATION_DAYS)"
+            "(env: SCHEDULER_ESCALATION_DAYS)"
         ),
     )
     scheduler_hard_escalation_days: int = Field(
@@ -163,7 +169,7 @@ class Settings(BaseSettings):
             "Days after a reservation's end_date before the reservation is "
             "auto-force-returned (releases the tool, stops notification loop). "
             "Must be > scheduler_escalation_days. "
-            "(env: TOOLSHARING_SCHEDULER_HARD_ESCALATION_DAYS)"
+            "(env: SCHEDULER_HARD_ESCALATION_DAYS)"
         ),
     )
     scheduler_token_retention_days: int = Field(
@@ -172,7 +178,7 @@ class Settings(BaseSettings):
         description=(
             "Days an expired token (email verification, password reset, invite) "
             "is kept before being deleted by the cleanup job. "
-            "(env: TOOLSHARING_SCHEDULER_TOKEN_RETENTION_DAYS)"
+            "(env: SCHEDULER_TOKEN_RETENTION_DAYS)"
         ),
     )
     scheduler_notification_dedup_hours: int = Field(
@@ -182,7 +188,7 @@ class Settings(BaseSettings):
             "Hours to suppress duplicate RESERVATION_OVERDUE notifications for the "
             "same user. The soft-escalation job runs hourly but only emits a "
             "notification if none has been sent to this user within this window. "
-            "(env: TOOLSHARING_SCHEDULER_NOTIFICATION_DEDUP_HOURS)"
+            "(env: SCHEDULER_NOTIFICATION_DEDUP_HOURS)"
         ),
     )
 

@@ -50,17 +50,24 @@ class ReservationResponse(BaseModel):
         """Extract display names from ORM relationships before validation."""
         if isinstance(data, dict):
             return data
-        # data is an ORM object with from_attributes=True
         try:
+            from types import SimpleNamespace
+
+            ns_data = {}
+            # Copy scalar column values from the ORM object
+            for col in data.__class__.__table__.columns:
+                ns_data[col.name] = getattr(data, col.name)
+
             tool = getattr(data, "tool", None)
             if tool is not None:
-                data.tool_name = getattr(tool, "name", None)
+                ns_data["tool_name"] = getattr(tool, "name", None)
                 owner = getattr(tool, "owner", None)
                 if owner is not None:
-                    data.owner_name = getattr(owner, "full_name", None) or getattr(owner, "email", None)
+                    ns_data["owner_name"] = getattr(owner, "full_name", None) or getattr(owner, "email", None)
             borrower = getattr(data, "borrower", None)
             if borrower is not None:
-                data.borrower_name = getattr(borrower, "full_name", None) or getattr(borrower, "email", None)
+                ns_data["borrower_name"] = getattr(borrower, "full_name", None) or getattr(borrower, "email", None)
+            return SimpleNamespace(**ns_data)
         except Exception:
             pass
         return data

@@ -28,7 +28,7 @@ class NotificationService:
         """Create a notification for a user."""
         notification = Notification(
             user_id=user_id,
-            type=type_,
+            type=type_.value,
             title=title,
             body=body,
             payload=payload,

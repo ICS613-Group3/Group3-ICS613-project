@@ -4,8 +4,11 @@ from fastapi import APIRouter
 
 from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.categories import router as categories_router
 from app.api.v1.health import router as health_router
+from app.api.v1.messages import router as messages_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.reports import router as reports_router
 from app.api.v1.reservations import router as reservations_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.tools import router as tools_router
@@ -15,7 +18,10 @@ api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(health_router, prefix="/health", tags=["health"])
 api_router.include_router(tools_router, prefix="/tools", tags=["tools"])
+api_router.include_router(categories_router, prefix="/categories", tags=["categories"])
 api_router.include_router(reservations_router, prefix="/reservations", tags=["reservations"])
 api_router.include_router(reviews_router, tags=["reviews"])
+api_router.include_router(messages_router, tags=["messages"])
+api_router.include_router(reports_router, tags=["reports"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])

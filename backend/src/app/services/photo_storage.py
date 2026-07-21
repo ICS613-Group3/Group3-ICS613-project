@@ -4,6 +4,7 @@ Writes uploaded images to a configurable directory and returns URLs
 served by the StaticFiles mount at ``/uploads``.
 """
 
+import asyncio
 import uuid
 from pathlib import Path
 
@@ -104,11 +105,13 @@ class PhotoStorageService:
         """Persist an uploaded photo and return its public URL path.
 
         Returns a path like ``/uploads/<uuid>.jpg``.
+        The disk write is offloaded to a thread pool to avoid blocking
+        the async event loop.
         """
         suffix = _CONTENT_TYPE_TO_EXT.get(content_type, ".bin")
         filename = f"{uuid.uuid4()}{suffix}"
         filepath = self.upload_dir / filename
-        filepath.write_bytes(content)
+        await asyncio.to_thread(filepath.write_bytes, content)
         return f"/uploads/{filename}"
 
     def delete(self, url: str) -> None:

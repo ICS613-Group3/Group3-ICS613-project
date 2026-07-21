@@ -14,7 +14,6 @@ from app.models.enums import (
     CancellerType,
     DeactivationActor,
     ReservationState,
-    ToolCategory,
     ToolCondition,
 )
 from app.models.photo import Photo
@@ -22,6 +21,7 @@ from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
 from app.services.admin import AdminService
+from app.services.category import CategoryService
 from app.services.photo_storage import MAX_PHOTOS_PER_TOOL, PhotoStorageService
 
 if TYPE_CHECKING:
@@ -44,15 +44,36 @@ class ToolService:
         owner: User,
         name: str,
         description: str | None,
-        category: ToolCategory,
+        category: str,
         condition: ToolCondition,
     ) -> Tool:
-        """Create a new tool listing."""
+        """Create a new tool listing.
+
+        Raises ConflictError if the owner already has an ACTIVE listing with
+        the same name (case-insensitive comparison).
+        """
+        # Check for duplicate name among owner's active listings
+        normalized_name = name.strip().lower()
+        existing = await db.execute(
+            select(Tool).where(
+                Tool.owner_id == owner.id,
+                Tool.deleted_at.is_(None),
+                Tool.is_active.is_(True),
+                func.lower(Tool.name) == normalized_name,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise ConflictError(
+                "You already have an active listing with this name. "
+                "Please choose a different name."
+            )
+
+        validated_category = await CategoryService().validate_category_name(db, name=category)
         tool = Tool(
             owner_id=owner.id,
             name=name.strip(),
             description=description,
-            category=category,
+            category=validated_category,
             condition=condition,
             is_active=True,
         )
@@ -108,12 +129,15 @@ class ToolService:
         *,
         owner: User,
         name: str,
-        description: str | None,
-        category: ToolCategory,
+        description: str,
+        category: str,
         condition: ToolCondition,
-        photos: list[UploadFile] | None = None,
+        photos: list[UploadFile],
     ) -> Tool:
-        """Create a tool listing and optionally upload photos in one call."""
+        """Create a tool listing with required photos (1–5).
+
+        Raises ValidationError if no photos are provided.
+        """
         tool = await self.create_tool(
             db,
             owner=owner,
@@ -122,8 +146,9 @@ class ToolService:
             category=category,
             condition=condition,
         )
-        if photos:
-            await self.add_photos(db, tool=tool, files=photos)
+        if not photos:
+            raise ValidationError("At least 1 photo is required")
+        await self.add_photos(db, tool=tool, files=photos)
         # Refresh the owner relationship so ToolResponse can serialize it
         # without a lazy load (which would fail under async).
         await db.refresh(tool, ["photos", "owner"])
@@ -153,19 +178,25 @@ class ToolService:
         self,
         db: AsyncSession,
         *,
-        category: ToolCategory | None = None,
+        category: str | None = None,
         search: str | None = None,
         available_start: date | None = None,
         available_end: date | None = None,
         exclude_owner_id: uuid.UUID | None = None,
+        condition: ToolCondition | None = None,
+        min_rating: float | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[Tool], int]:
-        """List active tools with optional filters and pagination.
+        """List active tools with optional filters and pagination (R2.B advanced search).
 
         When ``exclude_owner_id`` is provided, tools owned by that user
         are filtered out so members never see their own listings in
         browse/search results.
+
+        R2.B advanced filters:
+          - condition: filter by ToolCondition
+          - min_rating: only tools with avg_rating >= this value
         """
         query = select(Tool).where(
             Tool.is_active.is_(True),
@@ -214,6 +245,16 @@ class ToolService:
                 .exists()
             )
             query = query.where(~overlapping)
+
+        # R2.B: condition filter
+        if condition is not None:
+            query = query.where(Tool.condition == condition)
+            count_query = count_query.where(Tool.condition == condition)
+
+        # R2.B: minimum rating filter
+        if min_rating is not None:
+            query = query.where(Tool.avg_rating >= min_rating)
+            count_query = count_query.where(Tool.avg_rating >= min_rating)
 
         # Count
         count_result = await db.execute(count_query)
@@ -269,7 +310,7 @@ class ToolService:
         *,
         include_active: bool = True,
         include_inactive: bool = True,
-        category: ToolCategory | None = None,
+        category: str | None = None,
         search: str | None = None,
         page: int = 1,
         page_size: int = 20,
@@ -330,10 +371,10 @@ class ToolService:
         owner: User,
         name: str | None = None,
         description: str | None = None,
-        category: ToolCategory | None = None,
+        category: str | None = None,
         condition: ToolCondition | None = None,
     ) -> Tool:
-        """Update a tool listing. Blocked if any reservation is PICKED_UP."""
+        "Update a tool listing. Blocked if any reservation is PICKED_UP."""
         if tool.owner_id != owner.id:
             raise PermissionDeniedError("You can only edit your own tool listings")
 
@@ -354,7 +395,8 @@ class ToolService:
         if description is not None:
             tool.description = description
         if category is not None:
-            tool.category = category
+            validated_category = await CategoryService().validate_category_name(db, name=category)
+            tool.category = validated_category
         if condition is not None:
             tool.condition = condition
         tool.updated_at = datetime.now(UTC)
@@ -412,12 +454,26 @@ class ToolService:
         """Deactivate a tool listing and auto-cancel all pending reservations.
 
         Can be called by the tool owner or an admin.
+        Blocked if the tool is currently PICKED_UP (out on loan).
         """
         if tool.owner_id != actor.id and not actor.is_admin:
             raise PermissionDeniedError("You cannot deactivate this tool listing")
 
         if not tool.is_active:
             raise ConflictError("Tool is already deactivated")
+
+        # Block deactivation when the tool is currently out on loan
+        active_pickup = await db.execute(
+            select(Reservation.id).where(
+                Reservation.tool_id == tool.id,
+                Reservation.state == ReservationState.PICKED_UP,
+            ).limit(1)
+        )
+        if active_pickup.scalar_one_or_none() is not None:
+            raise ConflictError(
+                "Cannot deactivate a tool that is currently borrowed (PICKED_UP). "
+                "Please wait for the tool to be returned."
+            )
 
         tool.is_active = False
         tool.deactivated_by = DeactivationActor.ADMIN if actor.is_admin else DeactivationActor.OWNER
@@ -442,7 +498,6 @@ class ToolService:
             db.add(res)
 
         db.add(tool)
-        await db.flush()
 
         # R1.C checklist: every deactivate (owner OR admin) is audit-logged.
         actor_role = "admin" if actor.is_admin else "owner"
@@ -479,7 +534,6 @@ class ToolService:
         tool.updated_at = datetime.now(UTC)
 
         db.add(tool)
-        await db.flush()
 
         # R1.C checklist: every reactivate is audit-logged.
         await AdminService().record_tool_reactivation(

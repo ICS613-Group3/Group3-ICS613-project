@@ -1,18 +1,21 @@
 """Admin service — moderation actions with audit logging."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from app.models.admin_audit_log import AdminAuditLog
-from app.models.enums import NotificationType, UserStatus
+from app.models.enums import NotificationType, ReservationState, UserStatus
+from app.models.reservation import Reservation
+from app.models.tool import Tool
 from app.models.user import User
 from app.schemas.user import UserProfile
 from app.services.notification import NotificationService
-from app.services.user import _anonymize_user, UserService
+from app.services.user import _anonymize_user, _guard_and_cleanup, UserService
 
 
 class AdminService:
@@ -43,8 +46,8 @@ class AdminService:
         status: str | None = None,
         search: str | None = None,
         page: int = 1,
-        page_size: int = 50,
-    ) -> tuple[list[User], int]:
+        page_size: int = 20,
+        ) -> tuple[list[User], int]:
         """List all non-deleted users with optional filters.
 
         Admins can filter by status (ACTIVE, SUSPENDED, EMAIL_PENDING) and
@@ -198,6 +201,10 @@ class AdminService:
         Same protections as ``deactivate_user``: refuses to delete the admin
         themselves or any other admin. Soft-deleted users (DELETED status)
         can be re-targeted to overwrite their PII again if needed.
+
+        Uses the shared ``_guard_and_cleanup`` from ``app.services.user``
+        to deactivate tools and cancel pending reservations — no duplicated
+        logic between self-service and admin deletion.
         """
         if not admin.is_admin:
             raise PermissionDeniedError("Admin access required")
@@ -210,6 +217,9 @@ class AdminService:
         if target.is_admin:
             raise ConflictError("Cannot delete another admin")
 
+        # Shared guard + tool deactivation / reservation cancellation.
+        cleanup = await _guard_and_cleanup(db, target)
+
         await self._audit(
             db,
             actor_id=admin.id,
@@ -217,6 +227,10 @@ class AdminService:
             target_type="user",
             target_id=target.id,
             reason=reason,
+            metadata_={
+                "tools_deactivated": cleanup.tools_deactivated,
+                "reservations_cancelled": cleanup.reservations_cancelled,
+            },
         )
 
         _anonymize_user(target)
@@ -288,6 +302,81 @@ class AdminService:
         )
 
     # ------------------------------------------------------------------
+    # Admin reservation overview (US34)
+    # ------------------------------------------------------------------
+    async def list_all_reservations(
+        self,
+        db: AsyncSession,
+        *,
+        state: str | None = None,
+        member_id: uuid.UUID | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Reservation], int]:
+        """Admin-only: list all reservations with filters (US34).
+
+        Filters:
+          - state: filter by reservation state
+          - member_id: filter by borrower_id or tool owner_id
+          - date_from / date_to: filter by reservation start_date range
+        """
+        query = select(Reservation)
+        count_q = select(func.count(Reservation.id))
+
+        if state:
+            try:
+                state_enum = ReservationState(state.upper())
+                query = query.where(Reservation.state == state_enum)
+                count_q = count_q.where(Reservation.state == state_enum)
+            except ValueError:
+                pass
+
+        if member_id is not None:
+            # Match borrower or owner (via tool subquery)
+            query = query.where(
+                or_(
+                    Reservation.borrower_id == member_id,
+                    Reservation.tool_id.in_(
+                        select(Tool.id).where(Tool.owner_id == member_id)
+                    ),
+                )
+            )
+            count_q = count_q.where(
+                or_(
+                    Reservation.borrower_id == member_id,
+                    Reservation.tool_id.in_(
+                        select(Tool.id).where(Tool.owner_id == member_id)
+                    ),
+                )
+            )
+
+        if date_from is not None:
+            query = query.where(Reservation.start_date >= date_from)
+            count_q = count_q.where(Reservation.start_date >= date_from)
+        if date_to is not None:
+            query = query.where(Reservation.start_date <= date_to)
+            count_q = count_q.where(Reservation.start_date <= date_to)
+
+        total = (await db.execute(count_q)).scalar() or 0
+
+        query = (
+            query
+            .options(
+                selectinload(Reservation.tool),
+                selectinload(Reservation.borrower),
+            )
+            .order_by(Reservation.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await db.execute(query)
+        reservations = list(result.scalars().unique())
+
+        return reservations, total
+
+    # ------------------------------------------------------------------
     # Audit log queries
     # ------------------------------------------------------------------
     async def list_audit_log(
@@ -296,10 +385,17 @@ class AdminService:
         *,
         action_type: str | None = None,
         target_type: str | None = None,
+        target_id: uuid.UUID | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
         page: int = 1,
-        page_size: int = 50,
-    ) -> tuple[list[AdminAuditLog], int]:
-        """Query the admin audit log with optional filters."""
+        page_size: int = 20,
+        ) -> tuple[list[AdminAuditLog], int]:
+        """Query the admin audit log with optional filters (US32).
+
+        Supports filtering by action_type, target_type, target_id, and
+        a date range (date_from / date_to, inclusive on date_to).
+        """
         query = select(AdminAuditLog)
         count_q = select(func.count(AdminAuditLog.id))
 
@@ -309,6 +405,15 @@ class AdminService:
         if target_type:
             query = query.where(AdminAuditLog.target_type == target_type)
             count_q = count_q.where(AdminAuditLog.target_type == target_type)
+        if target_id is not None:
+            query = query.where(AdminAuditLog.target_id == target_id)
+            count_q = count_q.where(AdminAuditLog.target_id == target_id)
+        if date_from is not None:
+            query = query.where(AdminAuditLog.created_at >= date_from)
+            count_q = count_q.where(AdminAuditLog.created_at >= date_from)
+        if date_to is not None:
+            query = query.where(AdminAuditLog.created_at <= date_to)
+            count_q = count_q.where(AdminAuditLog.created_at <= date_to)
 
         count_result = await db.execute(count_q)
         total = count_result.scalar() or 0

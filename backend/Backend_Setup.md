@@ -3,7 +3,7 @@
 **Group 3 — Neighborhood Tool Sharing**
 **ICS 613 — Summer 2026**
 
-This guide gets the backend running on your machine. After following it you will have PostgreSQL running in Docker, all Python dependencies installed, the database migrated, and seed data loaded.
+This guide gets the backend running on your machine. After following it you will have PostgreSQL running in Docker, all Python dependencies installed, the database schema created, and seed data loaded.
 
 > **Choose your shell on Windows.** All examples in this guide are written for
 > **PowerShell 5.1+** (the default terminal on Windows 10/11). The right-hand
@@ -36,8 +36,8 @@ If any check fails, install that program before continuing.
 | Action | PowerShell (default) | Git Bash |
 |--------|----------------------|----------|
 | Python version | `python --version` | `python3 --version` |
-| Create venv | `python -m venv venv_py313` | `python3 -m venv venv_py313` |
-| Activate venv | `.\venv_py313\Scripts\Activate.ps1` | `source venv_py313/bin/activate` |
+| Create venv | `python -m venv venv` | `python3 -m venv venv` |
+| Activate venv | `.\venv\Scripts\Activate.ps1` | `source venv/bin/activate` |
 | Copy file | `cp .env.example .env` (alias) | `cp .env.example .env` |
 | Set env var for one command | `$env:VAR = 'value'; <command>` | `VAR=value <command>` |
 | Path separator | `\` or `/` both work in most tools | `/` |
@@ -53,8 +53,8 @@ cmd.exe is the least ergonomic of the three. If you are stuck with it:
 | Action | cmd.exe |
 |--------|---------|
 | Python version | `python --version` |
-| Create venv | `python -m venv venv_py313` |
-| Activate venv | `venv_py313\Scripts\activate.bat` |
+| Create venv | `python -m venv venv` |
+| Activate venv | `venv\Scripts\activate.bat` |
 | Copy file | `copy .env.example .env` |
 | Set env var | `set VAR=value` *(persists for the whole cmd window!)* |
 
@@ -83,7 +83,7 @@ All remaining commands run from `backend\`.
 docker compose up -d
 ```
 
-This starts the database container (`tool-share-db-1`) in the background. The FastAPI app is NOT run in Docker — you run it on the host (see step 10). Running the app on the host is faster for hot-reload during development and avoids port conflicts.
+This starts the database container (`tool-share-db-1`) in the background. The FastAPI app is NOT run in Docker — you run it on the host (see section 11). Running the app on the host is faster for hot-reload during development and avoids port conflicts.
 
 Verify the database is healthy:
 
@@ -102,11 +102,11 @@ docker compose logs db
 ## 5. Create Python virtual environment
 
 ```powershell
-python -m venv venv_py313
-.\venv_py313\Scripts\Activate.ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 ```
 
-Your prompt should now show `(venv_py313)`. To deactivate later, run `deactivate`.
+Your prompt should now show `(venv)`. To deactivate later, run `deactivate`.
 
 > **PowerShell execution policy error?** If you get
 > *"running scripts is disabled on this system"*, run PowerShell **as
@@ -170,20 +170,53 @@ commit this value to git.** `.gitignore` already excludes `.env`.
 python scripts\check_db.py
 ```
 
-All 6 checks should report `[OK]`.
+All checks should report `[OK]`.
 
 ---
 
-## 9. Run database migrations
+## 9. Create database schema
+
+The application uses SQLAlchemy `Base.metadata.create_all()` to create all tables
+automatically from the ORM models. There is no Alembic migration directory to run.
+
+From the `backend/` directory, run:
 
 ```powershell
-python -m alembic upgrade head
+python scripts\init_db.py
 ```
 
-Expected output: `Running upgrade aff003b1ca5a -> b2c3d4e5f6a7, r1d_constraints_and_enum_cleanup`.
+All 13 tables (`users`, `tools`, `photos`, `reservations`, `reviews`, `notifications`,
+`messages`, `listing_reports`, `admin_audit_log`, `tool_categories`, invite/password-reset/
+verification token tables) will be created.
 
-`alembic/env.py` adds the `src/` directory to `sys.path` automatically, so
-no `PYTHONPATH` environment variable is required.
+To verify the tables exist:
+
+```powershell
+docker compose exec db psql -U ics613user -d toolsharing -c "\dt"
+```
+
+### Upgrading from R1
+
+If you already have a database from R1, pulling the latest code is not enough —
+you must drop and recreate the schema. `create_all()` only creates tables that
+don't exist; it does not alter existing columns. Your `tools` table still has the
+old R1 enum column, and your database is missing the new R2 tables.
+
+```powershell
+# 1. Wipe all data (keep table structure)
+python scripts\clean_dev.py
+
+# 2. Drop the entire schema (resets column types + removes old tables)
+docker compose exec db psql -U ics613user -d toolsharing -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# 3. Recreate all tables with the R2 schema
+python scripts\init_db.py
+
+# 4. Re-seed with demo data
+python scripts\seed_dev.py
+```
+
+You now have a fresh R2 database with demo data.
 
 ---
 
@@ -199,7 +232,7 @@ no `PYTHONPATH` environment variable is required.
 python scripts\seed_dev.py
 ```
 
-Creates three demo users and 12 tool listings with photos:
+Creates three demo users, 5 admin-managed tool categories, and 12 tool listings with photos:
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -311,18 +344,17 @@ python run.py --help    # full uvicorn CLI help
 pytest src/app/tests/ -q
 ```
 
-All 106 tests should pass. Run a single test file:
+All 198 tests should pass. The test database (`toolsharing_test`) is created automatically by `db/init/00-create-test-db.sql` when the Docker container first starts. `pyproject.toml` configures `pythonpath = ["src"]` and the test conftest sets default env vars, so no `PYTHONPATH` or `.env` setup is needed.
+
+Run a single test file:
 
 ```powershell
 pytest src/app/tests/test_auth.py -v
 ```
 
-> `pyproject.toml` already configures `pythonpath = ["src"]` for pytest,
-> so the tests find the `app` package without any environment variables.
-
 ### What these tests cover (and what they do NOT cover)
 
-The 106 tests in `src/app/tests/` are **unit and integration tests** written by the backend lead. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
+The 198 tests in `src/app/tests/` are **unit and integration tests** written by the backend lead. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
 
 **These tests do NOT cover user-facing acceptance scenarios.** The QA lead (Nick) owns the manual acceptance test cases — one per user story scenario (positive, negative, edge cases). Those are separate deliverables documented outside this repo (typically a `.docx` checklist) and are what the team walks through during the 7/6 demo.
 
@@ -399,10 +431,10 @@ mypy src/app/            # type-check (optional, not required for PRs)
 > interface (see Docker Desktop networking docs).
 
 **"No module named app"**
-- You forgot to activate the venv, or your IDE runs tests in a different Python. Verify with `python -c "import sys; print(sys.executable)"` and that it points inside `venv_py313/`.
+- You forgot to activate the venv, or your IDE runs tests in a different Python. Verify with `python -c "import sys; print(sys.executable)"` and that it points inside `venv/`.
 
 **"Target database is not up to date"**
-- Run the migrations: `python -m alembic upgrade head`
+- Follow the "Upgrading from R1" steps in section 9 to drop and recreate the schema.
 
 **"ModuleNotFoundError: No module named 'app'" when starting uvicorn directly**
 - Don't run `uvicorn src.app.main:app` raw — use `python run.py` (or `python -m uvicorn src.app.main:app` after setting `$env:PYTHONPATH='src'` in PowerShell).
@@ -428,9 +460,9 @@ Log out and back in for this to take effect.
 - Python was installed but the installer wasn't told to "Add Python to PATH". Re-run the Python installer with that checkbox, or add the install directory to your PATH manually.
 
 **`git` line endings mess up activation script**
-- If `.\venv_py313\Scripts\Activate.ps1` reports "running scripts is disabled" because of a CRLF/LF mismatch, run once:
+- If `.\venv\Scripts\Activate.ps1` reports "running scripts is disabled" because of a CRLF/LF mismatch, run once:
   ```powershell
-  (Get-Content .\venv_py313\Scripts\Activate.ps1) | Set-Content -NoNewline (Get-Content .\venv_py313\Scripts\Activate.ps1)
+  (Get-Content .\venv\Scripts\Activate.ps1) | Set-Content -NoNewline (Get-Content .\venv\Scripts\Activate.ps1)
   ```
   This is a known Windows + Git issue. The fix above rewrites the file with the current line endings.
 
@@ -440,32 +472,29 @@ Log out and back in for this to take effect.
 
 ```
 backend/
-├── alembic/                  # Database migrations
-│   ├── env.py
-│   └── versions/             # Migration scripts (R1A → R1D)
-├── alembic.ini
-├── db/init/                  # SQL init for new databases
 ├── docker-compose.yml        # PostgreSQL service (db only — app runs on host)
-├── Dockerfile                # Production build
+├── db/init/                  # SQL init scripts run on first container start
+│   └── 00-create-test-db.sql # Creates toolsharing_test database for pytest
 ├── media/tool_photos/        # User-uploaded photos (runtime, gitignored; served at /uploads)
 ├── pyproject.toml            # Python project config (ruff, mypy, pytest)
 ├── requirements.txt          # Python dependencies
 ├── run.py                    # Cross-platform `python run.py` launcher
 ├── scripts/
 │   ├── check_db.py           # Database connectivity checker
-│   ├── seed_dev.py           # Demo data seeder
+│   ├── init_db.py            # Create all tables from ORM models (run before seed_dev.py)
+│   ├── seed_dev.py           # Demo data seeder (users, categories, tools, photos)
 │   ├── seed_photos/          # Tracked seed images; copied into media/tool_photos/ on `python scripts/seed_dev.py`
 │   └── clean_dev.py          # Wipe all rows (keep tables)
 ├── src/
 │   ├── __init__.py           # Marks src/ as a package (enables `python -m src.*`)
 │   └── app/
-│       ├── api/v1/           # REST endpoints (auth, tools, reservations, etc.)
-│       ├── core/             # Security, exceptions, logging
+│       ├── api/v1/           # REST endpoints (auth, tools, reservations, categories, messages, reports, etc.)
+│       ├── core/             # Security, exceptions, timezone, logging
 │       ├── db/               # Database engine and session
-│       ├── models/           # SQLAlchemy ORM models
+│       ├── models/           # SQLAlchemy ORM models (13 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── services/         # Business logic layer
-│       └── tests/            # Test suite (119 tests)
+│       └── tests/            # Test suite (198 tests)
 ├── .env                      # Your local environment (gitignored)
 └── .env.example              # Safe template for .env
 ```

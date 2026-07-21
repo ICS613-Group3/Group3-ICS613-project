@@ -263,4 +263,4 @@ class TestAdminSelfProtection:
             select(Notification).where(Notification.user_id == target.id)
         )
         notif = result.scalar_one()
-        assert notif.type == NotificationType.ACCOUNT_SUSPENDED
+        assert notif.type == NotificationType.ACCOUNT_SUSPENDED.value

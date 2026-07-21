@@ -111,31 +111,37 @@ class EmailService:
             )
 
     def send_verification_email(self, to_email: str, token: str) -> None:
+        settings = get_settings()
+        base = settings.base_url.rstrip("/")
         subject = "Verify your email address"
         body = (
             f"Your verification token is: {token}\n\n"
-            f"Go to http://34.48.1.244/verify-email and paste the token above, "
+            f"Go to {base}/verify-email and paste the token above, "
             f"or visit the website and navigate to the Verify Email page.\n\n"
             f"If you did not create an account, you can ignore this email."
         )
         self.send(to_email, subject, body)
 
     def send_password_reset_email(self, to_email: str, token: str) -> None:
+        settings = get_settings()
+        base = settings.base_url.rstrip("/")
         subject = "Reset your password"
         body = (
             f"Your password reset token is: {token}\n\n"
-            f"Go to http://34.48.1.244/reset-password and paste the token above, "
+            f"Go to {base}/reset-password and paste the token above, "
             f"or visit the website and navigate to Reset Password.\n\n"
             f"If you did not request a password reset, you can ignore this email."
         )
         self.send(to_email, subject, body)
 
     def send_invite_email(self, to_email: str, token: str) -> None:
+        settings = get_settings()
+        base = settings.base_url.rstrip("/")
         subject = "You have been invited to join Neighborhood Tool Sharing"
         body = (
             f"You have been invited to join Neighborhood Tool Sharing!\n\n"
             f"Your invite token is: {token}\n\n"
-            f"Go to http://34.48.1.244/register and enter your details "
+            f"Go to {base}/register and enter your details "
             f"along with the invite token above to create your account.\n\n"
             f"The invite link expires in 7 days."
         )

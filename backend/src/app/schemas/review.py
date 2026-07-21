@@ -43,12 +43,19 @@ class ReviewResponse(BaseModel):
         if isinstance(data, dict):
             return data
         try:
+            from types import SimpleNamespace
+
+            ns_data = {}
+            for col in data.__class__.__table__.columns:
+                ns_data[col.name] = getattr(data, col.name)
+
             reviewer = getattr(data, "reviewer", None)
             if reviewer is not None:
-                data.reviewer_name = getattr(reviewer, "full_name", None) or getattr(reviewer, "email", None)
+                ns_data["reviewer_name"] = getattr(reviewer, "full_name", None) or getattr(reviewer, "email", None)
             reviewee = getattr(data, "reviewee", None)
             if reviewee is not None:
-                data.reviewee_name = getattr(reviewee, "full_name", None) or getattr(reviewee, "email", None)
+                ns_data["reviewee_name"] = getattr(reviewee, "full_name", None) or getattr(reviewee, "email", None)
+            return SimpleNamespace(**ns_data)
         except Exception:
             pass
         return data

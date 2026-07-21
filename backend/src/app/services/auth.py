@@ -84,6 +84,39 @@ class AuthService:
         )
         return list(result.scalars().all())
 
+    async def revoke_invite(
+        self,
+        db: AsyncSession,
+        *,
+        invite_id: uuid.UUID,
+        admin_user: User,
+    ) -> InviteToken:
+        """Revoke a SENT invite token so it can no longer be used.
+
+        Only SENT invites can be revoked. Already USED, EXPIRED, or
+        REVOKED invites raise an appropriate error.
+        """
+        result = await db.execute(
+            select(InviteToken).where(InviteToken.id == invite_id)
+        )
+        invite = result.scalar_one_or_none()
+        if invite is None:
+            from app.core.exceptions import NotFoundError
+            raise NotFoundError("Invite not found")
+
+        if invite.status == InviteStatus.REVOKED:
+            raise ConflictError("Invite is already revoked")
+        if invite.status == InviteStatus.USED:
+            raise ConflictError("Invite has already been used and cannot be revoked")
+        if invite.status == InviteStatus.EXPIRED:
+            raise ConflictError("Invite has already expired")
+
+        invite.status = InviteStatus.REVOKED
+        db.add(invite)
+        await db.flush()
+        await db.refresh(invite)
+        return invite
+
     # ------------------------------------------------------------------
     # Registration
     # ------------------------------------------------------------------
@@ -269,7 +302,13 @@ class AuthService:
         *,
         refresh_token_str: str,
     ) -> dict[str, str]:
-        """Rotate a refresh token into a new access/refresh pair."""
+        """Rotate a refresh token into a new access/refresh pair.
+
+        Rejects tokens issued before the user's password was changed, so
+        a password reset (or any future password change) invalidates every
+        existing refresh token — matching the access-token rejection in
+        get_current_user (dependencies.py).
+        """
         payload = decode_token(refresh_token_str)
         if payload.get("type") != "refresh":
             raise AuthenticationError("Invalid token type")
@@ -285,6 +324,17 @@ class AuthService:
             raise AuthenticationError("Account is not active")
         if user.status not in (UserStatus.ACTIVE, UserStatus.SUSPENDED):
             raise AuthenticationError("Account is not active")
+
+        # Reject refresh tokens issued before the password was last changed.
+        # This mirrors the access-token check in get_current_user and ensures
+        # that a password reset invalidates EVERY existing session, not just
+        # the access tokens.
+        if user.password_changed_at is not None:
+            token_iat = payload.get("iat")
+            if token_iat is not None:
+                token_issued = datetime.fromtimestamp(token_iat, UTC)
+                if token_issued < user.password_changed_at:
+                    raise AuthenticationError("Token issued before password change")
 
         return {
             "access_token": create_access_token(user.id),
