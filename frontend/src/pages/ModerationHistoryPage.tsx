@@ -1,3 +1,5 @@
+//Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/
+
 import {useState} from "react"
 
 const moderationArray: {
@@ -41,17 +43,17 @@ const moderationArray: {
   }
 ];
 
-
-
 function ModerationHistoryPage() {
   const [searchText, setSearchText] = useState("");
   const [adminID, setAdminID] = useState("");
   const [date, setDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   function dealClick(){
     setSearchText("");
     setAdminID("");
     setDate("");
+    setCurrentPage(1);
   }
 
 const filteredModerations = moderationArray.filter((moderation) => {
@@ -62,6 +64,27 @@ const filteredModerations = moderationArray.filter((moderation) => {
 
     return matchesSearch && matchesAdminID && matchesDate;
   });
+  
+  const item_per_page = 50;
+  const totalPages = Math.max(1, Math.ceil(filteredModerations.length / item_per_page));
+  const startIndex = (currentPage - 1) * item_per_page;
+
+  const paginatedModerations = filteredModerations.slice(
+    startIndex,
+    startIndex + item_per_page
+  );
+
+  function goPreviousPage(){
+    setCurrentPage((previousPage) =>
+      Math.max(previousPage - 1, 1)
+    );
+  }
+
+  function goNextPage(){
+    setCurrentPage((previousPage) =>
+      Math.min(previousPage + 1, totalPages)
+    );
+  }
 
   return (
     <>
@@ -103,7 +126,7 @@ const filteredModerations = moderationArray.filter((moderation) => {
             </thead>
 
             <tbody>
-              {filteredModerations.map((moderation) =>(
+              {paginatedModerations .map((moderation) =>(
                 <tr key={moderation.id}>
                   <td>{moderation.id}</td>
                   <td>{moderation.affectedMember}</td>
@@ -115,11 +138,17 @@ const filteredModerations = moderationArray.filter((moderation) => {
                 </tr>
               ))}
 
-              {filteredModerations.length === 0 && (
+              {paginatedModerations .length === 0 && (
                 <p>There is no moderations that match your filtering</p>
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="pagination-moderation-history">
+          <button type="button" onClick={goPreviousPage} disabled={currentPage === 1}>Previous</button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button type="button" onClick={goNextPage} disabled={currentPage === totalPages}>Next</button>
         </div>
       </section>
     </>
