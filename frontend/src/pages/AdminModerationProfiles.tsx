@@ -1,4 +1,4 @@
-//Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/
+{/* Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/ */}
 
 import {Link} from "react-router-dom";
 type Status = "suspended" | "notSuspended";

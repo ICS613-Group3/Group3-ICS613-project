@@ -1,5 +1,4 @@
-//Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/
-
+{/* Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/ */}
 import {useState} from "react";
 import {Link, useParams} from "react-router-dom";
 

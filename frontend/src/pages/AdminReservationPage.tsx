@@ -1,6 +1,5 @@
-//Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/
-//Reference: https://react.dev/learn/responding-to-events
-
+{/* Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/ */}
+{/* /Reference: https://react.dev/learn/responding-to-events */}
 import {useState} from "react"
 
 const reservationArray: {
