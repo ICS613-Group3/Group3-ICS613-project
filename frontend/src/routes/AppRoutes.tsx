@@ -9,7 +9,7 @@ import AdminListingsPage from '../pages/AdminListingsPage';
 import AdminReservationPage from '../pages/AdminReservationPage';
 import ModerationHistoryPage from "../pages/ModerationHistoryPage";
 import AdminModerationProfiles from '../pages/AdminModerationProfiles';
-import AdminModerationIndivialProfile from '../pages/AdminModerationIndividualProfile';
+import AdminModerationIndividualProfile from '../pages/AdminModerationIndividualProfile';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -109,7 +109,7 @@ function AppRoutes() {
 
         {/* US 30 and 31 amin suspend and reactivate member account*/}
         <Route path="/admin/AdminModerationProfiles" element={<AdminModerationProfiles />} />
-        <Route path="/admin/AdminModerationProfiles/:memberId" element={<AdminModerationIndivialProfile />} />
+        <Route path="/admin/AdminModerationProfiles/:memberId" element={<AdminModerationIndividualProfile />} />
 
         {/* US 32 admin views moderation history */}
         <Route path="/admin/ModerationHistoryPage" element={<ModerationHistoryPage />} />

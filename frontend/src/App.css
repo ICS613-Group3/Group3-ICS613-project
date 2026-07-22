@@ -1675,6 +1675,7 @@ select {
   line-height: 1.5;
 }
 
+
 /* Mobile layout stacks form and preview vertically. */
 @media (max-width: 820px) {
   .profile-layout {
@@ -2198,6 +2199,36 @@ select {
   padding: 1.25rem;
   margin-top: 1.5rem;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* suspension reason error message to be hidden*/
+.suspension-reason-error-message-invisible {
+  display: none;
+}
+
+/* suspension reason error message to be visible*/
+.suspension-reason-error-message-visible {
+  display: block;
+}
+
+/* margin bottom to admin moderation profile input*/
+.margin-bottom-admin-moderation-input {
+  margin-bottom: 10px;
+}
+
+/* iinvlaid button on admin moderation profile page*/
+.invalid-button {
+  margin-left: 10px;
+  
+}
+
+/* pagination for moderation history page*/
+.pagination-moderation-history {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 /* Mobile admin listing layout. */
