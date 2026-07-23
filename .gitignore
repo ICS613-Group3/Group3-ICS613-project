@@ -1,1 +1,7 @@
 .env
+
+# CI/CD scripts
+scripts/
+
+# pgadmin config
+backend/db/pgadmin/
