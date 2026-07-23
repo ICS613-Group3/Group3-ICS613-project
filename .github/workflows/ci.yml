@@ -233,7 +233,7 @@ jobs:
 
       - name: Run database migrations
         working-directory: backend
-        run: alembic upgrade head
+        run: python scripts/init_db.py
 
       - name: Seed deterministic test data
         working-directory: backend
