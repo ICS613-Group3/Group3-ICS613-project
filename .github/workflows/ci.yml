@@ -152,11 +152,11 @@ jobs:
       # Findings accepted as false positives are documented inline with
       # `# nosec <check-id> -- <reason>` rather than silenced globally,
       # so the check stays effective against future real findings.
-      # --skip flags match the skips in pyproject.toml's [tool.bandit]
-      # section, duplicated here for CI environments where -c parsing
-      # may behave differently across bandit versions.
+      # --skip flags duplicate the [tool.bandit] skips as a fallback
+      # for CI environments that may cache a bandit version with
+      # different pyproject.toml parsing behaviour.
       - name: bandit
-        run: bandit -r src/app -c pyproject.toml --skip B101,B105,B110,B311,B603,B607
+        run: bandit -r src/app --skip B101,B105,B110,B311,B603,B607
 
   frontend-checks:
     name: Frontend lint, typecheck, build
