@@ -264,7 +264,14 @@ function ToolDetailPage() {
             <dl className="tool-detail-meta-grid">
               <div>
                 <dt>Owner</dt>
-                <dd>{tool.ownerName}</dd>
+                <dd>
+                  <Link
+                    className="public-profile-reviewer-link"
+                    to={`/members/${tool.ownerId}`}
+                  >
+                    {tool.ownerName}
+                  </Link>
+                </dd>
               </div>
 
               <div>

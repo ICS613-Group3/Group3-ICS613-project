@@ -160,6 +160,47 @@ export interface ToolResponse {
   updated_at: string;
 }
 
+/**
+ * Review displayed on another member's public profile.
+ *
+ * Issue #52 requires the reservation date in addition to the normal
+ * review rating, comment, reviewer name, and creation timestamp.
+ */
+export interface PublicMemberReview {
+  id: string;
+  reservation_id: string;
+  reviewer_id: string;
+  reviewer_name: string | null;
+  rating: number;
+  comment: string | null;
+  reservation_date: string;
+  created_at: string;
+}
+
+/**
+ * Public-safe member profile response for Issue #52.
+ *
+ * This response intentionally excludes private information such as:
+ * - Email address
+ * - Password/authentication data
+ * - Admin status
+ * - Internal violation-management information
+ */
+export interface PublicMemberProfileResponse {
+  id: string;
+  full_name: string | null;
+  bio: string | null;
+  neighborhood: string | null;
+  photo_url: string | null;
+  status: UserStatus;
+  member_since: string;
+  average_rating: number;
+  review_count: number;
+  completed_loans_as_owner: number;
+  damage_report_count: number;
+  active_tools: ToolResponse[];
+  reviews: PublicMemberReview[];
+}
 export interface ToolUpdate {
   name?: string;
   description?: string;
@@ -233,7 +274,9 @@ export interface ReviewResponse {
   id: string;
   reservation_id: string;
   reviewer_id: string;
+  reviewer_name?: string | null;
   reviewee_id: string;
+  reviewee_name?: string | null;
   rating: number;
   comment: string | null;
   created_at: string;

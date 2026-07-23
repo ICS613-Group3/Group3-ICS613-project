@@ -20,6 +20,7 @@ import AccountDeletionPage from '../pages/AccountDeletionPage';
 // Import profile pages for frontend issues #95, #97, #98, #99, #100, and #102.
 import EditProfilePage from '../pages/EditProfilePage';
 import ProfileSetupPage from '../pages/ProfileSetupPage';
+import PublicMemberProfilePage from '../pages/PublicMemberProfilePage';
 
 // Import main app pages.
 import BrowseToolsPage from '../pages/BrowseToolsPage';
@@ -70,6 +71,12 @@ function AppRoutes() {
         {/* Profile setup and edit profile routes. */}
         <Route path="/profile/setup" element={<ProfileSetupPage />} />
         <Route path="/profile/edit" element={<EditProfilePage />} />
+
+        {/* Public member profile and review history for Issue #52. */}
+        <Route
+          path="/members/:memberId"
+          element={<PublicMemberProfilePage />}
+        />
 
         {/* Account deletion route for frontend issues #105 and #107. */}
         <Route path="/account/delete" element={<AccountDeletionPage />} />
