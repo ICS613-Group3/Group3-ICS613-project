@@ -97,12 +97,6 @@ class TestScenario2RequiredFieldsMissing:
         )
         assert response.status_code == 422
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: 'description' is Form(..., default=None) in "
-        "create_tool (app/api/v1/tools.py) -- optional, not required -- so the doc's "
-        "'missing description is rejected' requirement is not enforced.",
-    )
     async def test_missing_description_is_rejected(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         response = await client.post(
@@ -141,13 +135,6 @@ class TestScenario3PhotoUploadValidationRejectsInvalidFiles:
 
 
 class TestScenario4ZeroPhotosIsRejected:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: create_tool's 'photos' parameter defaults to None and "
-        "create_with_photos (app/services/tool.py) only calls add_photos 'if photos:' "
-        "-- a listing with zero photos is currently created successfully instead of "
-        "being rejected.",
-    )
     async def test_no_photos_is_rejected(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         response = await client.post(
@@ -177,11 +164,6 @@ class TestScenario6UnauthenticatedCannotCreateListing:
 
 
 class TestScenario7ListingNameMustBeUniquePerOwner:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ToolService.create_tool (app/services/tool.py) never "
-        "checks for an existing listing with the same name+owner before inserting.",
-    )
     async def test_duplicate_name_for_same_owner_is_rejected(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -190,7 +172,7 @@ class TestScenario7ListingNameMustBeUniquePerOwner:
 
         response = await client.post(
             "/api/v1/tools",
-            data={"name": "Circular Saw", "category": "POWER_TOOLS", "condition": "GOOD"},
+            data={"name": "Circular Saw", "category": "POWER_TOOLS", "condition": "GOOD", "description": "A duplicate saw."},
             files=[("photos", fake_photo())],
             headers=auth_header(owner.id),
         )

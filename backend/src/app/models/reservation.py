@@ -21,6 +21,7 @@ from app.db.base import Base
 from app.models.enums import ReservationState
 
 if TYPE_CHECKING:
+    from app.models.message import Message
     from app.models.tool import Tool
     from app.models.user import User
 
@@ -50,9 +51,17 @@ class Reservation(Base):
         # GiST EXCLUDE: prevent overlapping date ranges for the same tool
         # Only active states (REQUESTED, APPROVED, PICKED_UP) are checked
         ExcludeConstraint(
-            ("tool_id", "="),
-            (text("tsrange(start_date, end_date, '[]')"), "&&"),
-            where=text("state IN ('REQUESTED', 'APPROVED', 'PICKED_UP')"),
+            # Group by tool. Only rows for the same tool are checked against each other. 
+            # Reserving a hammer doesn't conflict with reserving a drill.
+            ("tool_id", "="),                                               # (1) same tool#
+            # PostgreSQL range type. '[]' means inclusive on both ends 
+            # — the date range includes both the start and end days. 
+            # So July 24 → July 26 and July 26 → July 28 do conflict on the 26th (touching ranges collide).
+            # "&&" means "overlaps" in PostgreSQL range types. So this checks for overlapping date ranges.
+            (text("tsrange(start_date, end_date, '[]')"), "&&"),            # (2) overlapping dates
+            # Only check active reservations (REQUESTED, APPROVED, PICKED_UP) for overlap. 
+            # Canceled or denied reservations don't block new reservations.
+            where=text("state IN ('REQUESTED', 'APPROVED', 'PICKED_UP')"),  # (3) active states only
             using="gist",
             name="ex_no_overlap_active",
         ),
@@ -82,18 +91,30 @@ class Reservation(Base):
     cancelled_by_type: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )  # CancellerType value
-    cancelled_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancelled_reason: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
 
     # Denial audit
-    denied_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    denied_reason: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
 
     # Pickup / return timestamps
-    picked_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    picked_up_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    returned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Damage report
-    damage_reported: Mapped[bool] = mapped_column(default=False, nullable=False)
-    damage_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    damage_reported: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
+    damage_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     damage_reported_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -106,7 +127,9 @@ class Reservation(Base):
     force_resolved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    force_resolution_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    force_resolution_reason: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -121,7 +144,16 @@ class Reservation(Base):
     )
 
     # Relationships
-    tool: Mapped["Tool"] = relationship("Tool", back_populates="reservations", lazy="selectin")
+    tool: Mapped["Tool"] = relationship(
+        "Tool", back_populates="reservations", lazy="selectin"
+    )
     borrower: Mapped["User"] = relationship(
         "User", foreign_keys=[borrower_id], back_populates="borrowed_reservations"
+    )
+    messages: Mapped[list["Message"]] = relationship(
+        "Message",
+        back_populates="reservation",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+        lazy="selectin",
     )

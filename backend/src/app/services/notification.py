@@ -28,7 +28,7 @@ class NotificationService:
         """Create a notification for a user."""
         notification = Notification(
             user_id=user_id,
-            type=type_,
+            type=type_.value,
             title=title,
             body=body,
             payload=payload,
@@ -52,7 +52,9 @@ class NotificationService:
         Returns (items, total, unread_count).
         """
         base = select(Notification).where(Notification.user_id == user_id)
-        count_base = select(func.count(Notification.id)).where(Notification.user_id == user_id)
+        count_base = select(func.count(Notification.id)).where(
+            Notification.user_id == user_id
+        )
 
         if unread_only:
             base = base.where(Notification.read_at.is_(None))
@@ -73,7 +75,8 @@ class NotificationService:
 
         # Paginated results
         query = (
-            base.order_by(Notification.created_at.desc())
+            base
+            .order_by(Notification.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

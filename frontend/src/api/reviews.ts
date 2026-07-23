@@ -27,7 +27,7 @@ export const reviewsApi = {
     const qs = searchParams.toString();
     return apiRequest<{ items: ReviewResponse[]; total: number; page: number; page_size: number; pages: number }>(
       'GET',
-      qs ? `/reviews/users/me/reviews?${qs}` : '/reviews/users/me/reviews',
+      qs ? `/users/me/reviews?${qs}` : '/users/me/reviews',
     );
   },
 };

@@ -1,180 +1,89 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  mockReservations,
-  type MockReservation,
-  type ReservationStatus,
-} from '../data/mockData';
+import { reservationsApi } from '../api/reservations';
+import { toolsApi } from '../api/tools';
+import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
+import type { ReservationResponse, ReservationState, ToolResponse } from '../types/api';
 
-/**
- * US18 frontend demo constants.
- *
- * pickupGraceDays:
- * - R1 plan uses a 3-day grace period for pickup.
- *
- * mockTodayHst:
- * - Fixed HST demo date so the overdue notice is visible during the demo.
- * - Backend/Celery will later use the real HST date.
- */
-const pickupGraceDays = 3;
-const mockTodayHst = '2026-07-08';
-
-/**
- * addDaysToDateString
- *
- * Adds days to a YYYY-MM-DD date string and returns YYYY-MM-DD.
- * Uses UTC internally to keep output stable across browsers.
- */
-function addDaysToDateString(dateString: string, daysToAdd: number) {
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + daysToAdd);
-  return date.toISOString().slice(0, 10);
+function formatStatus(status: ReservationState): string {
+  return status.replace('_', ' ');
 }
 
-/**
- * getDateDifferenceInDays
- *
- * Returns the number of calendar days between two YYYY-MM-DD dates.
- */
-function getDateDifferenceInDays(startDate: string, endDate: string) {
-  const start = new Date(`${startDate}T00:00:00.000Z`);
-  const end = new Date(`${endDate}T00:00:00.000Z`);
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
-  return Math.floor((end.getTime() - start.getTime()) / millisecondsPerDay);
-}
-
-/**
- * getPickupAutoCancelInfo
- *
- * US18 frontend helper.
- *
- * Rule for mock demo:
- * - Only APPROVED reservations can become overdue for pickup.
- * - Pickup must be confirmed within 3 days after the reservation start date.
- * - If the grace deadline passed, show an overdue/auto-cancel notice.
- *
- * Important:
- * - This does not run a real scheduled job.
- * - Backend/Celery will later perform the actual auto-cancel.
- */
-function getPickupAutoCancelInfo(
-  reservation: MockReservation,
-  currentStatus: ReservationStatus,
-) {
-  if (currentStatus !== 'APPROVED') {
-    return null;
-  }
-
-  const graceDeadline = addDaysToDateString(
-    reservation.startDate,
-    pickupGraceDays,
-  );
-
-  const autoCancelDate = addDaysToDateString(
-    reservation.startDate,
-    pickupGraceDays + 1,
-  );
-
-  const isOverdue = mockTodayHst > graceDeadline;
-  const daysPastGrace = Math.max(
-    0,
-    getDateDifferenceInDays(graceDeadline, mockTodayHst),
-  );
-
-  return {
-    graceDeadline,
-    autoCancelDate,
-    isOverdue,
-    daysPastGrace,
-  };
-}
-
-/**
- * ReservationDetailPage
- *
- * This page shows one reservation and mock action buttons.
- * The buttons simulate the reservation lifecycle for R1:
- *
- * REQUESTED -> APPROVED / DENIED
- * APPROVED -> PICKED_UP
- * PICKED_UP -> RETURNED
- *
- * PR #131 review fix:
- * - When a reservation reaches RETURNED status, show a real "Leave Review"
- *   link instead of a disabled "Leave Review Coming Next" button.
- *
- * US18 added:
- * - Shows overdue pickup indicator.
- * - Shows detailed auto-cancel notice.
- * - Provides a mock auto-cancel action for demo purposes only.
- *
- * Later backend behavior:
- * - Ivan can connect each action button to backend API endpoints.
- * - The review link can stay the same because it already matches the route:
- *   /reservations/:reservationId/review
- * - Celery/backend job can perform the real US18 auto-cancel.
- */
 function ReservationDetailPage() {
-  // Read reservationId from the route path: /reservations/:reservationId
   const { reservationId } = useParams();
-
-  // Find selected reservation from mock data.
-  const reservation = mockReservations.find(
-    (mockReservation) => mockReservation.id === reservationId,
-  );
-
-  /**
-   * Local status state lets the demo update status without backend persistence.
-   *
-   * If the reservation exists, start with the mock reservation status.
-   * If the reservation does not exist, fall back to REQUESTED.
-   */
-  const [currentStatus, setCurrentStatus] = useState<ReservationStatus>(
-    reservation?.status ?? 'REQUESTED',
-  );
-
-  // Message shown after a mock action button is clicked.
+  const { user } = useAuth();
+  const [reservation, setReservation] = useState<ReservationResponse | null>(null);
+  const [tool, setTool] = useState<ToolResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [isActing, setIsActing] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [denyReason, setDenyReason] = useState('');
 
-  /**
-   * Converts backend-style status values into readable text.
-   *
-   * Example:
-   * PICKED_UP -> PICKED UP
-   */
-  const formatStatus = (status: ReservationStatus) => {
-    return status.replace('_', ' ');
-  };
+  const loadReservation = useCallback(async () => {
+    if (!reservationId) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await reservationsApi.get(reservationId);
+      setReservation(res);
+      try {
+        const t = await toolsApi.get(res.tool_id);
+        setTool(t);
+      } catch {
+        // Tool fetch is non-critical.
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reservation not found');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reservationId]);
 
-  /**
-   * Updates local status for the mock demo.
-   *
-   * This simulates a backend response for the R1 frontend demo.
-   * A page refresh will reset the status back to the original mock data.
-   */
-  const handleStatusChange = (
-    nextStatus: ReservationStatus,
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadReservation();
+  }, [loadReservation]);
+
+  const handleAction = async (
+    action: () => Promise<ReservationResponse>,
     message: string,
   ) => {
-    setCurrentStatus(nextStatus);
-    setActionMessage(message);
+    setIsActing(true);
+    setActionMessage('');
+    try {
+      const updated = await action();
+      setReservation(updated);
+      setActionMessage(message);
+    } catch (err) {
+      setActionMessage(
+        err instanceof ApiRequestError ? err.detail : 'Action failed',
+      );
+    } finally {
+      setIsActing(false);
+    }
   };
 
-  /**
-   * Friendly error page for an invalid reservation ID.
-   *
-   * This prevents the app from crashing if a user opens a bad URL.
-   */
-  if (!reservation) {
+  const isBorrower = user && reservation && user.id === reservation.borrower_id;
+  const isToolOwner = user && tool && user.id === tool.owner_id;
+
+  if (isLoading) {
+    return (
+      <section className="page-section">
+        <div className="page-header"><h1>Loading...</h1></div>
+      </section>
+    );
+  }
+
+  if (!reservation || error) {
     return (
       <section className="page-section">
         <div className="empty-state-card">
           <p className="eyebrow">Reservation Not Found</p>
           <h1>We could not find this reservation.</h1>
-          <p>
-            The selected reservation may not exist in the current mock data.
-          </p>
+          <p>{error || 'The selected reservation may not exist.'}</p>
           <Link className="primary-link narrow-link" to="/reservations">
             Back to Reservations
           </Link>
@@ -183,178 +92,129 @@ function ReservationDetailPage() {
     );
   }
 
-  // Determine which mock role this reservation is using for demo actions.
-  const isBorrower = reservation.role === 'borrower';
-  const isOwner = reservation.role === 'owner';
-
-  // US18 auto-cancel notice information for this reservation.
-  const autoCancelInfo = getPickupAutoCancelInfo(reservation, currentStatus);
+  const state = reservation.state;
 
   return (
     <section className="page-section">
-      {/* Page header */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Reservation Detail</p>
-          <h1>{reservation.toolName}</h1>
+          <h1>{tool?.name || `Tool ${reservation.tool_id.slice(0, 8)}`}</h1>
           <p className="page-description">
-            Review this reservation and test the mock R1 workflow actions for
-            borrower and owner roles.
+            Review this reservation and manage its workflow.
           </p>
         </div>
-
-        {/* Back link to the reservation list */}
         <Link className="secondary-link" to="/reservations">
           Back to Reservations
         </Link>
       </div>
 
-      {/* Main reservation detail layout */}
       <div className="reservation-detail-grid">
-        {/* Reservation information card */}
         <article className="reservation-detail-card">
-          {/* Reservation title and status */}
           <div className="reservation-card-header">
             <div>
               <p className="eyebrow">
-                {isOwner ? 'Owner Workflow' : 'Borrower Workflow'}
+                {isBorrower ? 'Borrower View' : isToolOwner ? 'Owner View' : 'View'}
               </p>
-              <h2>{reservation.toolName}</h2>
+              <h2>{tool?.name || 'Tool'}</h2>
             </div>
-
-            <span
-              className={`workflow-status status-${currentStatus.toLowerCase()}`}
-            >
-              {formatStatus(currentStatus)}
+            <span className={`workflow-status status-${state.toLowerCase()}`}>
+              {formatStatus(state)}
             </span>
           </div>
 
-          {/* Reservation metadata */}
           <dl className="reservation-meta-grid detail-meta-grid">
             <div>
-              <dt>Borrower</dt>
-              <dd>{reservation.borrowerName}</dd>
-            </div>
-
-            <div>
-              <dt>Owner</dt>
-              <dd>{reservation.ownerName}</dd>
-            </div>
-
-            <div>
-              <dt>Start Date</dt>
-              <dd>{reservation.startDate}</dd>
-            </div>
-
-            <div>
-              <dt>End Date</dt>
-              <dd>{reservation.endDate}</dd>
-            </div>
-
-            <div>
-              <dt>Your Demo Role</dt>
-              <dd>{isOwner ? 'Owner' : 'Borrower'}</dd>
-            </div>
-
-            <div>
-              <dt>Tool Link</dt>
+              <dt>Tool</dt>
               <dd>
-                <Link to={`/tools/${reservation.toolId}`}>
-                  View Tool Detail
-                </Link>
+                {tool ? (
+                  <Link to={`/tools/${reservation.tool_id}`}>{tool.name}</Link>
+                ) : (
+                  reservation.tool_id.slice(0, 8)
+                )}
               </dd>
             </div>
+            <div>
+              <dt>Start Date</dt>
+              <dd>{reservation.start_date}</dd>
+            </div>
+            <div>
+              <dt>End Date</dt>
+              <dd>{reservation.end_date}</dd>
+            </div>
+            {reservation.picked_up_at && (
+              <div>
+                <dt>Picked Up</dt>
+                <dd>{new Date(reservation.picked_up_at).toLocaleString()}</dd>
+              </div>
+            )}
+            {reservation.returned_at && (
+              <div>
+                <dt>Returned</dt>
+                <dd>{new Date(reservation.returned_at).toLocaleString()}</dd>
+              </div>
+            )}
+            {reservation.denied_reason && (
+              <div>
+                <dt>Denial Reason</dt>
+                <dd>{reservation.denied_reason}</dd>
+              </div>
+            )}
+            {reservation.cancelled_reason && (
+              <div>
+                <dt>Cancellation Reason</dt>
+                <dd>{reservation.cancelled_reason}</dd>
+              </div>
+            )}
           </dl>
 
-          {/* US18 detailed auto-cancel notice. */}
-          {autoCancelInfo && (
-            <section
-              className={
-                autoCancelInfo.isOverdue
-                  ? 'auto-cancel-detail-panel overdue'
-                  : 'auto-cancel-detail-panel grace'
-              }
-            >
-              <p className="eyebrow">US18 Auto-Cancel Overdue Pickup</p>
-
-              <h3>
-                {autoCancelInfo.isOverdue
-                  ? 'Pickup is overdue'
-                  : 'Pickup is still within grace period'}
-              </h3>
-
-              <ul>
-                <li>Mock today: {mockTodayHst} HST</li>
-                <li>Reservation start date: {reservation.startDate}</li>
-                <li>Pickup grace deadline: {autoCancelInfo.graceDeadline} HST</li>
-                <li>Auto-cancel evaluation date: {autoCancelInfo.autoCancelDate} HST</li>
-              </ul>
-
-              {autoCancelInfo.isOverdue ? (
-                <p>
-                  Pickup was not confirmed within the {pickupGraceDays}-day
-                  grace period. The real backend job would auto-cancel this
-                  reservation and free the tool dates.
-                </p>
-              ) : (
-                <p>
-                  Pickup is not overdue yet. The borrower can still confirm
-                  pickup before the grace deadline.
-                </p>
-              )}
-            </section>
-          )}
-
-          {/* Optional borrower request message */}
-          {reservation.message && (
-            <div className="info-panel">
-              <h3>Request Message</h3>
-              <p>{reservation.message}</p>
-            </div>
-          )}
-
-          {/* Success/status message after mock action */}
           {actionMessage && (
-            <div className="success-message" role="status">
+            <p className={actionMessage.includes('failed') || actionMessage.includes('error') ? 'form-error' : 'success-message'}>
               {actionMessage}
-            </div>
+            </p>
           )}
         </article>
 
-        {/* Workflow action panel */}
         <aside className="workflow-actions-card">
           <p className="eyebrow">Workflow Actions</p>
           <h2>Available Actions</h2>
-          <p>
-            These buttons are mock frontend actions. They update the status on
-            this page only. A page refresh will reset the mock data.
-          </p>
 
-          {/* Workflow buttons change based on status and role */}
           <div className="workflow-action-list">
-            {/* Owner can approve or deny REQUESTED reservations */}
-            {currentStatus === 'REQUESTED' && isOwner && (
+            {/* Owner: approve/deny REQUESTED */}
+            {state === 'REQUESTED' && isToolOwner && (
               <>
                 <button
                   type="button"
                   className="action-button approve-button"
+                  disabled={isActing}
                   onClick={() =>
-                    handleStatusChange(
-                      'APPROVED',
-                      'Reservation approved. Status changed to APPROVED.',
+                    handleAction(
+                      () => reservationsApi.approve(reservation.id),
+                      'Reservation approved.',
                     )
                   }
                 >
                   Approve Request
                 </button>
 
+                <label htmlFor="deny-reason" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Denial reason (optional):
+                  <input
+                    id="deny-reason"
+                    type="text"
+                    value={denyReason}
+                    onChange={(e) => setDenyReason(e.target.value)}
+                    placeholder="Reason for denial"
+                  />
+                </label>
                 <button
                   type="button"
                   className="action-button danger-button"
+                  disabled={isActing}
                   onClick={() =>
-                    handleStatusChange(
-                      'DENIED',
-                      'Reservation denied. Status changed to DENIED.',
+                    handleAction(
+                      () => reservationsApi.deny(reservation.id, { reason: denyReason || undefined }),
+                      'Reservation denied.',
                     )
                   }
                 >
@@ -363,94 +223,123 @@ function ReservationDetailPage() {
               </>
             )}
 
-            {/* Borrower can cancel REQUESTED reservations */}
-            {currentStatus === 'REQUESTED' && isBorrower && (
-              <button
-                type="button"
-                className="action-button danger-button"
-                onClick={() =>
-                  handleStatusChange(
-                    'CANCELLED',
-                    'Request cancelled. Status changed to CANCELLED.',
-                  )
-                }
-              >
-                Cancel Request
-              </button>
-            )}
-
-            {/* Borrower can confirm pickup or cancel before pickup when APPROVED */}
-            {currentStatus === 'APPROVED' && isBorrower && (
+            {/* Borrower: cancel REQUESTED */}
+            {state === 'REQUESTED' && isBorrower && (
               <>
-                <button
-                  type="button"
-                  className="action-button approve-button"
-                  onClick={() =>
-                    handleStatusChange(
-                      'PICKED_UP',
-                      'Pickup confirmed. Status changed to PICKED_UP.',
-                    )
-                  }
-                >
-                  Confirm Pickup
-                </button>
-
+                <label htmlFor="cancel-reason" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Cancellation reason:
+                  <input
+                    id="cancel-reason"
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Reason for cancellation"
+                    required
+                  />
+                </label>
                 <button
                   type="button"
                   className="action-button danger-button"
+                  disabled={isActing || !cancelReason.trim()}
                   onClick={() =>
-                    handleStatusChange(
-                      'CANCELLED',
-                      'Reservation cancelled before pickup.',
+                    handleAction(
+                      () => reservationsApi.cancel(reservation.id, { reason: cancelReason }),
+                      'Request cancelled.',
                     )
                   }
                 >
-                  Cancel Before Pickup
+                  Cancel Request
                 </button>
               </>
             )}
 
-            {/* Owner can cancel an APPROVED reservation */}
-            {currentStatus === 'APPROVED' && isOwner && (
-              <button
-                type="button"
-                className="action-button danger-button"
-                onClick={() =>
-                  handleStatusChange(
-                    'CANCELLED',
-                    'Owner cancelled the approved reservation.',
-                  )
-                }
-              >
-                Cancel Reservation
-              </button>
-            )}
-
-            {/* US18 mock auto-cancel action for overdue APPROVED reservation. */}
-            {autoCancelInfo?.isOverdue && (
-              <button
-                type="button"
-                className="action-button danger-button"
-                onClick={() =>
-                  handleStatusChange(
-                    'CANCELLED',
-                    'Mock US18 auto-cancel applied. Status changed to CANCELLED and tool dates would be freed by backend logic.',
-                  )
-                }
-              >
-                Mock Auto-Cancel Overdue Pickup
-              </button>
-            )}
-
-            {/* Borrower can confirm return when PICKED_UP */}
-            {currentStatus === 'PICKED_UP' && isBorrower && (
+            {/* Borrower: mark-picked-up APPROVED */}
+            {state === 'APPROVED' && isBorrower && (
               <button
                 type="button"
                 className="action-button approve-button"
+                disabled={isActing}
                 onClick={() =>
-                  handleStatusChange(
-                    'RETURNED',
-                    'Return confirmed. Status changed to RETURNED.',
+                  handleAction(
+                    () => reservationsApi.markPickedUp(reservation.id),
+                    'Pickup confirmed.',
+                  )
+                }
+              >
+                Confirm Pickup
+              </button>
+            )}
+
+            {/* Borrower: cancel APPROVED */}
+            {state === 'APPROVED' && isBorrower && (
+              <>
+                <label htmlFor="cancel-reason2" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Cancellation reason:
+                  <input
+                    id="cancel-reason2"
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Reason for cancellation"
+                    required
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="action-button danger-button"
+                  disabled={isActing || !cancelReason.trim()}
+                  onClick={() =>
+                    handleAction(
+                      () => reservationsApi.cancel(reservation.id, { reason: cancelReason }),
+                      'Reservation cancelled.',
+                    )
+                  }
+                >
+                  Cancel Reservation
+                </button>
+              </>
+            )}
+
+            {/* Owner: cancel APPROVED */}
+            {state === 'APPROVED' && isToolOwner && (
+              <>
+                <label htmlFor="cancel-reason-owner" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Cancellation reason:
+                  <input
+                    id="cancel-reason-owner"
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Reason for cancellation"
+                    required
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="action-button danger-button"
+                  disabled={isActing || !cancelReason.trim()}
+                  onClick={() =>
+                    handleAction(
+                      () => reservationsApi.cancel(reservation.id, { reason: cancelReason }),
+                      'Reservation cancelled by owner.',
+                    )
+                  }
+                >
+                  Cancel Reservation
+                </button>
+              </>
+            )}
+
+            {/* Borrower: mark-returned PICKED_UP */}
+            {state === 'PICKED_UP' && isBorrower && (
+              <button
+                type="button"
+                className="action-button approve-button"
+                disabled={isActing}
+                onClick={() =>
+                  handleAction(
+                    () => reservationsApi.markReturned(reservation.id),
+                    'Return confirmed.',
                   )
                 }
               >
@@ -458,8 +347,8 @@ function ReservationDetailPage() {
               </button>
             )}
 
-            {/* PR #131 review fix: RETURNED reservations now link to ReviewPage */}
-            {currentStatus === 'RETURNED' && (
+            {/* RETURNED: leave review */}
+            {state === 'RETURNED' && isBorrower && (
               <Link
                 className="action-button approve-button workflow-review-link"
                 to={`/reservations/${reservation.id}/review`}
@@ -468,24 +357,12 @@ function ReservationDetailPage() {
               </Link>
             )}
 
-            {/* Closed states show a message instead of action buttons */}
-            {(currentStatus === 'DENIED' || currentStatus === 'CANCELLED') && (
+            {/* Closed states */}
+            {(state === 'DENIED' || state === 'CANCELLED') && (
               <p className="closed-workflow-message">
                 This reservation is closed. No further action is available.
               </p>
             )}
-          </div>
-
-          {/* R1 story coverage note */}
-          <div className="workflow-note">
-            <h3>R1 stories covered</h3>
-            <ul>
-              <li>US14 Owner Approve / Deny</li>
-              <li>US17 Borrower Confirm Pickup</li>
-              <li>US18 Auto-Cancel Overdue Pickup</li>
-              <li>US20 Borrower Confirm Return</li>
-              <li>US24 Leave Rating / Review after return</li>
-            </ul>
           </div>
         </aside>
       </div>

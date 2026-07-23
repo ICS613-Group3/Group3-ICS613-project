@@ -4,12 +4,15 @@ Writes uploaded images to a configurable directory and returns URLs
 served by the StaticFiles mount at ``/uploads``.
 """
 
+import asyncio
 import uuid
 from pathlib import Path
 
 from app.config import get_settings
 
-ALLOWED_CONTENT_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/gif"})
+ALLOWED_CONTENT_TYPES = frozenset(
+    {"image/jpeg", "image/png", "image/webp", "image/gif"}
+)
 MAX_PHOTOS_PER_TOOL = 5
 
 _CONTENT_TYPE_TO_EXT: dict[str, str] = {
@@ -76,7 +79,8 @@ class PhotoStorageService:
 
         if content_type not in ALLOWED_CONTENT_TYPES:
             raise ValidationError(
-                f"Unsupported file type: {content_type}. Allowed: JPEG, PNG, WebP, GIF."
+                f"Unsupported file type: {content_type}. "
+                "Allowed: JPEG, PNG, WebP, GIF."
             )
         if file_size > settings.max_upload_size_bytes:
             max_mb = settings.max_upload_size_bytes / (1024 * 1024)
@@ -101,11 +105,13 @@ class PhotoStorageService:
         """Persist an uploaded photo and return its public URL path.
 
         Returns a path like ``/uploads/<uuid>.jpg``.
+        The disk write is offloaded to a thread pool to avoid blocking
+        the async event loop.
         """
         suffix = _CONTENT_TYPE_TO_EXT.get(content_type, ".bin")
         filename = f"{uuid.uuid4()}{suffix}"
         filepath = self.upload_dir / filename
-        filepath.write_bytes(content)
+        await asyncio.to_thread(filepath.write_bytes, content)
         return f"/uploads/{filename}"
 
     def delete(self, url: str) -> None:

@@ -78,12 +78,6 @@ class TestScenario3OwnerSelfDeactivatesWithNoPickedUpReservation:
 
 
 class TestScenario4OwnerCannotDeactivateWhilePickedUp:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ToolService.deactivate_tool (app/services/tool.py) never "
-        "checks for a PICKED_UP reservation before deactivating -- only the *edit* path "
-        "(update_tool) has that guard. A tool currently out on loan can be deactivated.",
-    )
     async def test_deactivate_rejected_while_picked_up(
         self, client, db_session: AsyncSession
     ) -> None:

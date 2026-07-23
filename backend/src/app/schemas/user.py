@@ -6,16 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import UserStatus
-
-
-def _validate_full_name(v: str | None) -> str | None:
-    """Validate a display name: strip whitespace, reject blank or overlong."""
-    if v is not None:
-        stripped = v.strip()
-        if not stripped:
-            raise ValueError("Display name cannot be empty or whitespace-only")
-        return stripped
-    return v
+from app.schemas.common import validate_full_name
 
 
 class UserUpdate(BaseModel):
@@ -26,7 +17,7 @@ class UserUpdate(BaseModel):
     neighborhood: str | None = None
     photo_url: str | None = None
 
-    _validate_name = field_validator("full_name", mode="before")(_validate_full_name)
+    _validate_name = field_validator("full_name", mode="before")(validate_full_name)
 
 
 class UserProfile(BaseModel):

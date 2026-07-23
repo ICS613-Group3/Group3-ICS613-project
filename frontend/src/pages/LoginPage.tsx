@@ -1,111 +1,48 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
-import { authApi } from '../api/auth';
+import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 
-/**
- * LoginPage
- *
- * Current behavior:
- * - Validates the email and password fields.
- * - Sends credentials to POST /api/v1/auth/login.
- * - Stores JWT access and refresh tokens through authApi.login().
- * - Redirects the authenticated user to the dashboard.
- *
- * Frontend issues covered:
- * - #81 Create the login UI.
- * - #85 Display a generic invalid-login message.
- * - #89 Provide a forgot-password link.
- *
- * #83 (unverified account) and #110 (account not found) are intentionally
- * NOT distinguished from a wrong password: the backend's /auth/login
- * always returns the same generic 401 "Invalid email or password" for any
- * failure reason, to avoid revealing account existence/status to an
- * unauthenticated caller (see AuthService.login). All three cases surface
- * through the same #85 generic-message branch below.
- */
 function LoginPage() {
   const navigate = useNavigate();
-
-  // Inline form state.
+  const { login } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Temporary compatibility with the existing AppLayout navigation.
-  // We will replace this with JWT-based navigation in a later step.
-  const mockAuthKey = 'mockAuthStatus';
-
-  // Require a complete email address such as name@example.com.
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  /**
-   * Submit credentials to the FastAPI backend.
-   */
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setErrorMessage('');
-    setIsSubmitting(true);
 
-    // Read and normalize the form fields.
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get('email') || '')
-      .trim()
-      .toLowerCase();
+    const email = String(formData.get('email') || '').trim().toLowerCase();
     const password = String(formData.get('password') || '');
 
-    // Perform frontend validation before making the API request.
     if (!emailPattern.test(email)) {
-      setErrorMessage(
-        'Please enter a valid email address, such as name@example.com.',
-      );
-      setIsSubmitting(false);
+      setErrorMessage('Please enter a valid email address, such as name@example.com.');
       return;
     }
 
     if (!password.trim()) {
       setErrorMessage('Password is required.');
-      setIsSubmitting(false);
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      // POST /api/v1/auth/login
-      // authApi.login() automatically stores both JWT tokens.
-      await authApi.login({
-        email,
-        password,
-      });
-
-      // Keep the current AppLayout navigation working temporarily.
-      localStorage.setItem(mockAuthKey, 'logged-in');
-      window.dispatchEvent(new Event('mock-auth-change'));
-
-      // Redirect after successful authentication.
+      await login({ email, password });
       navigate('/dashboard');
-    } catch (error) {
-      if (error instanceof ApiRequestError) {
-        if (error.status === 401) {
-          // Generic response for every login failure reason (unknown
-          // email, unverified/deleted account, wrong password) — the
-          // backend deliberately doesn't distinguish these so account
-          // existence/status is never exposed to an unauthenticated caller.
-          setErrorMessage('Invalid email or password.');
-        } else if (error.status === 429) {
-          setErrorMessage(
-            'Too many login attempts. Please wait and try again.',
-          );
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        if (err.status === 429) {
+          setErrorMessage(err.detail);
         } else {
-          setErrorMessage(
-            error.detail || 'Login failed. Please try again.',
-          );
+          setErrorMessage('Invalid email or password.');
         }
       } else {
-        setErrorMessage(
-          'Unable to connect to the server. Please try again.',
-        );
+        setErrorMessage('Unable to connect to server. Make sure the backend is running on port 8000.');
       }
     } finally {
       setIsSubmitting(false);
@@ -114,18 +51,16 @@ function LoginPage() {
 
   return (
     <section className="page-section">
-      {/* Page heading. */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Member Access</p>
           <h1>Login</h1>
           <p className="page-description">
-            Sign in to access the Neighborhood Tool Sharing application.
+            Sign in to Neighborhood Tool Sharing. Demo accounts: admin@example.com / member01@example.com / member02@example.com
           </p>
         </div>
       </div>
 
-      {/* Login form. */}
       <form className="auth-card" onSubmit={handleSubmit}>
         <label htmlFor="login-email">
           Email
@@ -133,11 +68,10 @@ function LoginPage() {
             id="login-email"
             type="email"
             name="email"
-            defaultValue="member02@example.com"
+            defaultValue=""
             required
             pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
-            title="Please enter a valid email address, such as name@example.com."
-            autoComplete="email"
+            title="Please enter a valid email address."
           />
         </label>
 
@@ -147,9 +81,8 @@ function LoginPage() {
             id="login-password"
             type="password"
             name="password"
-            defaultValue="devpass123"
+            defaultValue=""
             required
-            autoComplete="current-password"
           />
         </label>
 
@@ -158,23 +91,19 @@ function LoginPage() {
           type="submit"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Logging in...' : 'Login'}
+          {isSubmitting ? 'Signing in...' : 'Login'}
         </button>
 
-        {/* API error message. */}
-        {errorMessage && (
-          <p className="form-error" role="alert">
-            {errorMessage}
-          </p>
-        )}
-
-        <p className="auth-helper-text">
-          Demo accounts use the password <strong>devpass123</strong>.
-        </p>
+        {errorMessage && <p className="form-error">{errorMessage}</p>}
 
         <p className="auth-helper-text">
           Forgot your password?{' '}
           <Link to="/forgot-password">Reset password here</Link>.
+        </p>
+
+        <p className="auth-helper-text">
+          Need to verify your email?{' '}
+          <Link to="/verify-email">Verify here</Link>.
         </p>
 
         <p className="auth-helper-text">

@@ -1,210 +1,151 @@
-import { useMemo, useState } from 'react';
-
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-
 import { Link, useParams } from 'react-router-dom';
+import { toolsApi } from '../api/tools';
+import { reservationsApi } from '../api/reservations';
+import { reportsApi } from '../api/reports';
+import type { ReportReason } from '../api/reports';
+import { useAuth } from '../context/useAuth';
+import { ApiRequestError } from '../api/client';
+import type { ToolResponse } from '../types/api';
 
-import {
-  categoryLabels,
-  mockReservations,
-  mockTools,
-  type MockReservation,
-  type ReservationStatus,
-} from '../data/mockData';
+const categoryLabels: Record<string, string> = {
+  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
+};
 
-/**
- * Active reservation statuses that should block new overlapping reservation requests.
- *
- * Backend/database will later enforce this with real availability logic
- * and possibly a 409 Conflict response.
- */
-const activeReservationStatuses: ReservationStatus[] = [
-  'REQUESTED',
-  'APPROVED',
-  'PICKED_UP',
+const reportReasonOptions: { value: ReportReason; label: string }[] = [
+  { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate Content' },
+  { value: 'PROHIBITED_ITEM', label: 'Prohibited Item' },
+  { value: 'MISLEADING_LISTING', label: 'Misleading Listing' },
+  { value: 'SCAM_OR_FRAUD', label: 'Scam or Fraud' },
+  { value: 'DUPLICATE_LISTING', label: 'Duplicate Listing' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-// Mock logged-in member used by the current frontend demo.
-// Replace this with authenticated user data during real API integration.
-const currentMockUserId = 'user-1';
-
-/**
- * datesOverlap
- *
- * Checks whether two YYYY-MM-DD date ranges overlap.
- *
- * Example:
- * Existing: 2026-07-01 to 2026-07-03
- * Requested: 2026-07-02 to 2026-07-04
- * Result: true
- *
- * This is frontend-only mock conflict detection for Task 5.
- */
-function datesOverlap(
-  requestedStartDate: string,
-  requestedEndDate: string,
-  existingStartDate: string,
-  existingEndDate: string,
-) {
-  return (
-    requestedStartDate <= existingEndDate &&
-    requestedEndDate >= existingStartDate
-  );
-}
-
-/**
- * formatStatus
- *
- * Converts backend-style reservation status values into readable text.
- *
- * Example:
- * PICKED_UP -> PICKED UP
- */
-function formatStatus(status: ReservationStatus) {
-  return status.replace('_', ' ');
-}
-
-/**
- * ToolDetailPage
- *
- * This page shows:
- * - Tool details.
- * - Owner and availability information.
- * - Reservation request form.
- * - HST date/time labels.
- * - Mock frontend reservation date-conflict detection.
- *
- * Task 5 frontend behavior:
- * - Reservation request dates are clearly labeled as HST.
- * - Date range is checked against tool availability.
- * - Requested dates are checked against active mock reservations.
- * - If there is a conflict, show a backend-ready conflict message:
- *   "Tool is not available for those dates. Please choose another date range."
- *
- * Important:
- * - This is frontend-only mock behavior.
- * - Real backend will later perform final conflict detection and return 409 Conflict.
- */
 function ToolDetailPage() {
-  // Read the toolId from the route path: /tools/:toolId
   const { toolId } = useParams();
-
-  // Find the matching tool from mock data.
-  const tool = mockTools.find((mockTool) => mockTool.id === toolId);
-
-  // Owners cannot submit reservation requests for their own listings.
-  const isCurrentUserOwner = tool?.ownerId === currentMockUserId;
-
-  // Local form state for the mock reservation request form.
+  const { user } = useAuth();
+  const [tool, setTool] = useState<ToolResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [requestNote, setRequestNote] = useState('');
-
-  // Separate message states make success and error display clearer.
   const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [reserveError, setReserveError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * Active reservations for this tool.
-   *
-   * These are used for the frontend conflict demo.
-   * Backend/database will later be the final authority.
-   */
-  const activeReservationsForTool = useMemo(() => {
-    return mockReservations.filter(
-      (reservation) =>
-        reservation.toolId === toolId &&
-        activeReservationStatuses.includes(reservation.status),
-    );
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | ''>('');
+  const [reportComment, setReportComment] = useState('');
+  const [reportError, setReportError] = useState('');
+  const [reportSuccess, setReportSuccess] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+
+  useEffect(() => {
+    if (!toolId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsLoading(true);
+    toolsApi
+      .get(toolId)
+      .then(setTool)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load tool'))
+      .finally(() => setIsLoading(false));
   }, [toolId]);
 
-  /**
-   * Finds the first active reservation that conflicts with the requested dates.
-   */
-  function findConflictingReservation(
-    requestedStartDate: string,
-    requestedEndDate: string,
-  ) {
-    return activeReservationsForTool.find((reservation) =>
-      datesOverlap(
-        requestedStartDate,
-        requestedEndDate,
-        reservation.startDate,
-        reservation.endDate,
-      ),
-    );
-  }
+  const isOwner = user && tool && user.id === tool.owner_id;
 
-  /**
-   * Handles the mock reservation request form.
-   *
-   * This does not create a real backend reservation yet.
-   * It only shows success/error messages so the R1 demo can show:
-   *
-   * Browse Tool -> View Details -> Submit Reservation Request.
-   */
-  const handleReservationSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const getImageUrl = (): string => {
+    if (tool?.photos && tool.photos.length > 0) {
+      return tool.photos[0].url;
+    }
+    return `https://placehold.co/600x400?text=${encodeURIComponent(tool?.name || 'Tool')}`;
+  };
+
+  const handleReservationSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    // Clear old messages before validating the new request.
     setSuccessMessage('');
-    setErrorMessage('');
+    setReserveError('');
 
-    if (!tool) {
-      setErrorMessage('Tool not found. Please return to Browse Tools.');
+    if (!tool || !toolId) {
+      setReserveError('Tool not found.');
       return;
     }
 
-    if (isCurrentUserOwner) {
-      setErrorMessage('You cannot request a reservation for your own tool.');
-      return;
-    }
-
-    // Basic frontend validation for the mock demo.
     if (!startDate || !endDate) {
-      setErrorMessage('Please select both a start date and an end date.');
+      setReserveError('Please select both a start date and an end date.');
       return;
     }
 
     if (endDate < startDate) {
-      setErrorMessage('End date cannot be before start date.');
+      setReserveError('End date cannot be before start date.');
       return;
     }
 
-    // HST/date availability validation.
-    if (startDate < tool.availableFrom || endDate > tool.availableTo) {
-      setErrorMessage(
-        `Selected dates must be within the tool availability window: ${tool.availableFrom} to ${tool.availableTo} HST.`,
+    setIsSubmitting(true);
+    try {
+      await reservationsApi.create({
+        tool_id: toolId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      setSuccessMessage(
+        `Reservation request submitted for ${tool.name} from ${startDate} to ${endDate}. Status: REQUESTED.`,
       );
-      return;
+      setStartDate('');
+      setEndDate('');
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setReserveError(err.detail);
+      } else {
+        setReserveError('Failed to submit reservation.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Task 5 conflict-message validation.
-    const conflictingReservation = findConflictingReservation(startDate, endDate);
-
-    if (conflictingReservation) {
-      setErrorMessage(
-        `This tool is not available for the selected dates. Please choose another date range. The conflicting reservation is ${conflictingReservation.startDate} to ${conflictingReservation.endDate} HST.`,
-      );
-      return;
-    }
-
-    setSuccessMessage(
-      `Mock request submitted for ${tool.name} from ${startDate} to ${endDate} HST. Status: REQUESTED.`,
-    );
   };
 
-  /**
-   * Friendly error page if the URL has an invalid toolId.
-   */
-  if (!tool) {
+  const handleReport = async () => {
+    if (!toolId || !reportReason) return;
+    setReportError('');
+    setReportSuccess('');
+    setIsReporting(true);
+    try {
+      await reportsApi.submit(toolId, {
+        reason: reportReason,
+        comment: reportComment.trim() || undefined,
+      });
+      setReportSuccess('Report submitted. Thank you for helping keep our community safe.');
+      setShowReportModal(false);
+      setReportReason('');
+      setReportComment('');
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setReportError(err.status === 409 ? 'You have already reported this listing.' : err.detail);
+      } else {
+        setReportError('Failed to submit report.');
+      }
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <section className="page-section">
+        <div className="page-header"><h1>Loading...</h1></div>
+      </section>
+    );
+  }
+
+  if (!tool || error) {
     return (
       <section className="page-section">
         <div className="empty-state-card">
           <p className="eyebrow">Tool Not Found</p>
           <h1>We could not find this tool.</h1>
-          <p>The selected tool may not exist in the current mock data.</p>
-
+          <p>{error || 'The selected tool may not exist.'}</p>
           <Link className="primary-link narrow-link" to="/tools">
             Back to Browse Tools
           </Link>
@@ -215,187 +156,180 @@ function ToolDetailPage() {
 
   return (
     <section className="page-section">
-      {/* Page header */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Tool Detail</p>
           <h1>{tool.name}</h1>
           <p className="page-description">
-            Review the tool information, owner notes, availability, and submit a
-            mock reservation request using Hawaii Standard Time (HST) dates.
+            Review the tool information and submit a reservation request.
           </p>
         </div>
-
-        {/* Tool management actions */}
         <div className="page-header-actions">
-          <Link className="primary-link" to={`/tools/${tool.id}/edit`}>
-            Edit Tool Listing
-          </Link>
-
+          {isOwner && (
+            <Link className="primary-link" to={`/tools/${tool.id}/edit`}>
+              Edit Tool Listing
+            </Link>
+          )}
+          {!isOwner && user && (
+            <button
+              type="button"
+              className="action-button danger-button"
+              onClick={() => setShowReportModal(true)}
+            >
+              Report Listing
+            </button>
+          )}
           <Link className="secondary-link" to="/tools">
             Back to Browse Tools
           </Link>
         </div>
       </div>
 
-      {/* Main detail layout */}
+      {reportSuccess && <p className="success-message">{reportSuccess}</p>}
+
       <div className="tool-detail-layout">
-        {/* Left side: tool detail card */}
         <article className="tool-detail-card">
-          <img
-            className="tool-detail-image"
-            src={tool.imageUrl}
-            alt={tool.name}
-          />
+          <img className="tool-detail-image" src={getImageUrl()} alt={tool.name} />
 
           <div className="tool-detail-content">
             <div className="tool-detail-title-row">
               <span className="tool-category-badge">
-                {categoryLabels[tool.category]}
+                {categoryLabels[tool.category] || tool.category}
               </span>
-
-              <span className="tool-rating">Rating: {tool.rating}/5</span>
+              <span className="tool-rating">
+                Rating: {tool.avg_rating}/5 ({tool.rating_count} reviews)
+              </span>
             </div>
 
             <h2>{tool.name}</h2>
             <p>{tool.description}</p>
 
-            {/* Tool metadata */}
             <dl className="tool-detail-meta-grid">
               <div>
                 <dt>Owner</dt>
-                <dd>{tool.ownerName}</dd>
+                <dd>{tool.owner.full_name || 'Unknown'}</dd>
               </div>
-
               <div>
                 <dt>Condition</dt>
                 <dd>{tool.condition}</dd>
               </div>
-
-              <div>
-                <dt>Availability Dates</dt>
-                <dd>
-                  {tool.availableFrom} to {tool.availableTo} HST
-                </dd>
-              </div>
-
-              <div>
-                <dt>Latest Return Time</dt>
-                <dd>{tool.latestReturnTime} HST</dd>
-              </div>
             </dl>
-
-            {/* Owner notes */}
-            <section className="info-panel">
-              <h3>Owner Notes</h3>
-              <p>{tool.notesForBorrowers}</p>
-            </section>
-
-            {/* HST explanation */}
-            <section className="hst-helper-panel">
-              <strong>HST date/time rule</strong>
-              <p>
-                All availability dates, reservation dates, and latest return
-                times on this page are interpreted in Hawaii Standard Time (HST).
-              </p>
-            </section>
           </div>
         </article>
 
-        {/* Right side: reservation request form for borrower workflow */}
-        <aside className="reservation-request-card">
-          <p className="eyebrow">Reservation Request</p>
-          <h2>Request this tool</h2>
-          <p>
-            Select your desired borrowing dates. For this R1 frontend demo, the
-            form shows the planned REQUESTED workflow using mock data.
-          </p>
+        {!isOwner && (
+          <aside className="reservation-request-card">
+            <p className="eyebrow">Reservation Request</p>
+            <h2>Request this tool</h2>
+            <p>Select your desired borrowing dates (HST).</p>
 
-          {isCurrentUserOwner && (
-            <p className="form-error">
-              You cannot request a reservation for your own tool.
-            </p>
-          )}
+            <form className="reservation-form" onSubmit={handleReservationSubmit}>
+              <label htmlFor="reservation-start-date">
+                Start Date (HST)
+                <input
+                  id="reservation-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  required
+                />
+              </label>
 
-          {/* Backend-ready conflict explanation */}
-          <section className="reservation-conflict-info-panel">
-            <strong>Conflict check</strong>
-            <p>
-              If the selected dates overlap an active reservation, you will be
-              asked to choose another date range.
-            </p>
-          </section>
+              <label htmlFor="reservation-end-date">
+                End Date (HST)
+                <input
+                  id="reservation-end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  required
+                />
+              </label>
 
-          <form className="reservation-form" onSubmit={handleReservationSubmit}>
-            <label htmlFor="reservation-start-date">
-              Start Date (HST)
-              <input
-                id="reservation-start-date"
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                required
-              />
-            </label>
+              <p className="hst-note">
+                All reservation dates are in Hawaii Standard Time (HST).
+              </p>
 
-            <label htmlFor="reservation-end-date">
-              End Date (HST)
-              <input
-                id="reservation-end-date"
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                required
-              />
-            </label>
+              {reserveError && <p className="form-error">{reserveError}</p>}
+              {successMessage && <p className="success-message">{successMessage}</p>}
 
-            <label htmlFor="reservation-note">
-              Message to Owner
-              <textarea
-                id="reservation-note"
-                value={requestNote}
-                onChange={(event) => setRequestNote(event.target.value)}
-                placeholder="Optional note for the tool owner"
-                rows={4}
-              />
-            </label>
-
-            <p className="hst-note">
-              All reservation dates are interpreted in Hawaii Standard Time
-              (HST). Please choose dates between {tool.availableFrom} and{' '}
-              {tool.availableTo} HST.
-            </p>
-
-            {/* Active reservation preview for conflict testing. */}
-            {activeReservationsForTool.length > 0 && (
-              <section className="active-date-conflict-list">
-                <strong>Current active reservations for this tool</strong>
-
-                <ul>
-                  {activeReservationsForTool.map(
-                    (reservation: MockReservation) => (
-                      <li key={reservation.id}>
-                        {reservation.startDate} to {reservation.endDate} HST â€”{' '}
-                        {formatStatus(reservation.status)}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </section>
-            )}
-
-            {/* Error and success messages */}
-            {errorMessage && <p className="form-error">{errorMessage}</p>}
-            {successMessage && <p className="success-message">{successMessage}</p>}
-
-            <button type="submit" disabled={isCurrentUserOwner}>
-              {isCurrentUserOwner
-                ? 'Owner Cannot Request'
-                : 'Submit Reservation Request'}
-            </button>
-          </form>
-        </aside>
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Reservation Request'}
+              </button>
+            </form>
+          </aside>
+        )}
       </div>
+
+      {/* Report Listing Modal */}
+      {showReportModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }}
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="form-card"
+            style={{ maxWidth: '480px', width: '100%', margin: '1rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>Report This Listing</h2>
+            <p className="muted-text">
+              Help us keep the community safe by reporting inappropriate or problematic listings.
+            </p>
+
+            <label htmlFor="report-reason">
+              Reason *
+              <select
+                id="report-reason"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value as ReportReason)}
+                required
+              >
+                <option value="">Select a reason...</option>
+                {reportReasonOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label htmlFor="report-comment">
+              Comment (optional)
+              <textarea
+                id="report-comment"
+                value={reportComment}
+                onChange={(e) => setReportComment(e.target.value)}
+                placeholder="Provide additional details..."
+                maxLength={2000}
+                rows={3}
+              />
+            </label>
+
+            {reportError && <p className="form-error">{reportError}</p>}
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                type="button"
+                className="action-button danger-button"
+                onClick={handleReport}
+                disabled={isReporting || !reportReason}
+              >
+                {isReporting ? 'Submitting...' : 'Submit Report'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => { setShowReportModal(false); setReportError(''); }}
+                disabled={isReporting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

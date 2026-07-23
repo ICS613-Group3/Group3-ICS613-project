@@ -226,8 +226,8 @@ cp .env.example .env
 python scripts/check_db.py
 # All 6 checks should report [OK]
 
-# 8. Run database migrations
-python -m alembic upgrade head
+# 8. Create database tables
+python scripts/init_db.py
 
 # 9. (Optional) Load seed data — development only
 python scripts/seed_dev.py

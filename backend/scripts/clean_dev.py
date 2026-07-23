@@ -31,15 +31,11 @@ async def main() -> None:
         tables = [row[0] for row in result.fetchall()]
         print(f"Found {len(tables)} tables: {', '.join(tables)}")
 
-        # Disable triggers so we can delete in any order
-        await conn.execute(text("SET session_replication_role = 'replica'"))
-
+        # TRUNCATE with CASCADE handles FK dependencies automatically
+        # and doesn't require superuser privileges (unlike session_replication_role)
         for table in tables:
-            await conn.execute(text(f"DELETE FROM {table}"))
+            await conn.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
             print(f"  Cleared {table}")
-
-        # Re-enable triggers
-        await conn.execute(text("SET session_replication_role = 'origin'"))
 
     await engine.dispose()
     print("Done. All data cleared.")

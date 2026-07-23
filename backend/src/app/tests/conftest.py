@@ -18,7 +18,9 @@ import os
 os.environ.setdefault("DISABLE_SCHEDULER", "true")
 # 48-char test key — meets the minimum length validator (>=32) and avoids
 # the dev-placeholder check ("change-me", "replace-with", ...).
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok")
+os.environ.setdefault(
+    "SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok"
+)
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing_test",
@@ -59,7 +61,9 @@ def _configure_test_env() -> None:
     ``DATABASE_URL`` in case a different process mutated it.
     """
     os.environ["DISABLE_SCHEDULER"] = "true"
-    os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok")
+    os.environ.setdefault(
+        "SECRET_KEY", "test-secret-key-for-pytest-only-32-chars-min-ok"
+    )
     os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
     # Force the cached engine to be re-built with the test DATABASE_URL.
     reset_engine_cache()
@@ -98,6 +102,15 @@ async def async_engine() -> AsyncGenerator:
     await conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
     await conn.run_sync(Base.metadata.drop_all)
     await conn.run_sync(Base.metadata.create_all)
+    # Seed default tool categories so tool-creation tests pass (US28).
+    await conn.execute(text(
+        "INSERT INTO tool_categories (id, name, created_at) VALUES "
+        "(gen_random_uuid(), 'HAND_TOOLS', now()), "
+        "(gen_random_uuid(), 'POWER_TOOLS', now()), "
+        "(gen_random_uuid(), 'GARDEN_TOOLS', now()), "
+        "(gen_random_uuid(), 'CLEANING_TOOLS', now()), "
+        "(gen_random_uuid(), 'OUTDOOR_GEAR', now())"
+    ))
     await conn.close()
     try:
         yield engine

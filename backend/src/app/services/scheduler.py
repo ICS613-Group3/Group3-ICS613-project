@@ -21,6 +21,7 @@ from app.db.session import get_session
 from app.models.email_verification import EmailVerificationToken
 from app.models.enums import (
     CancellerType,
+    InviteStatus,
     NotificationType,
     ReservationState,
 )
@@ -196,13 +197,11 @@ class SchedulerService:
             for res in soft_result.scalars().all():
                 # Dedup: any recent RESERVATION_OVERDUE notification for this user?
                 existing = await db.execute(
-                    select(Notification.id)
-                    .where(
+                    select(Notification.id).where(
                         Notification.user_id == res.borrower_id,
-                        Notification.type == NotificationType.RESERVATION_OVERDUE,
+                        Notification.type == NotificationType.RESERVATION_OVERDUE.value,
                         Notification.created_at >= dedup_cutoff,
-                    )
-                    .limit(1)
+                    ).limit(1)
                 )
                 if existing.scalar_one_or_none() is not None:
                     continue
@@ -237,10 +236,26 @@ class SchedulerService:
         and invite_tokens tables. Already-used tokens (``used_at IS NOT NULL``)
         are kept longer for audit purposes; only genuinely expired-and-unused
         tokens are removed. The retention window is read from Settings.
+
+        Also transitions SENT invites past their expires_at to EXPIRED so the
+        status column reflects real state before the row is eventually deleted.
         """
         settings = get_settings()
         cutoff = datetime.now(UTC) - timedelta(days=settings.scheduler_token_retention_days)
+        now = datetime.now(UTC)
         async with get_session() as db:
+            # Transition SENT invites whose expires_at has passed to EXPIRED
+            expire_result = await db.execute(
+                select(InviteToken).where(
+                    InviteToken.status == InviteStatus.SENT,
+                    InviteToken.expires_at < now,
+                )
+            )
+            for invite in expire_result.scalars().all():
+                invite.status = InviteStatus.EXPIRED
+                db.add(invite)
+                logger.info("Expired invite %s (%s)", invite.id, invite.email)
+
             for model, name in [
                 (EmailVerificationToken, "email verification"),
                 (PasswordResetToken, "password reset"),

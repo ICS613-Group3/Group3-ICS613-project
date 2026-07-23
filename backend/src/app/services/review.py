@@ -128,12 +128,13 @@ class ReviewService:
         """
         if role not in ("given", "received"):
             from app.core.exceptions import ValidationError
-
             raise ValidationError("role must be 'given' or 'received'")
 
         column = Review.reviewee_id if role == "received" else Review.reviewer_id
 
-        count_result = await db.execute(select(func.count(Review.id)).where(column == user_id))
+        count_result = await db.execute(
+            select(func.count(Review.id)).where(column == user_id)
+        )
         total = count_result.scalar() or 0
 
         query = (
@@ -155,7 +156,9 @@ class ReviewService:
         reservation_id: uuid.UUID,
     ) -> list[Review]:
         """Get all reviews for a specific reservation."""
-        result = await db.execute(select(Review).where(Review.reservation_id == reservation_id))
+        result = await db.execute(
+            select(Review).where(Review.reservation_id == reservation_id)
+        )
         return list(result.scalars().all())
 
     async def update_review(
@@ -246,7 +249,9 @@ class ReviewService:
         # User trust_score: average received rating, with damage reports
         # counted as 1-star equivalents per the spec.
         user_result = await db.execute(
-            select(func.coalesce(func.avg(Review.rating), 0)).where(Review.reviewee_id == user_id)
+            select(func.coalesce(func.avg(Review.rating), 0)).where(
+                Review.reviewee_id == user_id
+            )
         )
         trust = float(user_result.scalar() or 0.0)
 
@@ -264,12 +269,9 @@ class ReviewService:
             # Each damage report counts as a 1-star review.
             # Weighted average: (sum_of_ratings + 1 * damage_count) / (review_count + damage_count)
             review_count = int(
-                (
-                    await db.execute(
-                        select(func.count(Review.id)).where(Review.reviewee_id == user_id)
-                    )
-                ).scalar()
-                or 0
+                (await db.execute(
+                    select(func.count(Review.id)).where(Review.reviewee_id == user_id)
+                )).scalar() or 0
             )
             total_count = review_count + damage_count
             if total_count > 0:

@@ -96,3 +96,4 @@ def test_short_key_rejected_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENVIRONMENT", "development")
     with pytest.raises(ValidationError):
         Settings()
+

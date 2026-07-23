@@ -1,0 +1,28 @@
+[Unit]
+Description=Neighborhood Tool Sharing — FastAPI Backend
+Documentation=https://github.com/rionhawaii/Group3-ICS613
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=toolsharing
+Group=toolsharing
+WorkingDirectory=/opt/toolsharing/backend
+Environment=PYTHONPATH=/opt/toolsharing/backend/src
+# Environment variables are loaded from /opt/toolsharing/.env
+# The backend's config.py reads .env via pydantic-settings
+ExecStart=/opt/toolsharing/backend/venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --limit-max-requests 10000 \
+    --timeout-keep-alive 30
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

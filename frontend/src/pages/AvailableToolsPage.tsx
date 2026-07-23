@@ -1,81 +1,67 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  categoryLabels,
-  mockTools,
-  type ToolCategory,
-} from '../data/mockData';
+import { toolsApi } from '../api/tools';
+import type { ToolResponse } from '../types/api';
 
-/**
- * AvailableToolsPage
- *
- * This page shows the normal Available Tools list.
- *
- * Current R1 behavior:
- * - Uses mockTools from mockData.ts.
- * - Supports search by tool name, owner, description, and category.
- * - Supports category filter.
- * - Supports HST date range filter.
- *
- * Future backend behavior:
- * - Ivan can replace this local filtering with backend API query parameters.
- */
+const categoryLabels: Record<string, string> = {
+  HAND_TOOLS: 'Hand Tools',
+  POWER_TOOLS: 'Power Tools',
+  GARDEN_TOOLS: 'Garden Tools',
+  CLEANING_TOOLS: 'Cleaning Tools',
+  OUTDOOR_GEAR: 'Outdoor Gear',
+};
+
+const categoryOptions = Object.entries(categoryLabels) as Array<[string, string]>;
+
 function AvailableToolsPage() {
+  const [tools, setTools] = useState<ToolResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<ToolCategory | ''>('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const categoryOptions = Object.entries(categoryLabels) as Array<
-    [ToolCategory, string]
-  >;
+  const fetchTools = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const params: Record<string, string> = {};
+      if (categoryFilter) params.category = categoryFilter;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (startDate && endDate) {
+        params.available_start = startDate;
+        params.available_end = endDate;
+      }
+      const data = await toolsApi.list(params);
+      setTools(data.items);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tools');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [categoryFilter, searchTerm, startDate, endDate]);
 
-  /**
-   * Local mock filtering for Available Tools.
-   * This keeps the R1 demo interactive before backend API integration.
-   */
-  const filteredTools = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTools();
+  }, [fetchTools]);
 
-    return mockTools.filter((tool) => {
-      const categoryLabel = categoryLabels[tool.category];
-
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        tool.name.toLowerCase().includes(normalizedSearch) ||
-        tool.description.toLowerCase().includes(normalizedSearch) ||
-        tool.ownerName.toLowerCase().includes(normalizedSearch) ||
-        categoryLabel.toLowerCase().includes(normalizedSearch);
-
-      const matchesCategory =
-        categoryFilter === '' || tool.category === categoryFilter;
-
-      /**
-       * Date filter:
-       * If the user only enters one date, use it as both start and end.
-       */
-      const selectedStartDate = startDate || endDate;
-      const selectedEndDate = endDate || startDate;
-
-      const matchesDateRange =
-        !selectedStartDate ||
-        !selectedEndDate ||
-        (tool.availableFrom <= selectedStartDate &&
-          tool.availableTo >= selectedEndDate);
-
-      return matchesSearch && matchesCategory && matchesDateRange;
-    });
-  }, [categoryFilter, endDate, searchTerm, startDate]);
-
-  /**
-   * Reset all filters so all mock tools are visible again.
-   */
   const clearFilters = () => {
     setSearchTerm('');
     setCategoryFilter('');
     setStartDate('');
     setEndDate('');
   };
+
+  const getImageUrl = (tool: ToolResponse): string => {
+    if (tool.photos.length > 0) {
+      return tool.photos[0].url;
+    }
+    return `https://placehold.co/600x400?text=${encodeURIComponent(tool.name)}`;
+  }
 
   return (
     <section className="page-section">
@@ -84,8 +70,7 @@ function AvailableToolsPage() {
           <p className="eyebrow">Browse &amp; Search</p>
           <h1>Available Tools</h1>
           <p className="page-description">
-            Search available neighborhood tools by keyword, backend-aligned
-            category, and HST date range.
+            Search available neighborhood tools by keyword, category, and date range.
           </p>
         </div>
       </div>
@@ -93,20 +78,18 @@ function AvailableToolsPage() {
       <div className="filter-panel">
         <input
           type="text"
-          placeholder="Search by tool, owner, or keyword"
+          placeholder="Search by tool name or keyword"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
         />
 
         <select
           value={categoryFilter}
-          onChange={(event) =>
-            setCategoryFilter(event.target.value as ToolCategory | '')
-          }
+          onChange={(event) => setCategoryFilter(event.target.value)}
         >
           <option value="">All categories</option>
-          {categoryOptions.map(([categoryValue, label]) => (
-            <option key={categoryValue} value={categoryValue}>
+          {categoryOptions.map(([value, label]) => (
+            <option key={value} value={value}>
               {label}
             </option>
           ))}
@@ -131,11 +114,16 @@ function AvailableToolsPage() {
         </button>
       </div>
 
-      <p className="results-summary">
-        Showing {filteredTools.length} of {mockTools.length} tools.
-      </p>
+      {error && <p className="form-error">{error}</p>}
+      {isLoading && <p>Loading tools...</p>}
 
-      {filteredTools.length === 0 ? (
+      {!isLoading && !error && (
+        <p className="results-summary">
+          Showing {tools.length} of {total} tools.
+        </p>
+      )}
+
+      {!isLoading && !error && tools.length === 0 ? (
         <div className="empty-state-card">
           <p className="eyebrow">No Results</p>
           <h2>No tools match the current filters.</h2>
@@ -146,16 +134,16 @@ function AvailableToolsPage() {
         </div>
       ) : (
         <div className="tool-grid">
-          {filteredTools.map((tool) => (
+          {tools.map((tool) => (
             <article className="tool-card" key={tool.id}>
-              <img src={tool.imageUrl} alt={tool.name} className="tool-image" />
+              <img src={getImageUrl(tool)} alt={tool.name} className="tool-image" />
 
               <div className="tool-card-body">
                 <div className="tool-card-top">
                   <span className="status-badge">
-                    {categoryLabels[tool.category]}
+                    {categoryLabels[tool.category] || tool.category}
                   </span>
-                  <span className="rating">Rating: {(Math.trunc(Number(tool.rating) * 100) / 100).toFixed(2)}/5</span>
+                  <span className="rating">Rating: {tool.avg_rating}/5</span>
                 </div>
 
                 <h2>{tool.name}</h2>
@@ -164,22 +152,12 @@ function AvailableToolsPage() {
                 <dl className="tool-meta">
                   <div>
                     <dt>Owner</dt>
-                    <dd>{tool.ownerName}</dd>
+                    <dd>{tool.owner.full_name || 'Unknown'}</dd>
                   </div>
 
                   <div>
                     <dt>Condition</dt>
                     <dd>{tool.condition}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Availability</dt>
-                    <dd>{tool.availability}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Latest return</dt>
-                    <dd>{tool.latestReturnTime} HST</dd>
                   </div>
                 </dl>
 

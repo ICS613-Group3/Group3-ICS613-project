@@ -57,13 +57,17 @@ async def rate_limit_login(request: Request) -> None:
     s = get_settings()
     limiter = _get_limiter("login", s.rate_limit_login_per_minute, 60)
     if not limiter.check(_client_key(request)):
-        raise TooManyRequestsError("Too many login attempts. Please wait a minute and try again.")
+        raise TooManyRequestsError(
+            "Too many login attempts. Please wait a minute and try again."
+        )
 
 
 async def rate_limit_forgot_password(request: Request) -> None:
     """Throttle ``/auth/forgot-password`` per client IP. Raises 429 on limit."""
     s = get_settings()
-    limiter = _get_limiter("forgot_password", s.rate_limit_forgot_password_per_minute, 60)
+    limiter = _get_limiter(
+        "forgot_password", s.rate_limit_forgot_password_per_minute, 60
+    )
     if not limiter.check(_client_key(request)):
         raise TooManyRequestsError(
             "Too many password-reset requests. Please wait a minute and try again."
@@ -73,7 +77,9 @@ async def rate_limit_forgot_password(request: Request) -> None:
 async def rate_limit_resend_verification(request: Request) -> None:
     """Throttle ``/auth/resend-verification`` per client IP. Raises 429 on limit."""
     s = get_settings()
-    limiter = _get_limiter("resend_verification", s.rate_limit_resend_verification_per_minute, 60)
+    limiter = _get_limiter(
+        "resend_verification", s.rate_limit_resend_verification_per_minute, 60
+    )
     if not limiter.check(_client_key(request)):
         raise TooManyRequestsError(
             "Too many resend-verification requests. Please wait a minute and try again."

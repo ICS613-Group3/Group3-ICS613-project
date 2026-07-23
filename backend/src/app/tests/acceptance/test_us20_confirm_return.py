@@ -225,6 +225,7 @@ class TestScenario6OwnerFilesDamageReport:
             state=ReservationState.RETURNED,
             returned_at=datetime.now(UTC),
         )
+        rating_before = borrower.trust_score
 
         await client.post(
             f"/api/v1/reservations/{reservation.id}/mark-damaged",

@@ -1,11 +1,9 @@
 """Review request/response schemas."""
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy.exc import SQLAlchemyError
 
 
 class ReviewCreate(BaseModel):
@@ -40,23 +38,24 @@ class ReviewResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _extract_names(cls, data: Any) -> Any:
+    def _extract_names(cls, data):
         """Extract display names from ORM relationships before validation."""
         if isinstance(data, dict):
             return data
         try:
+            from types import SimpleNamespace
+
+            ns_data = {}
+            for col in data.__class__.__table__.columns:
+                ns_data[col.name] = getattr(data, col.name)
+
             reviewer = getattr(data, "reviewer", None)
             if reviewer is not None:
-                data.reviewer_name = getattr(reviewer, "full_name", None) or getattr(
-                    reviewer, "email", None
-                )
+                ns_data["reviewer_name"] = getattr(reviewer, "full_name", None) or getattr(reviewer, "email", None)
             reviewee = getattr(data, "reviewee", None)
             if reviewee is not None:
-                data.reviewee_name = getattr(reviewee, "full_name", None) or getattr(
-                    reviewee, "email", None
-                )
-        except SQLAlchemyError:
-            # Relationship not loaded / instance detached from its session --
-            # fall back to the base data without the enriched display names.
+                ns_data["reviewee_name"] = getattr(reviewee, "full_name", None) or getattr(reviewee, "email", None)
+            return SimpleNamespace(**ns_data)
+        except Exception:
             pass
         return data

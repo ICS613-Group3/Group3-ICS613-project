@@ -25,7 +25,6 @@ from app.tests.factories import ReservationFactory, ToolFactory, UserFactory
 
 # ── helpers ────────────────────────────────────────────────────────────────
 
-
 async def _create_returned_reservation(
     db_session: AsyncSession,
     *,
@@ -74,7 +73,6 @@ async def _create_returned_reservation(
 # ══════════════════════════════════════════════════════════════════════════
 # Create
 # ══════════════════════════════════════════════════════════════════════════
-
 
 class TestCreateReview:
     """POST /api/v1/reservations/{reservation_id}/review"""
@@ -238,7 +236,6 @@ class TestCreateReview:
 # Read
 # ══════════════════════════════════════════════════════════════════════════
 
-
 class TestGetReviews:
     """GET /api/v1/reservations/{reservation_id}/review"""
 
@@ -314,7 +311,6 @@ class TestGetReviews:
 # Update
 # ══════════════════════════════════════════════════════════════════════════
 
-
 class TestUpdateReview:
     """PATCH /api/v1/reviews/{review_id}"""
 
@@ -346,7 +342,9 @@ class TestUpdateReview:
         # the update service can access ``review.reservation.tool_id``
         # without an async lazy-load error.
         await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+            select(Review)
+            .where(Review.id == review_id)
+            .options(selectinload(Review.reservation))
         )
 
         # Edit the review
@@ -387,7 +385,9 @@ class TestUpdateReview:
 
         # Pre-load for the service call
         await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+            select(Review)
+            .where(Review.id == review_id)
+            .options(selectinload(Review.reservation))
         )
 
         # Owner tries to edit the borrower's review
@@ -405,7 +405,6 @@ class TestUpdateReview:
 # ══════════════════════════════════════════════════════════════════════════
 # Delete
 # ══════════════════════════════════════════════════════════════════════════
-
 
 class TestDeleteReview:
     """DELETE /api/v1/reviews/{review_id}"""
@@ -437,7 +436,9 @@ class TestDeleteReview:
         # Pre-load the review with its reservation relationship for the
         # service's ``review.reservation.tool_id`` access.
         await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+            select(Review)
+            .where(Review.id == review_id)
+            .options(selectinload(Review.reservation))
         )
 
         # Delete
@@ -480,7 +481,9 @@ class TestDeleteReview:
 
         # Pre-load for the service call
         await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+            select(Review)
+            .where(Review.id == review_id)
+            .options(selectinload(Review.reservation))
         )
 
         # Owner tries to delete the borrower's review
@@ -616,7 +619,9 @@ class TestListMyReviews:
         )
         assert b_recv.json()["total"] == 0
 
-    async def test_empty_history(self, client, db_session: AsyncSession, unique_email: str) -> None:
+    async def test_empty_history(
+        self, client, db_session: AsyncSession, unique_email: str
+    ) -> None:
         """A user with no reviews gets an empty paginated response."""
         user = await UserFactory.create_async(db_session, email=unique_email)
         token = create_access_token(user.id)
@@ -645,12 +650,16 @@ class TestListMyReviews:
         )
         assert response.status_code == 422
 
-    async def test_unauthenticated_returns_401(self, client, db_session: AsyncSession) -> None:
+    async def test_unauthenticated_returns_401(
+        self, client, db_session: AsyncSession
+    ) -> None:
         """No Authorization header → 401."""
         response = await client.get("/api/v1/users/me/reviews")
         assert response.status_code == 401
 
-    async def test_pagination(self, client, db_session: AsyncSession, unique_email: str) -> None:
+    async def test_pagination(
+        self, client, db_session: AsyncSession, unique_email: str
+    ) -> None:
         """Pagination works: page_size=2 of 5 reviews returns 2 items, total=5, pages=3."""
         # Create 5 distinct returned reservations, each with a review
         # from borrower → owner. So owner receives 5 reviews.

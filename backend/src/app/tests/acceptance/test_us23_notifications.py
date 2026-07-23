@@ -69,12 +69,6 @@ class TestScenario2BorrowerNotifiedOfApprovalOrDenial:
         items = response.json()["items"]
         assert any("approved" in i["body"].lower() for i in items)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: the approve/deny notification bodies (app/services/"
-        "reservation.py) mention only the reservation's dates -- never the tool "
-        "name or the owner's display name, both of which the doc requires.",
-    )
     async def test_approval_notification_includes_tool_name_and_owner_name(
         self, client, db_session: AsyncSession
     ) -> None:
@@ -119,14 +113,6 @@ class TestScenario3BothPartiesNotifiedOfPickupAndReturn:
         response = await client.get("/api/v1/notifications", headers=auth_header(owner.id))
         assert any("picked up" in i["body"].lower() for i in response.json()["items"])
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: ReservationService.mark_picked_up and mark_returned "
-        "(app/services/reservation.py) only notify the OTHER party -- the "
-        "borrower who performs the action gets no confirmation notification of "
-        "their own pickup/return. The doc says 'both the borrower and owner "
-        "receive in-app notifications.'",
-    )
     async def test_borrower_also_notified_on_pickup(self, client, db_session: AsyncSession) -> None:
         owner = await UserFactory.create_async(db_session)
         borrower = await UserFactory.create_async(db_session)
