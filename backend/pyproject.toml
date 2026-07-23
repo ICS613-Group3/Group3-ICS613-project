@@ -57,6 +57,7 @@ exclude_dirs = ["tests"]
 skips = [
     "B101",  # assert used — normal in tests and validation
     "B105",  # hardcoded_password_string — false positives on enum values
+    "B106",  # hardcoded_password_funcarg — test credentials, not production secrets
     "B110",  # try_except_pass — acceptable in schema validators
     "B311",  # random — used for non-security purposes
     "B603",  # subprocess_without_shell_equals_true — not used
