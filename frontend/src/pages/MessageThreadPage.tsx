@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { messagesApi } from '../api/messages';
-import type { MessageResponse } from '../api/messages';
+import type { MessageItem } from '../api/messages';
 import { reservationsApi } from '../api/reservations';
 import type { ReservationResponse } from '../types/api';
 import { useAuth } from '../context/useAuth';
@@ -10,7 +10,7 @@ import { ApiRequestError } from '../api/client';
 function MessageThreadPage() {
   const { reservationId } = useParams<{ reservationId: string }>();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<MessageResponse[]>([]);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');

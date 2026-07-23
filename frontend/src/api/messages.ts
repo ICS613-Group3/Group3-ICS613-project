@@ -6,7 +6,7 @@ export interface MessageCreate {
   body: string;
 }
 
-export interface MessageResponse {
+export interface MessageItem {
   id: string;
   reservation_id: string;
   sender_id: string;
@@ -24,7 +24,7 @@ export const messagesApi = {
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.page_size) searchParams.set('page_size', String(params.page_size));
     const qs = searchParams.toString();
-    return apiRequest<PaginatedResponse<MessageResponse>>(
+    return apiRequest<PaginatedResponse<MessageItem>>(
       'GET',
       qs
         ? `/reservations/${reservationId}/messages?${qs}`
@@ -33,7 +33,7 @@ export const messagesApi = {
   },
 
   send: (reservationId: string, data: MessageCreate) =>
-    apiRequest<MessageResponse>(
+    apiRequest<MessageItem>(
       'POST',
       `/reservations/${reservationId}/messages`,
       data,

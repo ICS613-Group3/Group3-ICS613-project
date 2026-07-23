@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 # HST is UTC-10, no DST
 HST_OFFSET = timedelta(hours=-10)
-HST = UTC.__class__("HST")  # type: ignore[call-arg]
+HST = UTC.__class__(HST_OFFSET)  # type: ignore[call-arg]
 
 
 def utc_to_hst(dt: datetime) -> datetime:

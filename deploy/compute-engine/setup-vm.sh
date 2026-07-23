@@ -29,7 +29,7 @@ APP_USER="toolsharing"
 APP_DIR="/opt/toolsharing"
 REPO_URL="https://github.com/rionhawaii/Group3-ICS613.git"
 DB_NAME="toolsharing"
-DB_USER="toolsharing_user"
+DB_USER="ics613user"
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -120,6 +120,11 @@ sudo -u "${APP_USER}" ./venv/bin/pip install --quiet -r requirements.txt
 
 # Copy .env to backend dir (the backend reads it from cwd)
 cp "${APP_DIR}/.env" "${APP_DIR}/backend/.env"
+
+# Ensure ENVIRONMENT=development is set (required for dev SECRET_KEY)
+if ! grep -q "^ENVIRONMENT=" "${APP_DIR}/backend/.env"; then
+    echo "ENVIRONMENT=development" >> "${APP_DIR}/backend/.env"
+fi
 chown "${APP_USER}":"${APP_USER}" "${APP_DIR}/backend/.env"
 
 info "Backend dependencies installed."
