@@ -156,7 +156,7 @@ jobs:
       # for CI environments that may cache a bandit version with
       # different pyproject.toml parsing behaviour.
       - name: bandit
-        run: bandit -r src/app --skip B101,B105,B106,B110,B311,B603,B607
+        run: bandit -r src/app -c .bandit
 
   frontend-checks:
     name: Frontend lint, typecheck, build
