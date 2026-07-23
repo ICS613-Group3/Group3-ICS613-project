@@ -22,7 +22,7 @@ def utc_to_hst(dt: datetime) -> datetime:
     """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC) + HST_OFFSET
+    return dt.astimezone(HST)
 
 
 def hst_to_utc(dt: datetime) -> datetime:

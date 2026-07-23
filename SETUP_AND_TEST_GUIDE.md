@@ -345,11 +345,11 @@ echo "Token: ${TOKEN:0:30}..."
 
 # Authenticated call — /auth/me
 curl -sS http://localhost:5173/api/v1/auth/me \
-  -H "Authorization: Bearer ***" | python3 -m json.tool
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 
 # List tools
 curl -sS "http://localhost:5173/api/v1/tools?page_size=3" \
-  -H "Authorization: Bearer ***" | python3 -m json.tool
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 
 # Unauthenticated call — should return 401
 curl -sS -o /dev/null -w "status: %{http_code}\n" \

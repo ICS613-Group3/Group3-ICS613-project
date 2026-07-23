@@ -191,7 +191,7 @@ The application handles authentication (JWT), background scheduling (APScheduler
 | Python | 3.11, 3.12, or 3.13 | `python --version` |
 | Docker + Docker Compose | Docker 24+ | `docker --version` |
 
-> **Windows users:** See `backend/BACKEND_SETUP.md` for PowerShell vs Git Bash vs cmd.exe notes and a tip on adding Python to PATH during install.
+> **Windows users:** See `backend/Backend_Setup.md` for PowerShell vs Git Bash vs cmd.exe notes and a tip on adding Python to PATH during install.
 
 ### Setup
 
@@ -241,7 +241,7 @@ cd frontend
 # Flag for additional documentation on npm install and start commands
 ```
 
-For full detail on each step — including Windows-specific commands, troubleshooting, and seed user credentials — see [`backend/BACKEND_SETUP.md`](backend/BACKEND_SETUP.md).
+For full detail on each step — including Windows-specific commands, troubleshooting, and seed user credentials — see [`backend/Backend_Setup.md`](backend/Backend_Setup.md).
 
 
 # Local security tooling setup
