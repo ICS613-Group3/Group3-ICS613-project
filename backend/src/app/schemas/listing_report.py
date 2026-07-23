@@ -46,7 +46,7 @@ class ReportResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _extract_names(cls, data):
+    def _extract_names(cls, data: dict) -> dict:
         """Extract display names from ORM relationships before validation."""
         if isinstance(data, dict):
             return data

@@ -1,9 +1,15 @@
 """Reservation message request/response schemas (US22)."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from app.models.message import Message
 
 
 class MessageCreate(BaseModel):
@@ -25,7 +31,7 @@ class MessageResponse(BaseModel):
     created_at: datetime
 
     @classmethod
-    def from_orm_with_sender_name(cls, msg) -> "MessageResponse":
+    def from_orm_with_sender_name(cls, msg: Message) -> MessageResponse:
         """Build response, extracting sender display name from the ORM relationship."""
         sender_name = None
         if msg.sender is not None:
