@@ -184,7 +184,14 @@ function ToolDetailPage() {
             <dl className="tool-detail-meta-grid">
               <div>
                 <dt>Owner</dt>
-                <dd>{tool.owner.full_name || 'Unknown'}</dd>
+                <dd>
+                  <Link
+                    className="public-profile-reviewer-link"
+                    to={`/members/${tool.owner_id}`}
+                  >
+                    {tool.owner.full_name || 'Unknown'}
+                  </Link>
+                </dd>
               </div>
               <div>
                 <dt>Condition</dt>

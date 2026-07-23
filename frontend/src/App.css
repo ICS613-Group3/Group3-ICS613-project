@@ -2719,3 +2719,141 @@ select {
 .tool-form-hst-helper {
   margin: 1rem 0 1.25rem;
 }
+/* ================================
+   Issue #52 Public Member Profile Styles
+   Purpose:
+   - Displays a public-safe member profile.
+   - Displays average rating, completed loans, and damage-report signals.
+   - Displays active tool listings and reviews written about the member.
+   ================================ */
+
+.public-profile-hero {
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.public-profile-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.public-profile-avatar {
+  width: 112px;
+  height: 112px;
+  flex: 0 0 112px;
+  border: 3px solid #dbeafe;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #eff6ff;
+}
+
+.public-profile-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: #1d4ed8;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.public-profile-identity h2 {
+  margin: 0 0 0.75rem;
+}
+
+.public-profile-detail-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.public-profile-detail-list div {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) 1fr;
+  gap: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.4rem;
+}
+
+.public-profile-detail-list dt {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.public-profile-detail-list dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.public-profile-section {
+  margin-top: 2rem;
+}
+
+.public-profile-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.public-profile-section-header h2 {
+  margin: 0;
+}
+
+.public-profile-trust-card {
+  margin-bottom: 1.5rem;
+}
+
+.trust-signal-warning {
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 1rem;
+}
+
+.trust-signal-warning p {
+  margin-bottom: 0;
+}
+
+.deleted-member-notice {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 1rem;
+}
+
+.public-profile-tool-placeholder {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.public-profile-reviewer-link {
+  color: #2563eb;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.public-profile-reviewer-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .public-profile-identity {
+    flex-direction: column;
+  }
+
+  .public-profile-section-header {
+    flex-direction: column;
+  }
+
+  .public-profile-detail-list div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
