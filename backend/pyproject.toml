@@ -50,3 +50,15 @@ module = ["src.app.tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
+
+[tool.bandit]
+# Exclude test files and certain false-positive checks.
+exclude_dirs = ["tests"]
+skips = [
+    "B101",  # assert used — normal in tests and validation
+    "B105",  # hardcoded_password_string — false positives on enum values
+    "B110",  # try_except_pass — acceptable in schema validators
+    "B311",  # random — used for non-security purposes
+    "B603",  # subprocess_without_shell_equals_true — not used
+    "B607",  # start_process_with_partial_path — not used
+]
