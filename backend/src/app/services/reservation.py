@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
-from app.models.enums import CancellerType, DeactivationActor, NotificationType, ReservationState
+from app.models.enums import CancellerType, NotificationType, ReservationState
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
@@ -46,7 +46,7 @@ class ReservationService:
         """
         # Business rules
         if start_date > end_date:
-            raise ValidationError("start_date must be before end_date")
+            raise ValidationError("start_date must be on or before end_date")
         if start_date < date.today():
             raise ValidationError("Cannot request a reservation starting in the past")
 
@@ -81,7 +81,7 @@ class ReservationService:
             title="New reservation request",
             body=(
                 f"{borrower.full_name or borrower.email} requested your tool "
-                f"\"{tool.name}\" for {start_date} → {end_date}."
+                f'"{tool.name}" for {start_date} → {end_date}.'
             ),
             payload={
                 "reservation_id": str(reservation.id),
@@ -94,9 +94,7 @@ class ReservationService:
     # ------------------------------------------------------------------
     # Read
     # ------------------------------------------------------------------
-    async def get_reservation(
-        self, db: AsyncSession, *, reservation_id: uuid.UUID
-    ) -> Reservation:
+    async def get_reservation(self, db: AsyncSession, *, reservation_id: uuid.UUID) -> Reservation:
         """Fetch a reservation by id or raise NotFoundError."""
         result = await db.execute(
             select(Reservation)
@@ -141,9 +139,7 @@ class ReservationService:
                 or_(
                     Reservation.borrower_id == user.id,
                     Reservation.tool_id.in_(
-                        select(Tool.id).where(
-                            Tool.owner_id == user.id, Tool.deleted_at.is_(None)
-                        )
+                        select(Tool.id).where(Tool.owner_id == user.id, Tool.deleted_at.is_(None))
                     ),
                 )
             )
@@ -151,9 +147,7 @@ class ReservationService:
                 or_(
                     Reservation.borrower_id == user.id,
                     Reservation.tool_id.in_(
-                        select(Tool.id).where(
-                            Tool.owner_id == user.id, Tool.deleted_at.is_(None)
-                        )
+                        select(Tool.id).where(Tool.owner_id == user.id, Tool.deleted_at.is_(None))
                     ),
                 )
             )
@@ -168,8 +162,7 @@ class ReservationService:
 
         # Paginated results
         query = (
-            query
-            .options(
+            query.options(
                 selectinload(Reservation.tool),
                 selectinload(Reservation.borrower),
             )
@@ -208,7 +201,11 @@ class ReservationService:
         # code path that might temporarily bypass the constraint (e.g. a raw
         # SQL update).  It is intentionally retained.
         overlapping = await self._check_overlap(
-            db, reservation.tool_id, reservation.start_date, reservation.end_date, exclude_id=reservation.id
+            db,
+            reservation.tool_id,
+            reservation.start_date,
+            reservation.end_date,
+            exclude_id=reservation.id,
         )
         if overlapping:
             raise ConflictError(
@@ -220,14 +217,16 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
-        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+        tool_name = (
+            reservation.tool.name if hasattr(reservation, "tool") and reservation.tool else "Tool"
+        )
 
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_APPROVED,
             title="Reservation approved",
-            body=f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was approved.",
+            body=f'Your reservation for "{tool_name}" ({reservation.start_date} → {reservation.end_date}) was approved.',
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -250,7 +249,9 @@ class ReservationService:
         db.add(reservation)
         await db.flush()
 
-        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
+        tool_name = (
+            reservation.tool.name if hasattr(reservation, "tool") and reservation.tool else "Tool"
+        )
 
         await NotificationService().create(
             db,
@@ -258,7 +259,7 @@ class ReservationService:
             type_=NotificationType.RESERVATION_DENIED,
             title="Reservation denied",
             body=(
-                f"Your reservation for \"{tool_name}\" ({reservation.start_date} → {reservation.end_date}) was denied."
+                f'Your reservation for "{tool_name}" ({reservation.start_date} → {reservation.end_date}) was denied.'
                 + (f" Reason: {reason}" if reason else "")
             ),
             payload={"reservation_id": str(reservation.id)},
@@ -279,9 +280,7 @@ class ReservationService:
         Owner: can cancel APPROVED only (deny is for REQUESTED).
         """
         if reservation.state not in (ReservationState.REQUESTED, ReservationState.APPROVED):
-            raise ConflictError(
-                f"Cannot cancel a reservation in {reservation.state.value} state"
-            )
+            raise ConflictError(f"Cannot cancel a reservation in {reservation.state.value} state")
 
         is_borrower = reservation.borrower_id == actor.id
         is_owner = reservation.tool.owner_id == actor.id
@@ -293,9 +292,7 @@ class ReservationService:
         # Note: create_reservation() blocks a user from reserving their own
         # tool, so is_borrower and is_owner can never both be true here.
         if is_owner and reservation.state == ReservationState.REQUESTED:
-            raise ConflictError(
-                "Use the deny endpoint to decline a REQUESTED reservation"
-            )
+            raise ConflictError("Use the deny endpoint to decline a REQUESTED reservation")
 
         reservation.state = ReservationState.CANCELLED
         reservation.cancelled_by_type = (
@@ -307,24 +304,15 @@ class ReservationService:
         await db.flush()
 
         # Notify the other party.
-        recipient_id = (
-            reservation.tool.owner_id if is_borrower else reservation.borrower_id
-        )
-        tool_name = reservation.tool.name if hasattr(reservation, 'tool') and reservation.tool else "Tool"
-        recipient_name = (
-            reservation.borrower.full_name or reservation.borrower.email
-            if is_owner
-            else (reservation.tool.owner.full_name or reservation.tool.owner.email)
-            if hasattr(reservation.tool, 'owner') and reservation.tool.owner
-            else "The other party"
-        )
+        recipient_id = reservation.tool.owner_id if is_borrower else reservation.borrower_id
+        tool_name = reservation.tool.name if reservation.tool else "Tool"
         await NotificationService().create(
             db,
             user_id=recipient_id,
             type_=NotificationType.RESERVATION_CANCELLED,
             title="Reservation cancelled",
             body=(
-                f"Reservation for \"{tool_name}\" was cancelled by the "
+                f'Reservation for "{tool_name}" was cancelled by the '
                 f"{'borrower' if is_borrower else 'owner'} ({actor.full_name or actor.email}). "
                 f"Reason: {reason}"
             ),
@@ -367,19 +355,6 @@ class ReservationService:
             ),
             payload={"reservation_id": str(reservation.id)},
         )
-
-        # Notify the borrower who performed the pickup (confirmation).
-        await NotificationService().create(
-            db,
-            user_id=borrower.id,
-            type_=NotificationType.RESERVATION_PICKED_UP,
-            title="Pickup confirmed",
-            body=(
-                f"You picked up \"{reservation.tool.name}\". "
-                f"Due back on {reservation.end_date}."
-            ),
-            payload={"reservation_id": str(reservation.id)},
-        )
         return reservation
 
     async def mark_returned(
@@ -406,16 +381,6 @@ class ReservationService:
             type_=NotificationType.RESERVATION_RETURNED,
             title="Tool returned",
             body=f"Tool from reservation {reservation.id} was returned. You can now leave a review.",
-            payload={"reservation_id": str(reservation.id)},
-        )
-
-        # Notify the borrower who performed the return (confirmation).
-        await NotificationService().create(
-            db,
-            user_id=borrower.id,
-            type_=NotificationType.RESERVATION_RETURNED,
-            title="Return confirmed",
-            body=f"You returned the tool from reservation {reservation.id}. Thank you!",
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -456,7 +421,6 @@ class ReservationService:
         tool = await db.get(Tool, reservation.tool_id)
         if tool:
             tool.is_active = False
-            tool.deactivated_by = DeactivationActor.DAMAGE_REPORT
             tool.deactivated_at = datetime.now(UTC)
             tool.deactivation_reason = f"Damage reported: {description[:200]}"
             tool.updated_at = datetime.now(UTC)
@@ -502,9 +466,7 @@ class ReservationService:
             pending = await db.execute(
                 select(Reservation).where(
                     Reservation.tool_id == tool.id,
-                    Reservation.state.in_(
-                        [ReservationState.REQUESTED, ReservationState.APPROVED]
-                    ),
+                    Reservation.state.in_([ReservationState.REQUESTED, ReservationState.APPROVED]),
                     Reservation.id != reservation.id,
                 )
             )
@@ -565,6 +527,7 @@ class ReservationService:
         reservation.force_resolution_reason = reason
         reservation.updated_at = datetime.now(UTC)
         db.add(reservation)
+        await db.flush()
 
         # R1.C: audit-log the admin escalation action.
         await AdminService().record_reservation_force_return(
