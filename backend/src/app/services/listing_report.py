@@ -86,7 +86,7 @@ class ListingReportService:
                 user_id=aid,
                 type_=NotificationType.LISTING_REPORT_SUBMITTED,
                 title="New listing report",
-                body=f"A listing \"{tool.name}\" was reported. Reason: {reason}",
+                body=f'A listing "{tool.name}" was reported. Reason: {reason}',
                 payload={
                     "report_id": str(report.id),
                     "tool_id": str(tool_id),
@@ -151,9 +151,7 @@ class ListingReportService:
             tool.is_active = False
             tool.deactivated_by = DeactivationActor.DAMAGE_REPORT
             tool.deactivated_at = datetime.now(UTC)
-            tool.deactivation_reason = (
-                f"Deactivated due to valid listing report: {report.reason}"
-            )
+            tool.deactivation_reason = f"Deactivated due to valid listing report: {report.reason}"
             tool.updated_at = datetime.now(UTC)
             db.add(tool)
 
@@ -161,9 +159,7 @@ class ListingReportService:
             pending = await db.execute(
                 select(Reservation).where(
                     Reservation.tool_id == tool.id,
-                    Reservation.state.in_(
-                        [ReservationState.REQUESTED, ReservationState.APPROVED]
-                    ),
+                    Reservation.state.in_([ReservationState.REQUESTED, ReservationState.APPROVED]),
                 )
             )
             now = datetime.now(UTC)
@@ -181,7 +177,7 @@ class ListingReportService:
                     type_=NotificationType.RESERVATION_CANCELLED,
                     title="Reservation auto-cancelled",
                     body=(
-                        f"Your reservation for \"{tool.name}\" was cancelled "
+                        f'Your reservation for "{tool.name}" was cancelled '
                         f"because the listing was deactivated following an "
                         f"admin review."
                     ),
@@ -222,7 +218,7 @@ class ListingReportService:
             type_=NotificationType.LISTING_REPORT_RESOLVED,
             title="Listing report resolved",
             body=(
-                f"Your report on \"{tool.name if tool else 'a listing'}\" was "
+                f'Your report on "{tool.name if tool else "a listing"}" was '
                 f"reviewed by an admin and marked as "
                 f"{'valid' if valid else 'invalid'}."
             ),
@@ -245,7 +241,7 @@ class ListingReportService:
         status: ReportStatus | None = None,
         page: int = 1,
         page_size: int = 20,
-        ) -> tuple[list[ListingReport], int]:
+    ) -> tuple[list[ListingReport], int]:
         """Admin-only: list listing reports with optional status filter."""
         query = select(ListingReport)
         count_q = select(func.count(ListingReport.id))
@@ -257,8 +253,7 @@ class ListingReportService:
         total = (await db.execute(count_q)).scalar() or 0
 
         query = (
-            query
-            .options(
+            query.options(
                 selectinload(ListingReport.tool),
                 selectinload(ListingReport.reporter),
                 selectinload(ListingReport.resolver),

@@ -1,4 +1,5 @@
 """Admin endpoints."""
+
 import csv
 import io
 import uuid
@@ -117,9 +118,10 @@ async def get_user_moderation_profile(
     violation history (reports against their listings that were marked valid).
     """
     from sqlalchemy import select as _select
+
+    from app.models.enums import ReportStatus
     from app.models.listing_report import ListingReport
     from app.models.tool import Tool
-    from app.models.enums import ReportStatus
 
     user = await AdminService().get_user(db, user_id=user_id)
 
@@ -137,7 +139,7 @@ async def get_user_moderation_profile(
             "report_id": str(r.id),
             "tool_id": str(r.tool_id),
             "tool_name": r.tool.name if r.tool else None,
-            "reason": r.reason.value if hasattr(r.reason, 'value') else str(r.reason),
+            "reason": r.reason.value if hasattr(r.reason, "value") else str(r.reason),
             "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
             "resolution_note": r.resolution_note,
         }
@@ -163,8 +165,12 @@ async def list_audit_log(
     action_type: Annotated[str | None, Query()] = None,
     target_type: Annotated[str | None, Query()] = None,
     target_id: Annotated[uuid.UUID | None, Query()] = None,
-    date_from: Annotated[str | None, Query(description="ISO datetime lower bound (inclusive)")] = None,
-    date_to: Annotated[str | None, Query(description="ISO datetime upper bound (inclusive)")] = None,
+    date_from: Annotated[
+        str | None, Query(description="ISO datetime lower bound (inclusive)")
+    ] = None,
+    date_to: Annotated[
+        str | None, Query(description="ISO datetime upper bound (inclusive)")
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[AuditLogResponse]:
@@ -200,7 +206,9 @@ async def admin_list_all_reservations(
     _admin: Annotated[User, Depends(get_current_admin_user)],
     state: Annotated[str | None, Query(description="Filter by reservation state")] = None,
     member_id: Annotated[uuid.UUID | None, Query()] = None,
-    date_from: Annotated[str | None, Query(description="Start date lower bound (YYYY-MM-DD)")] = None,
+    date_from: Annotated[
+        str | None, Query(description="Start date lower bound (YYYY-MM-DD)")
+    ] = None,
     date_to: Annotated[str | None, Query(description="Start date upper bound (YYYY-MM-DD)")] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -237,8 +245,12 @@ async def admin_list_all_reservations(
 async def generate_moderation_report(
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(get_current_admin_user)],
-    date_from: Annotated[str | None, Query(description="ISO datetime lower bound (inclusive)")] = None,
-    date_to: Annotated[str | None, Query(description="ISO datetime upper bound (inclusive)")] = None,
+    date_from: Annotated[
+        str | None, Query(description="ISO datetime lower bound (inclusive)")
+    ] = None,
+    date_to: Annotated[
+        str | None, Query(description="ISO datetime upper bound (inclusive)")
+    ] = None,
 ) -> dict:
     """Admin-only: generate a community moderation report (US33).
 
@@ -285,8 +297,12 @@ async def generate_moderation_report(
 async def export_moderation_report_csv(
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(get_current_admin_user)],
-    date_from: Annotated[str | None, Query(description="ISO datetime lower bound (inclusive)")] = None,
-    date_to: Annotated[str | None, Query(description="ISO datetime upper bound (inclusive)")] = None,
+    date_from: Annotated[
+        str | None, Query(description="ISO datetime lower bound (inclusive)")
+    ] = None,
+    date_to: Annotated[
+        str | None, Query(description="ISO datetime upper bound (inclusive)")
+    ] = None,
 ) -> dict:
     """Admin-only: export a community moderation report as CSV (US33 Scenario 2).
 
@@ -314,16 +330,29 @@ async def export_moderation_report_csv(
         writer.writerow([key, value])
     writer.writerow([])
     writer.writerow(["Audit Log Records"])
-    writer.writerow([
-        "id", "action_type", "target_type", "target_id",
-        "reason", "actor_id", "created_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "action_type",
+            "target_type",
+            "target_id",
+            "reason",
+            "actor_id",
+            "created_at",
+        ]
+    )
     for r in report["records"]:
-        writer.writerow([
-            str(r.id), r.action_type, r.target_type, str(r.target_id),
-            r.reason, str(r.actor_id) if r.actor_id else "",
-            r.created_at.isoformat() if r.created_at else "",
-        ])
+        writer.writerow(
+            [
+                str(r.id),
+                r.action_type,
+                r.target_type,
+                str(r.target_id),
+                r.reason,
+                str(r.actor_id) if r.actor_id else "",
+                r.created_at.isoformat() if r.created_at else "",
+            ]
+        )
 
     csv_text = output.getvalue()
     return {

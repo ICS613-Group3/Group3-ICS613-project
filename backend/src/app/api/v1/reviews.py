@@ -89,9 +89,7 @@ async def list_my_reviews(
     )
     items = [ReviewResponse.model_validate(r) for r in reviews]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 # ── Update / Delete ────────────────────────────────────────────────────

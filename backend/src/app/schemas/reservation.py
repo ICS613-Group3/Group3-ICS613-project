@@ -63,10 +63,14 @@ class ReservationResponse(BaseModel):
                 ns_data["tool_name"] = getattr(tool, "name", None)
                 owner = getattr(tool, "owner", None)
                 if owner is not None:
-                    ns_data["owner_name"] = getattr(owner, "full_name", None) or getattr(owner, "email", None)
+                    ns_data["owner_name"] = getattr(owner, "full_name", None) or getattr(
+                        owner, "email", None
+                    )
             borrower = getattr(data, "borrower", None)
             if borrower is not None:
-                ns_data["borrower_name"] = getattr(borrower, "full_name", None) or getattr(borrower, "email", None)
+                ns_data["borrower_name"] = getattr(borrower, "full_name", None) or getattr(
+                    borrower, "email", None
+                )
             return SimpleNamespace(**ns_data)
         except Exception:
             pass

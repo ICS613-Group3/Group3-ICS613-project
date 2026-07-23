@@ -35,16 +35,10 @@ class AdminAuditLog(Base):
     action_type: Mapped[str] = mapped_column(
         String(50), nullable=False, index=True
     )  # e.g. "TOOL_DEACTIVATE", "TOOL_REACTIVATE", "USER_SUSPEND", "ACCOUNT_DELETE"
-    target_type: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # "tool" or "user"
-    target_id: Mapped[uuid.UUID] = mapped_column(
-        nullable=False, index=True
-    )
+    target_type: Mapped[str] = mapped_column(String(50), nullable=False)  # "tool" or "user"
+    target_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
-        "metadata", JSONB, nullable=True
-    )
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -52,6 +46,4 @@ class AdminAuditLog(Base):
     )
 
     # Relationships
-    actor: Mapped["User | None"] = relationship(
-        "User", foreign_keys=[actor_id]
-    )
+    actor: Mapped["User | None"] = relationship("User", foreign_keys=[actor_id])

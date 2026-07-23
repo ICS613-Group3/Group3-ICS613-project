@@ -51,10 +51,14 @@ class ReviewResponse(BaseModel):
 
             reviewer = getattr(data, "reviewer", None)
             if reviewer is not None:
-                ns_data["reviewer_name"] = getattr(reviewer, "full_name", None) or getattr(reviewer, "email", None)
+                ns_data["reviewer_name"] = getattr(reviewer, "full_name", None) or getattr(
+                    reviewer, "email", None
+                )
             reviewee = getattr(data, "reviewee", None)
             if reviewee is not None:
-                ns_data["reviewee_name"] = getattr(reviewee, "full_name", None) or getattr(reviewee, "email", None)
+                ns_data["reviewee_name"] = getattr(reviewee, "full_name", None) or getattr(
+                    reviewee, "email", None
+                )
             return SimpleNamespace(**ns_data)
         except Exception:
             pass

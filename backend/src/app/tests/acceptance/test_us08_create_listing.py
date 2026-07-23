@@ -172,7 +172,12 @@ class TestScenario7ListingNameMustBeUniquePerOwner:
 
         response = await client.post(
             "/api/v1/tools",
-            data={"name": "Circular Saw", "category": "POWER_TOOLS", "condition": "GOOD", "description": "A duplicate saw."},
+            data={
+                "name": "Circular Saw",
+                "category": "POWER_TOOLS",
+                "condition": "GOOD",
+                "description": "A duplicate saw.",
+            },
             files=[("photos", fake_photo())],
             headers=auth_header(owner.id),
         )

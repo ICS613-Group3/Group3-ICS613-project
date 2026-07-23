@@ -27,9 +27,7 @@ async def list_categories(
     """
     service = CategoryService()
     categories = await service.list_categories(db)
-    return CategoryListResponse(
-        categories=[CategoryResponse.model_validate(c) for c in categories]
-    )
+    return CategoryListResponse(categories=[CategoryResponse.model_validate(c) for c in categories])
 
 
 # ── Admin: add a new category (US28 Scenario 1) ────────────────────────

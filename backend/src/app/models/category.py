@@ -28,9 +28,7 @@ class Category(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    name: Mapped[str] = mapped_column(
-        String(100), nullable=False, unique=True, index=True
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -44,6 +42,4 @@ class Category(Base):
     )
 
     # Relationships
-    creator: Mapped["User | None"] = relationship(
-        "User", foreign_keys=[created_by]
-    )
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])

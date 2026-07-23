@@ -1,0 +1,156 @@
+@startuml architecture
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontSize 11
+skinparam packageFontSize 13
+skinparam packageFontStyle bold
+skinparam shadowing false
+
+skinparam package {
+  BorderColor #D0D5DD
+  BackgroundColor #FFFFFF
+  BorderThickness 1.5
+}
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #D0D5DD
+  BorderThickness 1
+}
+skinparam database {
+  BackgroundColor #EFF6FF
+  BorderColor #3B82F6
+}
+skinparam arrow {
+  Color #6B7280
+  Thickness 1.2
+}
+
+title Group 3 - Neighborhood Tool Sharing - N-Tier Architecture (v5)
+
+package "Presentation Layer (Frontend)" #FFF7ED {
+  component "React SPA\n(Vite, TypeScript)\nMember, Owner, Admin views" as fe
+}
+
+package "API Layer (FastAPI Routers)" #F0F4FF {
+  component "AuthRouter\n/auth/*\nregister, login, verify,\ninvite, password-reset" as auth
+  component "UserRouter\n/users/*\nprofile, delete account" as users
+  component "ToolRouter\n/tools/*\nCRUD, photos,\nactivate/deactivate" as tools
+  component "ReservationRouter\n/reservations/*\nlifecycle, cancel, pickup, return" as resv
+  component "MessageRouter\n/reservations/{id}/messages" as msg
+  component "ReviewRouter\n/reviews, /users/{id}/reviews" as rev
+  component "NotificationRouter\n/notifications" as notif
+  component "AdminRouter\n/admin/*\nreports, suspension,\naudit log, listing-rules" as admin
+}
+
+package "Service Layer (Business Logic)" #ECFDF5 {
+  component "AuthService\nregister, login, verify,\ninvite, password-reset" as auth_svc
+  component "UserService\nprofile, delete account" as user_svc
+  component "ToolService\nCRUD, photos,\nactivate/deactivate\nbrowse, search" as tool_svc
+  component "ReservationService\ncreate, approve, deny,\ncancel, pickup, return\nstate pattern" as resv_svc
+  component "MessageService\nsend, list thread" as msg_svc
+  component "ReviewService\nleave, edit (24h),\ndelete, list" as rev_svc
+  component "NotificationService\nnotify, mark-read,\nlist unread" as notif_svc
+  component "AdminService\nreview reports,\nsuspend/reactivate,\naudit log, listing-rules" as admin_svc
+}
+
+package "Repository Layer (Data Access)" #FFFBEB {
+  component "UserRepo" as user_repo
+  component "InviteTokenRepo" as invite_repo
+  component "EmailVerificationTokenRepo" as ev_repo
+  component "PasswordResetTokenRepo" as pr_repo
+  component "ToolRepo" as tool_repo
+  component "PhotoRepo" as photo_repo
+  component "ReservationRepo" as resv_repo
+  component "MessageRepo" as msg_repo
+  component "NotificationRepo" as notif_repo
+  component "ReviewRepo" as rev_repo
+  component "ListingReportRepo" as lreport_repo
+  component "SuspensionRecordRepo" as susp_repo
+  component "AdminAuditLogRepo" as audit_repo
+  component "ListingRulesRepo" as rules_repo
+}
+
+package "Data Layer (PostgreSQL 15)" #F5F3FF {
+  database "PostgreSQL 15\n14 tables\nNative ENUMs\nGiST + EXCLUDE" as db
+  component "SQLAlchemy ORM\n14 Models" as models
+}
+
+package "Cross-Cutting" #FEF2F2 {
+  component "JWT Middleware\naccess 15min / refresh 30d" as jwt
+  component "Session Middleware\nactive session required" as session
+  component "Settings\npydantic-settings\n.env file" as config
+  component "Email Service\nverification / reset\nSMTP (Gmail App Pwd)" as email
+  component "Photo Storage\nlocal disk /uploads\nStaticFiles mount" as photo
+  component "APScheduler\nauto-cancel 3d grace\nauto-escalate 7d" as scheduler
+}
+
+' Frontend talks to API
+fe -down-> auth : HTTPS
+fe -down-> users : HTTPS
+fe -down-> tools : HTTPS
+fe -down-> resv : HTTPS
+fe -down-> msg : HTTPS
+fe -down-> rev : HTTPS
+fe -down-> notif : HTTPS
+fe -down-> admin : HTTPS
+
+' Routers to services
+auth -down-> auth_svc
+users -down-> user_svc
+tools -down-> tool_svc
+resv -down-> resv_svc
+msg -down-> msg_svc
+rev -down-> rev_svc
+notif -down-> notif_svc
+admin -down-> admin_svc
+
+' Auth service also needs invite + email-verification + reset repos
+auth_svc -down-> user_repo
+auth_svc -down-> invite_repo
+auth_svc -down-> ev_repo
+auth_svc -down-> pr_repo
+
+' Services to their repos
+user_svc -down-> user_repo
+tool_svc -down-> tool_repo
+tool_svc -down-> photo_repo
+resv_svc -down-> resv_repo
+resv_svc -down-> tool_repo
+msg_svc -down-> msg_repo
+rev_svc -down-> rev_repo
+notif_svc -down-> notif_repo
+admin_svc -down-> lreport_repo
+admin_svc -down-> susp_repo
+admin_svc -down-> audit_repo
+admin_svc -down-> rules_repo
+admin_svc -down-> tool_repo
+admin_svc -down-> user_repo
+
+' All repos to ORM
+user_repo -down-> models
+invite_repo -down-> models
+ev_repo -down-> models
+pr_repo -down-> models
+tool_repo -down-> models
+photo_repo -down-> models
+resv_repo -down-> models
+msg_repo -down-> models
+notif_repo -down-> models
+rev_repo -down-> models
+lreport_repo -down-> models
+susp_repo -down-> models
+audit_repo -down-> models
+rules_repo -down-> models
+
+models -down-> db
+
+' Cross-cutting edges
+auth .down.> jwt : uses
+auth .down.> session : uses
+config .right.> auth : configures
+config .right.> auth_svc : configures
+auth_svc .right.> email : sends via
+notif_svc .right.> email : sends via
+tool_svc .right.> photo : writes photos via
+scheduler .up.> resv_svc : triggers auto-cancel
+
+@enduml

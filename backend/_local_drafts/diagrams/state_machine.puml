@@ -1,0 +1,55 @@
+@startuml state_machine
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam state {
+  BorderColor #D0D5DD
+  FontColor #1F2937
+  FontStyle bold
+}
+skinparam arrow {
+  Color #6B7280
+  Thickness 1.2
+}
+
+title Group 3 - State Machines (v5: User Account + Reservation Lifecycle)
+
+' ============================================================
+' USER ACCOUNT LIFECYCLE (US1, US2, US7, US30, US31)
+' ============================================================
+state "EMAIL_PENDING : account created, awaiting email verify" as UP_EMAIL
+state "ACTIVE : verified, full access" as UP_ACTIVE
+state "SUSPENDED : by admin, read-only" as UP_SUSP
+state "DELETED : self-deletion, PII removed" as UP_DEL
+
+[*]        --> UP_EMAIL    : register with invite token (US1)
+UP_EMAIL   --> UP_ACTIVE   : verify_email (US2)
+UP_ACTIVE  --> UP_SUSP     : admin.suspend (US30)
+UP_SUSP    --> UP_ACTIVE   : admin.reactivate (US31)
+UP_ACTIVE  --> UP_DEL      : self.delete_account (US7)
+UP_SUSP    --> UP_DEL      : suspended.delete_account (US7 S5)
+UP_DEL     --> [*]
+
+' ============================================================
+' RESERVATION LIFECYCLE (US13-US20)
+' ============================================================
+state "REQUESTED : borrower submitted" as R_REQ
+state "APPROVED : owner approved" as R_APP
+state "DENIED : owner denied" as R_DEN
+state "PICKED_UP : tool collected" as R_PU
+state "RETURNED : tool back" as R_RET
+state "CANCELLED : by borrower or owner" as R_CAN
+
+[*]          --> R_REQ    : borrower.create_request (US13)
+R_REQ        --> R_APP    : owner.approve (US14)
+R_REQ        --> R_DEN    : owner.deny (US14)
+R_REQ        --> R_CAN    : borrower.cancel (US15)
+R_APP        --> R_PU     : borrower.mark_picked_up (US17)
+R_APP        --> R_CAN    : cancel (US15/US16)
+R_PU         --> R_RET    : borrower.mark_returned (US20)
+R_PU         --> R_RET    : admin.force_resolved (US20 S8)
+R_DEN        --> [*]
+R_RET        --> [*]
+R_CAN        --> [*]
+
+@enduml

@@ -1,0 +1,102 @@
+R2 Completed Work — Full Summary
+==================================
+
+US28 — Admin Manages Tool Categories (NEW)
+-------------------------------------------
+Goal: Allow admins to add/remove allowed tool categories dynamically from a database table, replacing the hardcoded ToolCategory enum.
+
+New Model:
+- src/app/models/category.py — Category model (table ``tool_categories``):
+  id (UUID PK), name (unique, String(100)), description, created_by (FK users SET NULL), created_at
+
+Model Updated:
+- src/app/models/tool.py — Tool.category changed from ENUM(ToolCategory) to String(100).
+  Kept ``ToolCondition`` and ``DeactivationActor`` as PG ENUMs (unchanged).
+- src/app/models/__init__.py — Registered Category model + added to __all__.
+
+Migration Created:
+- alembic/versions/e4f6a8b2c3d1_us28_us33_categories_moderation_reports.py
+  - Creates tool_categories table
+  - Seeds 5 original categories (HAND_TOOLS, POWER_TOOLS, GARDEN_TOOLS, CLEANING_TOOLS, OUTDOOR_GEAR)
+  - ALTERs tools.category from ENUM tool_category to VARCHAR(100) (data preserved via ::text cast)
+  - DROP TYPE tool_category
+  - Downgrade reverses all steps
+
+Schemas Created:
+- src/app/schemas/category.py — CategoryCreate (name + optional description), CategoryResponse (id, name, description, created_by, created_at), CategoryListResponse
+
+Schemas Updated:
+- src/app/schemas/tool.py — ToolResponse.category and ToolUpdate.category changed from ToolCategory enum to str
+
+Service Created:
+- src/app/services/category.py — CategoryService:
+  - list_categories(): all categories ordered by name
+  - create_category(): admin adds new category (case-insensitive duplicate guard -> ConflictError)
+  - remove_category(): admin deletes category (guards: NotFoundError if missing, ConflictError if ACTIVE tools use it)
+  - validate_category_name(): used by ToolService on create/update (ValidationError if not in allowed list)
+
+Service Updated:
+- src/app/services/tool.py — create_tool(), create_with_photos(), update_tool() now call CategoryService.validate_category_name() to check the category exists in the DB. All category type hints changed from ToolCategory to str. Removed ToolCategory import.
+
+Routes Created:
+- src/app/api/v1/categories.py:
+  - GET /api/v1/categories — any authenticated member (read-only, fills listing-creation dropdown)
+  - POST /api/v1/categories — admin only (201, records admin ID + timestamp)
+  - DELETE /api/v1/categories/{category_id} — admin only (200, blocked with 409 if ACTIVE tools use it)
+- Registered in src/app/api/v1/__init__.py as prefix="/categories"
+
+Routes Updated:
+- src/app/api/v1/tools.py — Removed parse_enum_or_raise validation for category; passes raw string to service (service validates against DB). Removed ToolCategory import.
+
+Test Infrastructure Updated:
+- src/app/tests/conftest.py — Seeds 5 default categories after each test-suite schema creation
+- src/app/tests/factories.py — ToolFactory.category = "HAND_TOOLS" (string, not enum)
+- src/app/tests/test_tools.py — All ToolCategory.X references replaced with string values
+
+Acceptance Tests:
+- src/app/tests/acceptance/test_us28_admin_manages_categories.py — 8 tests covering:
+  - S1: Admin adds a new category (appears in list)
+  - S2: Admin removes a category with no active listings (removed)
+  - S3: Cannot remove a category used by ACTIVE listings (409)
+  - S4: Non-admin gets 403 on create and delete
+  - Duplicate category rejected (409)
+  - Any member can list categories (200)
+  - Tool creation with unlisted category rejected (422)
+  - Deactivated listing retains old category string after removal
+
+US33 — Admin Generates Community Moderation Reports (NEW)
+-----------------------------------------------------------
+Goal: Allow admins to generate community moderation reports with aggregated totals and export as CSV.
+
+Schema Created:
+- src/app/schemas/admin_report.py — ModerationReportSummary, ModerationReportItem (audit log entry), ModerationReportResponse (summary + records)
+
+Service Created:
+- src/app/services/admin_report.py — ModerationReportService:
+  - generate_report(db, date_from, date_to) — aggregates data from:
+    - admin_audit_log: suspensions, reactivations, tool deactivations, tool reactivations, account deletions
+    - listing_reports: total/pending/valid/invalid
+    - reservations: total/active/completed by state
+  - Returns dict with "summary" (totals dict) + "records" (AdminAuditLog list)
+
+Routes Created (added to src/app/api/v1/admin.py):
+- GET /api/v1/admin/reports/moderation — Admin-only JSON report:
+  Summary: total_reports, pending/valid/invalid breakdown, total_suspensions/tool_deactivations/tool_reactivations/account_deletions/reservations (active/completed)
+  Records: audit log entries in date range
+  report_type: "moderation", date_from/date_to applied
+- GET /api/v1/admin/reports/moderation/export — Admin-only CSV export:
+  Section 1: Metric/Value rows from summary
+  Section 2: Audit Log Records with column headers: id, action_type, target_type, target_id, reason, actor_id, created_at
+  Returns {csv, filename, content_type} for frontend download trigger
+
+Acceptance Tests:
+- src/app/tests/acceptance/test_us33_moderation_reports.py — 5 tests covering:
+  - S1: Admin generates a report with totals and records
+  - S2: Admin exports a report as CSV (columns match, data matches)
+  - S3: Date range with no matching records -> empty records, zero totals
+  - S4: Non-admin gets 403 on both report and export endpoints
+  - Date range filter correctly narrows results
+
+Full Test Results:
+- All 198 tests passing (3 skipped, 3 xfailed — all pre-existing)
+- 13 new acceptance tests across US28 (8) + US33 (5)

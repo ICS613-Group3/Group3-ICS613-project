@@ -43,6 +43,7 @@ def _anonymize_user(user: User) -> None:
 # place prevents the two from drifting apart when reservation-state rules
 # change.
 
+
 class DeletionBlockedError(ConflictError):
     """Deletion is blocked because of active reservations."""
 
@@ -136,9 +137,7 @@ async def _guard_and_cleanup(
         pending = await db.execute(
             select(Reservation).where(
                 Reservation.tool_id.in_(tool_ids),
-                Reservation.state.in_(
-                    [ReservationState.REQUESTED, ReservationState.APPROVED]
-                ),
+                Reservation.state.in_([ReservationState.REQUESTED, ReservationState.APPROVED]),
             )
         )
         pending_reservations = pending.scalars().all()
@@ -249,7 +248,7 @@ class UserService:
           - notifies affected borrowers
           - anonymizes PII and marks status DELETED
         """
-        cleanup = await _guard_and_cleanup(db, user)
+        await _guard_and_cleanup(db, user)
 
         _anonymize_user(user)
         user.status = UserStatus.DELETED

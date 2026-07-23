@@ -6,7 +6,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_admin_user, get_current_member, get_current_member_read_only, get_db
+from app.api.deps import (
+    get_current_admin_user,
+    get_current_member,
+    get_current_member_read_only,
+    get_db,
+)
 from app.core.exceptions import parse_enum_or_raise
 from app.models.enums import ReportStatus
 from app.models.user import User
@@ -70,9 +75,7 @@ async def list_reports(
     )
     items = [ReportResponse.model_validate(r) for r in reports]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 @router.post(
@@ -115,6 +118,7 @@ async def list_my_reports(
 ) -> PaginatedResponse[ReportResponse]:
     """List reports submitted by the current member."""
     from sqlalchemy import func, select
+
     from app.models.listing_report import ListingReport
 
     query = select(ListingReport).where(ListingReport.reporter_id == current_user.id)
@@ -129,8 +133,7 @@ async def list_my_reports(
 
     total = (await db.execute(count_q)).scalar() or 0
     query = (
-        query
-        .order_by(ListingReport.created_at.desc())
+        query.order_by(ListingReport.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
@@ -138,6 +141,4 @@ async def list_my_reports(
 
     items = [ReportResponse.model_validate(r) for r in reports]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)

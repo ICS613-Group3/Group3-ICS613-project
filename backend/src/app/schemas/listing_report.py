@@ -62,13 +62,13 @@ class ReportResponse(BaseModel):
                 ns_data["tool_name"] = getattr(tool, "name", None)
             reporter = getattr(data, "reporter", None)
             if reporter is not None:
-                ns_data["reporter_name"] = (
-                    getattr(reporter, "full_name", None) or getattr(reporter, "email", None)
+                ns_data["reporter_name"] = getattr(reporter, "full_name", None) or getattr(
+                    reporter, "email", None
                 )
             resolver = getattr(data, "resolver", None)
             if resolver is not None:
-                ns_data["resolver_name"] = (
-                    getattr(resolver, "full_name", None) or getattr(resolver, "email", None)
+                ns_data["resolver_name"] = getattr(resolver, "full_name", None) or getattr(
+                    resolver, "email", None
                 )
             return SimpleNamespace(**ns_data)
         except Exception:

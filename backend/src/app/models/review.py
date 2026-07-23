@@ -66,9 +66,5 @@ class Review(Base):
 
     # Relationships
     reservation: Mapped["Reservation"] = relationship("Reservation", lazy="selectin")
-    reviewer: Mapped["User"] = relationship(
-        "User", foreign_keys=[reviewer_id]
-    )
-    reviewee: Mapped["User"] = relationship(
-        "User", foreign_keys=[reviewee_id]
-    )
+    reviewer: Mapped["User"] = relationship("User", foreign_keys=[reviewer_id])
+    reviewee: Mapped["User"] = relationship("User", foreign_keys=[reviewee_id])

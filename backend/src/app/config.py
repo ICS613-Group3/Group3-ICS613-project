@@ -65,17 +65,11 @@ class Settings(BaseSettings):
     # can't be replayed against this API.
     jwt_audience: str = Field(
         default="toolsharing-api",
-        description=(
-            "JWT ``aud`` claim — must match on decode. "
-            "(env: JWT_AUDIENCE)"
-        ),
+        description=("JWT ``aud`` claim — must match on decode. (env: JWT_AUDIENCE)"),
     )
     jwt_issuer: str = Field(
         default="toolsharing-api",
-        description=(
-            "JWT ``iss`` claim — must match on decode. "
-            "(env: JWT_ISSUER)"
-        ),
+        description=("JWT ``iss`` claim — must match on decode. (env: JWT_ISSUER)"),
     )
 
     # Database (asyncpg)

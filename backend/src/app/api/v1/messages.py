@@ -6,7 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_admin_user, get_current_member, get_current_member_read_only, get_db
+from app.api.deps import (
+    get_current_member,
+    get_current_member_read_only,
+    get_db,
+)
 from app.models.user import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.message import MessageCreate, MessageResponse
@@ -66,6 +70,4 @@ async def list_messages(
     )
     items = [MessageResponse.from_orm_with_sender_name(m) for m in messages]
     pages = max(1, (total + page_size - 1) // page_size)
-    return PaginatedResponse(
-        items=items, total=total, page=page, page_size=page_size, pages=pages
-    )
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)

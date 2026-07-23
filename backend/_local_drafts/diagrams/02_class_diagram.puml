@@ -1,0 +1,406 @@
+@startuml 02_Class_Diagram_Domain
+' ============================================================
+' Group 3 - Neighborhood Tool Sharing
+' Class Diagram - OOP-STRICT - PART 1 of 2
+' Domain Models + State Pattern (v5)
+'
+' OOP principles:
+'   * Encapsulation  - private (-) / public (+) visibility
+'   * Abstraction    - User abstract; ReservationState interface
+'   * Inheritance    - Borrower, Owner, Admin extend User
+'   * Composition    - Tool *- Photos, Reservation *- State
+'   * State Pattern  - Reservation delegates to ReservationState
+'
+' Aligned with: Domain_Model_v2.1.docx, User-stories_final_draft_v5.docx
+' Last updated: June 2026 (v5 - 35 stories)
+' ============================================================
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 11
+skinparam stereotypeCBackgroundColor #B58900
+skinparam packageBackgroundColor #EEE8D5
+skinparam classBackgroundColor  #FDF6E3
+skinparam interfaceBackgroundColor #FDF6E3
+hide circle
+skinparam shadowing false
+
+title Group 3 - Class Diagram (OOP-Strict, Part 1: Domain + State) - v5
+
+' ============================================================
+' DOMAIN MODELS - v5 (35 stories)
+' ============================================================
+package "Domain Models" {
+
+  abstract class User {
+    '-id : UUID
+    '-email : String
+    '-password_hash : String
+    '-full_name : String
+    '-bio : Text
+    '-phone : String
+    '-profile_photo_url : String
+    '-neighborhood : String
+    '-is_admin : Boolean
+    '-status : UserStatus
+    '-trust_score : Float
+    '-violation_count : Int
+    '-damage_reported : Boolean
+    '-created_at : DateTime
+    '-last_updated_at : DateTime
+    '-deleted_at : DateTime
+    --
+    +verify_email(token) : Boolean
+    +deactivate() : void
+    +delete_account() : void
+    +{abstract} role() : String
+  }
+
+  class Borrower {
+    +role() : String
+  }
+
+  class Owner {
+    +role() : String
+  }
+
+  class Admin {
+    '-admin_level : Int
+    +suspend(member) : void
+    +reactivate(member) : void
+    +resolve_report(report) : void
+    +role() : String
+  }
+
+  enum UserStatus {
+    EMAIL_PENDING
+    ACTIVE
+    SUSPENDED
+    DELETED
+  }
+
+  class SuspensionRecord {
+    '-id : UUID
+    '-user_id : UUID
+    '-action : SuspensionAction
+    '-performed_by_admin_id : UUID
+    '-reason : Text
+    '-created_at : DateTime
+    --
+    +__init__(user, action, admin, reason)
+    +get_action() : SuspensionAction
+    +get_performed_by_admin_id() : UUID
+  }
+
+  enum SuspensionAction {
+    SUSPENDED
+    REACTIVATED
+  }
+
+  class Tool {
+    '-id : UUID
+    '-owner_id : UUID
+    '-name : String
+    '-description : Text
+    '-category : ToolCategory
+    '-condition : ToolCondition
+    '-lending_rules : Text
+    '-notes_for_borrowers : Text
+    '-latest_return_time : Time
+    '-is_active : Boolean
+    '-deactivated_by_user_id : UUID
+    '-deactivation_actor_role : DeactivationRole
+    '-deactivation_reason : Text
+    '-deactivated_at : DateTime
+    '-reactivated_at : DateTime
+    '-reactivated_by_user_id : UUID
+    '-average_rating : Float
+    '-rating_count : Int
+    '-created_at : DateTime
+    '-last_updated_at : DateTime
+    '-deleted_at : DateTime
+    --
+    +is_available_on(start : Date, end : Date) : Boolean
+    +deactivate(by : User, reason : Text) : void
+    +reactivate(by : Admin) : void
+  }
+
+  enum ToolCategory {
+    POWER_TOOLS
+    GARDEN
+    KITCHEN
+    LADDERS
+    OTHER
+  }
+  enum ToolCondition {
+    NEW
+    LIKE_NEW
+    GOOD
+    FAIR
+    POOR
+  }
+  enum DeactivationRole {
+    OWNER
+    ADMIN
+  }
+
+  class Photo {
+    '-id : UUID
+    '-tool_id : UUID
+    '-url : String
+    '-display_order : Int
+    '-created_at : DateTime
+    --
+    +get_url() : String
+  }
+
+  enum ReservationStatus {
+    REQUESTED
+    APPROVED
+    DENIED
+    PICKED_UP
+    RETURNED
+    CANCELLED
+  }
+
+  class Reservation {
+    '-id : UUID
+    '-tool_id : UUID
+    '-borrower_id : UUID
+    '-start_date : Date
+    '-end_date : Date
+    '-state : ReservationState
+    '-message : Text
+    '-cancellation_reason : Text
+    '-cancelled_by_user_id : UUID
+    '-is_late_return : Boolean
+    '-picked_up_at : DateTime
+    '-returned_at : DateTime
+    '-damage_report : Text
+    '-damage_reported_at : DateTime
+    '-damage_reported_by_user_id : UUID
+    '-force_resolved_by_admin_id : UUID
+    '-force_resolution_reason : Text
+    '-created_at : DateTime
+    '-last_updated_at : DateTime
+    --
+    +request_borrow() : void
+    +approve() : void
+    +deny() : void
+    +cancel(by : User) : void
+    +mark_picked_up() : void
+    +mark_returned() : void
+    +file_damage_report(owner, description) : void
+    -set_state(new_state : ReservationState) : void
+  }
+
+  class Review {
+    '-id : UUID
+    '-reservation_id : UUID
+    '-reviewer_id : UUID
+    '-reviewee_id : UUID
+    '-rating : Int
+    '-comment : Text
+    '-submitted_at : DateTime
+    '-last_edited_at : DateTime
+    '-is_deleted : Boolean
+    --
+    +leave(reviewer, rating, comment) : Review
+    +edit(rating, comment) : Review
+    +soft_delete() : void
+  }
+
+  class Message {
+    '-id : UUID
+    '-reservation_id : UUID
+    '-sender_id : UUID
+    '-body : Text
+    '-created_at : DateTime
+    --
+    +send(sender, body) : Message
+  }
+
+  class Notification {
+    '-id : UUID
+    '-user_id : UUID
+    '-type : String
+    '-payload : JSON
+    '-read_at : DateTime
+    '-created_at : DateTime
+    --
+    +mark_read() : void
+  }
+
+  class InviteToken {
+    '-id : UUID
+    '-token : String
+    '-email : String
+    '-status : InviteStatus
+    '-role : String
+    '-expires_at : DateTime
+    '-used_at : DateTime
+    '-created_by_id : UUID
+    '-created_at : DateTime
+    --
+    +is_valid(now) : Boolean
+    +consume() : Boolean
+    +revoke() : void
+  }
+
+  enum InviteStatus {
+    sent
+    used
+    expired
+    revoked
+  }
+
+  class ListingReport {
+    '-id : UUID
+    '-tool_id : UUID
+    '-reporter_id : UUID
+    '-owner_id : UUID
+    '-reason : String
+    '-comment : Text
+    '-status : ReportStatus
+    '-resolved_at : DateTime
+    '-resolved_by_admin_id : UUID
+    '-created_at : DateTime
+    --
+    +file(tool, reporter, reason, comment) : ListingReport
+    +resolve_valid(admin) : void
+    +resolve_invalid(admin) : void
+  }
+
+  enum ReportStatus {
+    PENDING_REVIEW
+    RESOLVED_VALID
+    RESOLVED_INVALID
+  }
+
+  class ListingRules {
+    '-id : UUID
+    '-allowed_rules : Text
+    '-prohibited_rules : Text
+    '-examples : Text
+    '-updated_by_admin_id : UUID
+    '-last_updated_at : DateTime
+    --
+    +get_allowed() : Text
+    +get_prohibited() : Text
+    +update(allowed, prohibited, examples, admin) : void
+  }
+
+  class AdminAuditLog {
+    '-id : UUID
+    '-actor_user_id : UUID
+    '-action_type : String
+    '-target_type : String
+    '-target_id : UUID
+    '-reason : Text
+    '-metadata_json : JSON
+    '-created_at : DateTime
+    --
+    +log(actor, type, target, reason, metadata) : AdminAuditLog
+  }
+}
+
+' ============================================================
+' STATE PATTERN (GoF) for Reservation lifecycle
+' ============================================================
+package "Reservation State Pattern" {
+  interface ReservationState <<interface>> {
+    +get_status() : ReservationStatus
+    +approve(context : Reservation) : void
+    +deny(context : Reservation) : void
+    +cancel(context : Reservation, by : User) : void
+    +mark_picked_up(context : Reservation) : void
+    +mark_returned(context : Reservation) : void
+  }
+
+  class RequestedState <<Singleton>> {
+    +get_status() : ReservationStatus
+    +approve(context) : void
+    +deny(context) : void
+    +cancel(context, by) : void
+  }
+  class ApprovedState <<Singleton>> {
+    +get_status() : ReservationStatus
+    +mark_picked_up(context) : void
+    +cancel(context, by) : void
+  }
+  class PickedUpState <<Singleton>> {
+    +get_status() : ReservationStatus
+    +mark_returned(context) : void
+  }
+  class ReturnedState <<Singleton>> {
+    +get_status() : ReservationStatus
+  }
+  class DeniedState <<Singleton>> {
+    +get_status() : ReservationStatus
+  }
+  class CancelledState <<Singleton>> {
+    +get_status() : ReservationStatus
+  }
+
+  RequestedState  ..|> ReservationState
+  ApprovedState   ..|> ReservationState
+  PickedUpState   ..|> ReservationState
+  ReturnedState   ..|> ReservationState
+  DeniedState     ..|> ReservationState
+  CancelledState  ..|> ReservationState
+}
+
+' ============================================================
+' INHERITANCE
+' ============================================================
+Borrower  --|> User
+Owner     --|> User
+Admin     --|> User
+
+' ============================================================
+' STATE PATTERN: Reservation holds a State object
+' ============================================================
+Reservation "1" *- "1" ReservationState : current >
+
+' ============================================================
+' DOMAIN ASSOCIATIONS
+' ============================================================
+User      "1" -- "0..*" Tool                  : owns >
+Tool      "1" *- "1..5" Photo                 : contains >
+User      "1" -- "0..*" Reservation           : borrows >
+Tool      "1" -- "0..*" Reservation           : is subject of >
+Reservation "1" *- "0..*" Message             : has thread >
+Reservation "1" -- "0..2" Review              : produces >
+User      "1" -- "0..*" Notification          : receives >
+User      "1" -- "0..*" Review                : writes >
+User      "1" -- "0..*" SuspensionRecord      : has history >
+Admin     "1" -- "0..*" SuspensionRecord      : performed >
+User      "1" -- "0..*" InviteToken           : created by >
+Tool      "1" -- "0..*" ListingReport         : reported >
+User      "1" -- "0..*" ListingReport         : filed by >
+Admin     "1" -- "0..*" ListingReport         : resolved by >
+Admin     "1" -- "0..*" AdminAuditLog         : performed >
+ListingRules "1" -- "0..*" Admin              : updated by >
+
+note right of User
+  **Status enum**:
+  EMAIL_PENDING → ACTIVE (US2 verify)
+  ACTIVE ↔ SUSPENDED (US30/31 admin)
+  ACTIVE → DELETED (US7 self)
+end note
+
+note right of SuspensionRecord
+  **New in v4** (US30, US31):
+  Each suspend and reactivate
+  creates a row for full audit
+  trail (US32 moderation history).
+end note
+
+note right of Reservation
+  **Damage fields embedded**:
+  damage_report, reported_at,
+  reported_by are stored directly
+  on Reservation (not a separate
+  DamageReport class).
+end note
+
+@enduml

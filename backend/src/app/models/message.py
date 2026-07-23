@@ -53,6 +53,4 @@ class Message(Base):
     reservation: Mapped["Reservation"] = relationship(
         "Reservation", back_populates="messages", lazy="selectin"
     )
-    sender: Mapped["User"] = relationship(
-        "User", foreign_keys=[sender_id], lazy="selectin"
-    )
+    sender: Mapped["User"] = relationship("User", foreign_keys=[sender_id], lazy="selectin")

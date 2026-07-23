@@ -10,18 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.models.enums import (
     InviteStatus,
+    ReportStatus,
     ReservationState,
     ToolCondition,
     UserStatus,
 )
 from app.models.invite import InviteToken
+from app.models.listing_report import ListingReport
+from app.models.message import Message
 from app.models.reservation import Reservation
 from app.models.review import Review
 from app.models.tool import Tool
 from app.models.user import User
-from app.models.message import Message
-from app.models.listing_report import ListingReport
-from app.models.enums import ReportStatus
 
 
 class AsyncSQLAlchemyFactory(factory.Factory):
@@ -135,6 +135,7 @@ class ReviewFactory(AsyncSQLAlchemyFactory):
         await db.flush()
         await db.refresh(obj)
         return obj
+
 
 class MessageFactory(AsyncSQLAlchemyFactory):
     """Factory for Message model."""

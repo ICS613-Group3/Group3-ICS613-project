@@ -17,7 +17,6 @@ from app.models.message import Message
 from app.models.reservation import Reservation
 from app.models.user import User
 
-
 # States where messaging is allowed (active conversation).
 ACTIVE_STATES = frozenset(
     {ReservationState.REQUESTED, ReservationState.APPROVED, ReservationState.PICKED_UP}
@@ -85,7 +84,7 @@ class MessageService:
         reservation_id: uuid.UUID,
         page: int = 1,
         page_size: int = 20,
-        ) -> tuple[list[Message], int]:
+    ) -> tuple[list[Message], int]:
         """List all messages in a reservation thread chronologically.
 
         Only the borrower, owner, and admins can read the thread.
@@ -104,9 +103,7 @@ class MessageService:
         if not (is_borrower or is_owner or user.is_admin):
             raise PermissionDeniedError("You are not a party to this reservation")
 
-        count_q = select(func.count(Message.id)).where(
-            Message.reservation_id == reservation_id
-        )
+        count_q = select(func.count(Message.id)).where(Message.reservation_id == reservation_id)
         total = (await db.execute(count_q)).scalar() or 0
 
         query = (

@@ -1,0 +1,24 @@
+Group 1
+What went well:
+Connected the Backend to the Frontend,
+Created the landing, login, and dashboard page,
+Everyone was willing to meet to go over any issues,
+Everyone was willing to change their meeting schedule to accommodate other's prior commitments,
+Implementing a docker development environment helped to ensure all team members could run the code on their workstations,
+On-demand QA scripts and equivalent CI pipeline were implemented as early as possible, this helped to catch mistakes and bad practices early in the project,
+Independent learning from frontend and backend developers, they got quickly oriented with new technologies and developed both application and test code,
+Coordination of work between frontend and backend developers around user stories was good, the API endpoints were implemented early-on which helped mitigate the developer dependency risk,
+QA policies and procedures were defined to standardize processes and to address issues as they were encountered (for example, PR miscommunications),
+
+What did not go well:
+There were merge conflicts we had to resolve,
+The Github workflow was a new tool for the team to learn, and so creating the issues, assigning the issues, and tracking the issues was initially overwhelming. It slightly slowed the progress down.,
+There was some slight miscommunication about tasks that needed resolving,
+The code coverage statistics were not implemented in the QA scripts until the R1 deadline, this would have helped improve the frontend and backend unit test coverage,
+Sprints were informal, this should be more structured to include the entire workflow,
+Regular team meetings are not efficient. We should reserve that time for sprint planning/debriefs, coordinating/reviewing work for important deadlines, and any other work that requires real-time collaboration. Otherwise, asynchronous tasks and communication are much more efficient.
+
+
+What needs to be fixed before R2:
+No confirmed defects have been identified yet, but we have a defect management procedure that will be used as these are identified,
+Address the things that didn't go well during R1, make reasonable and appropriate changes

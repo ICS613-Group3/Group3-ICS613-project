@@ -87,7 +87,5 @@ def parse_enum_or_raise(value: str, enum_cls: type[Enum], field_name: str) -> st
         enum_cls(value)  # validate; caller casts again for the actual enum instance
     except ValueError:
         valid = ", ".join(e.value for e in enum_cls)
-        raise ValidationError(
-            f"Invalid {field_name}: '{value}'. Valid values: {valid}"
-        )
+        raise ValidationError(f"Invalid {field_name}: '{value}'. Valid values: {valid}") from None
     return value

@@ -13,9 +13,8 @@ from app.models.enums import NotificationType, ReservationState, UserStatus
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
-from app.schemas.user import UserProfile
 from app.services.notification import NotificationService
-from app.services.user import _anonymize_user, _guard_and_cleanup, UserService
+from app.services.user import _anonymize_user, _guard_and_cleanup
 
 
 class AdminService:
@@ -31,9 +30,7 @@ class AdminService:
         user_id: uuid.UUID,
     ) -> User:
         """Fetch a single non-deleted user by ID. Raises 404 if not found."""
-        result = await db.execute(
-            select(User).where(User.id == user_id, User.deleted_at.is_(None))
-        )
+        result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
         user = result.scalar_one_or_none()
         if user is None:
             raise NotFoundError("User not found")
@@ -47,7 +44,7 @@ class AdminService:
         search: str | None = None,
         page: int = 1,
         page_size: int = 20,
-        ) -> tuple[list[User], int]:
+    ) -> tuple[list[User], int]:
         """List all non-deleted users with optional filters.
 
         Admins can filter by status (ACTIVE, SUSPENDED, EMAIL_PENDING) and
@@ -66,21 +63,14 @@ class AdminService:
 
         if search:
             pattern = f"%{search.strip()}%"
-            query = query.where(
-                User.email.ilike(pattern) | User.full_name.ilike(pattern)
-            )
-            count_q = count_q.where(
-                User.email.ilike(pattern) | User.full_name.ilike(pattern)
-            )
+            query = query.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
+            count_q = count_q.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
 
         count_result = await db.execute(count_q)
         total = count_result.scalar() or 0
 
         query = (
-            query
-            .order_by(User.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         )
         result = await db.execute(query)
         users = list(result.scalars().all())
@@ -338,17 +328,13 @@ class AdminService:
             query = query.where(
                 or_(
                     Reservation.borrower_id == member_id,
-                    Reservation.tool_id.in_(
-                        select(Tool.id).where(Tool.owner_id == member_id)
-                    ),
+                    Reservation.tool_id.in_(select(Tool.id).where(Tool.owner_id == member_id)),
                 )
             )
             count_q = count_q.where(
                 or_(
                     Reservation.borrower_id == member_id,
-                    Reservation.tool_id.in_(
-                        select(Tool.id).where(Tool.owner_id == member_id)
-                    ),
+                    Reservation.tool_id.in_(select(Tool.id).where(Tool.owner_id == member_id)),
                 )
             )
 
@@ -362,8 +348,7 @@ class AdminService:
         total = (await db.execute(count_q)).scalar() or 0
 
         query = (
-            query
-            .options(
+            query.options(
                 selectinload(Reservation.tool),
                 selectinload(Reservation.borrower),
             )
@@ -390,7 +375,7 @@ class AdminService:
         date_to: datetime | None = None,
         page: int = 1,
         page_size: int = 20,
-        ) -> tuple[list[AdminAuditLog], int]:
+    ) -> tuple[list[AdminAuditLog], int]:
         """Query the admin audit log with optional filters (US32).
 
         Supports filtering by action_type, target_type, target_id, and
@@ -419,8 +404,7 @@ class AdminService:
         total = count_result.scalar() or 0
 
         query = (
-            query
-            .order_by(AdminAuditLog.created_at.desc())
+            query.order_by(AdminAuditLog.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

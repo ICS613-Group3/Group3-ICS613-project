@@ -26,9 +26,7 @@ if TYPE_CHECKING:
 
 # Build the list of valid notification type values for the CHECK constraint.
 # This list must be kept in sync with the NotificationType enum.
-_VALID_NOTIFICATION_TYPES = ", ".join(
-    f"'{e.value}'" for e in NotificationType
-)
+_VALID_NOTIFICATION_TYPES = ", ".join(f"'{e.value}'" for e in NotificationType)
 
 
 class Notification(Base):
@@ -58,12 +56,8 @@ class Notification(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    payload: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True
-    )
-    read_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

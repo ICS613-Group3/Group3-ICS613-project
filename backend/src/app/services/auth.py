@@ -79,9 +79,7 @@ class AuthService:
 
     async def list_invites(self, db: AsyncSession) -> list[InviteToken]:
         """List all invite tokens, newest first (admin-only)."""
-        result = await db.execute(
-            select(InviteToken).order_by(InviteToken.created_at.desc())
-        )
+        result = await db.execute(select(InviteToken).order_by(InviteToken.created_at.desc()))
         return list(result.scalars().all())
 
     async def revoke_invite(
@@ -96,12 +94,11 @@ class AuthService:
         Only SENT invites can be revoked. Already USED, EXPIRED, or
         REVOKED invites raise an appropriate error.
         """
-        result = await db.execute(
-            select(InviteToken).where(InviteToken.id == invite_id)
-        )
+        result = await db.execute(select(InviteToken).where(InviteToken.id == invite_id))
         invite = result.scalar_one_or_none()
         if invite is None:
             from app.core.exceptions import NotFoundError
+
             raise NotFoundError("Invite not found")
 
         if invite.status == InviteStatus.REVOKED:

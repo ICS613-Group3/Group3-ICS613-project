@@ -16,9 +16,7 @@ class CategoryService:
 
     async def list_categories(self, db: AsyncSession) -> list[Category]:
         """List all allowed tool categories, ordered by name."""
-        result = await db.execute(
-            select(Category).order_by(Category.name)
-        )
+        result = await db.execute(select(Category).order_by(Category.name))
         return list(result.scalars().all())
 
     async def create_category(
@@ -40,9 +38,7 @@ class CategoryService:
 
         # Check for duplicates (case-insensitive to avoid confusing duplicates)
         existing = await db.execute(
-            select(Category).where(
-                func.lower(Category.name) == func.lower(name_stripped)
-            )
+            select(Category).where(func.lower(Category.name) == func.lower(name_stripped))
         )
         if existing.scalar_one_or_none() is not None:
             raise ConflictError(f"Category '{name_stripped}' already exists")
@@ -114,9 +110,7 @@ class CategoryService:
           ValidationError: the category is not in the allowed list.
         """
         name_stripped = name.strip()
-        result = await db.execute(
-            select(Category).where(Category.name == name_stripped)
-        )
+        result = await db.execute(select(Category).where(Category.name == name_stripped))
         if result.scalar_one_or_none() is None:
             raise ValidationError(
                 f"Category '{name_stripped}' is not in the allowed categories list"

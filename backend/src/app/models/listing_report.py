@@ -46,12 +46,8 @@ class ListingReport(Base):
         nullable=False,
         # index=False: no query path needs it; tool_id and status are indexed
     )
-    reason: Mapped[str] = mapped_column(
-        Text, nullable=False
-    )
-    comment: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ReportStatus] = mapped_column(
         ENUM(ReportStatus, name="report_status"),
         nullable=False,
@@ -62,12 +58,8 @@ class ListingReport(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    resolution_note: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -82,9 +74,7 @@ class ListingReport(Base):
 
     # Relationships
     tool: Mapped["Tool"] = relationship("Tool", lazy="selectin")
-    reporter: Mapped["User"] = relationship(
-        "User", foreign_keys=[reporter_id], lazy="selectin"
-    )
+    reporter: Mapped["User"] = relationship("User", foreign_keys=[reporter_id], lazy="selectin")
     resolver: Mapped["User | None"] = relationship(
         "User", foreign_keys=[resolved_by], lazy="selectin"
     )
