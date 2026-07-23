@@ -361,9 +361,9 @@ Full interactive documentation is available at `http://localhost:8000/docs` when
 - **Soft deletes** — users and tools are never hard-deleted; records are preserved for audit history.
 - **Async driver (asyncpg)** — all database access is non-blocking via SQLAlchemy's async interface.
 
-### Tables (14 total)
+### Tables (13 total)
 
-`users`, `invite_tokens`, `email_verification_tokens`, `password_reset_tokens`, `tools`, `photos`, `reservations`, `messages`, `notifications`, `reviews`, `listing_reports`, `suspension_records`, `admin_audit_log`, `listing_rules`
+`users`, `invite_tokens`, `email_verification_tokens`, `password_reset_tokens`, `tools`, `photos`, `reservations`, `messages`, `notifications`, `reviews`, `listing_reports`, `tool_categories`, `admin_audit_log`
 
 ### Reservation states
 
