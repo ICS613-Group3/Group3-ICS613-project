@@ -6,6 +6,7 @@ import AppLayout from '../components/AppLayout';
 // Import admin pages.
 import AdminInvitesPage from '../pages/AdminInvitesPage';
 import AdminListingsPage from '../pages/AdminListingsPage';
+import AdminReportsPage from '../pages/AdminReportsPage';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -109,6 +110,9 @@ function AppRoutes() {
 
         {/* US11 admin listing controls route. */}
         <Route path="/admin/listings" element={<AdminListingsPage />} />
+
+        {/* Issue #54 admin reported-listing review route. */}
+        <Route path="/admin/reports" element={<AdminReportsPage />} />
 
         {/* Mock authentication routes for R1 frontend demo. */}
         <Route path="/login" element={<LoginPage />} />

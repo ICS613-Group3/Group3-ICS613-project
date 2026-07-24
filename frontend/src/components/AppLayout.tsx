@@ -334,6 +334,12 @@ function AppLayout() {
               >
                 Admin Listings
               </NavLink>
+                <NavLink
+                className={getNavLinkClass}
+                to="/admin/reports"
+              >
+                Reported Listings
+              </NavLink>
 
               {/* Real logout action. */}
               <button
