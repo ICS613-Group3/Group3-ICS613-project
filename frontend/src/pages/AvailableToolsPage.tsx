@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toolsApi } from '../api/tools';
 import type { ToolResponse } from '../types/api';
 import { useCategories } from '../hooks/useCategories';
+import { HST_UI_NOTE } from '../utils/hstDateTime';
 
 function AvailableToolsPage() {
   const { categoryLabels, categoryOptions } = useCategories();
@@ -57,7 +58,7 @@ function AvailableToolsPage() {
           <p className="eyebrow">Browse &amp; Search</p>
           <h1>Available Tools</h1>
           <p className="page-description">
-            Search available neighborhood tools by keyword, category, and date range.
+            Search available neighborhood tools by keyword, category, and HST date range.
           </p>
         </div>
       </div>
@@ -79,22 +80,34 @@ function AvailableToolsPage() {
             </option>
           ))}
         </select>
-        <input
-          type="date"
-          aria-label="Start date"
-          value={startDate}
-          onChange={(event) => setStartDate(event.target.value)}
-        />
-        <input
-          type="date"
-          aria-label="End date"
-          value={endDate}
-          onChange={(event) => setEndDate(event.target.value)}
-        />
+        <label className="filter-date-field">
+          <span>Start Date (HST)</span>
+          <input
+            type="date"
+            aria-label="Start Date (HST)"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+          />
+        </label>
+
+        <label className="filter-date-field">
+          <span>End Date (HST)</span>
+          <input
+            type="date"
+            aria-label="End Date (HST)"
+            value={endDate}
+            onChange={(event) => setEndDate(event.target.value)}
+          />
+        </label>
         <button type="button" onClick={clearFilters}>
           Clear Filters
         </button>
       </div>
+
+      <p className="hst-note filter-hst-note">
+        {HST_UI_NOTE}
+      </p>
+
       {error && <p className="form-error">{error}</p>}
       {isLoading && <p>Loading tools...</p>}
       {!isLoading && !error && (

@@ -6,6 +6,7 @@ import type { FormEvent } from 'react';
 import { authApi } from '../api/auth';
 import { useAuth } from '../context/useAuth';
 import type { InviteResponse } from '../types/api';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -171,8 +172,8 @@ export default function AdminInvitesPage() {
                         {invite.status}
                       </span>
                     </td>
-                    <td>{invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : '—'}</td>
-                    <td>{invite.created_at ? new Date(invite.created_at).toLocaleDateString() : '—'}</td>
+                    <td>{invite.expires_at ? formatHstDateTime(invite.expires_at) : '\u2014'}</td>
+                    <td>{invite.created_at ? formatHstDateTime(invite.created_at) : '\u2014'}</td>
                   </tr>
                 ))}
               </tbody>

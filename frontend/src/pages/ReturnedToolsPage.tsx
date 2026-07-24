@@ -4,6 +4,7 @@ import { reservationsApi } from '../api/reservations';
 import { toolsApi } from '../api/tools';
 import type { ReservationResponse, ToolResponse } from '../types/api';
 import { useCategories } from '../hooks/useCategories';
+import { formatHstDate } from '../utils/hstDateTime';
 
 function ReturnedToolsPage() {
   const { categoryLabels } = useCategories();
@@ -106,7 +107,15 @@ function ReturnedToolsPage() {
                 <dl className="tool-meta">
                   <div><dt>Owner</dt><dd>{tool.owner.full_name || 'Unknown'}</dd></div>
                   <div><dt>Condition</dt><dd>{tool.condition}</dd></div>
-                  <div><dt>Returned</dt><dd>{reservation.returned_at ? new Date(reservation.returned_at).toLocaleDateString() : reservation.end_date}</dd></div>
+                  <div>
+                    <dt>Returned (HST)</dt>
+                    <dd>
+                      {formatHstDate(
+                        reservation.returned_at ||
+                          reservation.end_date,
+                      )}
+                    </dd>
+                  </div>
                 </dl>
                 <Link className="primary-link" to={`/tools/${tool.id}`}>View Details</Link>
                 <Link className="secondary-link returned-review-link" to={`/reservations/${reservation.id}/review`}>

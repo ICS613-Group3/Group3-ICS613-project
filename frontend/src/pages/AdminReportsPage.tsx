@@ -5,6 +5,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { ApiRequestError } from '../api/client';
 import { mockTools } from '../data/mockData';
+import { formatHstDateTime as formatReportDate } from '../utils/hstDateTime';
 
 type ReportStatus =
   | 'PENDING_REVIEW'
@@ -78,16 +79,6 @@ const initialReports: AdminListingReport[] = [
     listingStatus: 'ACTIVE',
   },
 ];
-
-function formatReportDate(value: string) {
-  return (
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Pacific/Honolulu',
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value)) + ' HST'
-  );
-}
 
 function formatReportStatus(status: ReportStatus) {
   switch (status) {
