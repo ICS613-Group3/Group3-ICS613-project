@@ -76,8 +76,11 @@ The application handles authentication (JWT), background scheduling (APScheduler
 
 ### Architecture Diagram
 
+![Architecture Diagram](docs/images/architecture.png)
 
 ### Domain Model
+
+![Domain Model / ER Diagram](docs/images/erd.png)
 
 
 
