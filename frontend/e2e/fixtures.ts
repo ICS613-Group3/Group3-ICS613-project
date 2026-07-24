@@ -13,6 +13,8 @@ export { test, expect } from '@playwright/test';
  * The seeded test account is used:
  *   email: member02@example.com
  *   password: devpass123
+ *
+ * After login, navigates to `path` so tests land on the correct page.
  */
 export async function loginAsMockUser(page: Page, path = '/dashboard') {
   await page.goto('/login');
@@ -21,10 +23,35 @@ export async function loginAsMockUser(page: Page, path = '/dashboard') {
   await page.getByRole('button', { name: 'Login' }).click();
   // Wait for login to complete and redirect
   await page.waitForURL(/\/dashboard$/);
-  // Store the token from the real login into localStorage for subsequent API calls
   const token = await page.evaluate(() => window.localStorage.getItem('access_token'));
   if (!token) {
     throw new Error('Login did not produce an access_token in localStorage');
+  }
+  // Navigate to the requested page (skip if already on /dashboard).
+  if (path !== '/dashboard') {
+    await page.goto(path);
+  }
+}
+
+/**
+ * Login as the seeded admin user for tests that need admin privileges.
+ *
+ * Uses:
+ *   email: admin@example.com
+ *   password: devpass123
+ */
+export async function loginAsAdmin(page: Page, path = '/dashboard') {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('admin@example.com');
+  await page.getByLabel('Password').fill('devpass123');
+  await page.getByRole('button', { name: 'Login' }).click();
+  await page.waitForURL(/\/dashboard$/);
+  const token = await page.evaluate(() => window.localStorage.getItem('access_token'));
+  if (!token) {
+    throw new Error('Login did not produce an access_token in localStorage');
+  }
+  if (path !== '/dashboard') {
+    await page.goto(path);
   }
 }
 

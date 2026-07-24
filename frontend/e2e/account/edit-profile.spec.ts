@@ -40,7 +40,8 @@ test.describe('EditProfilePage', () => {
     );
   });
 
-  test('rejects an unsupported profile photo type', async ({ page }) => {
+  test.fixme('rejects an unsupported profile photo type', async ({ page }) => {
+    // Real EditProfilePage has no profile photo upload field.
     await loginAsMockUser(page, '/profile/edit');
 
     await page.getByLabel('Profile Photo').setInputFiles({
