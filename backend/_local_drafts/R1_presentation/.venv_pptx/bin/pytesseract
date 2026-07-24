@@ -1,8 +1,0 @@
-#!/home/linshao/Documents/ics613/Group3-ICS613/backend/_local_drafts/R1_presentation/.venv_pptx/bin/python3
-# -*- coding: utf-8 -*-
-import re
-import sys
-from pytesseract.pytesseract import main
-if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(main())
