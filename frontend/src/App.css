@@ -2857,3 +2857,138 @@ select {
     gap: 0.15rem;
   }
 }
+
+/* ================================
+   Issue #53 Listing Report Styles
+   - Adds the member Report Listing action.
+   - Displays required-reason validation.
+   - Displays the pending-admin-review state.
+   ================================ */
+
+.page-header-actions .report-listing-button {
+  width: 100%;
+  max-width: 260px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.report-listing-button {
+  border: 1px solid #b91c1c;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #b91c1c;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.7rem 1rem;
+}
+
+.report-listing-button:hover,
+.report-listing-button:focus {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.report-listing-button:disabled {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.listing-report-card {
+  margin-bottom: 1.5rem;
+  border: 1px solid #fecaca;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.listing-report-card h2 {
+  margin-top: 0;
+}
+
+.listing-report-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.listing-report-form label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.listing-report-form select,
+.listing-report-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.listing-report-form textarea {
+  resize: vertical;
+}
+
+.report-form-help {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.report-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.report-submit-button {
+  border: none;
+  border-radius: 10px;
+  background: #b91c1c;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.8rem 1rem;
+}
+
+.report-submit-button:hover,
+.report-submit-button:focus {
+  background: #991b1b;
+  color: #ffffff;
+}
+
+.pending-report-message {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #fbbf24;
+  border-radius: 14px;
+  background: #fffbeb;
+  color: #78350f;
+  padding: 1rem;
+}
+
+.pending-report-message p {
+  margin: 0;
+}
+
+.report-status-message {
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .page-header-actions .report-listing-button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .report-form-actions {
+    display: grid;
+  }
+}

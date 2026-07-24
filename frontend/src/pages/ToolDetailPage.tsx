@@ -104,6 +104,16 @@ function ToolDetailPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Issue #53 report workflow state.
+  // The current Tool Detail page uses mock data, so the pending-report state
+  // remains local until the backend Report model and endpoint are available.
+  const [isReportFormOpen, setIsReportFormOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportComment, setReportComment] = useState('');
+  const [reportErrorMessage, setReportErrorMessage] = useState('');
+  const [reportSuccessMessage, setReportSuccessMessage] = useState('');
+  const [hasPendingReport, setHasPendingReport] = useState(false);
+
   /**
    * Active reservations for this tool.
    *
@@ -195,6 +205,45 @@ function ToolDetailPage() {
   };
 
   /**
+   * Issue #53 report workflow.
+   *
+   * This performs frontend validation and demonstrates the required
+   * PENDING_REVIEW workflow with local state. A real API request cannot be
+   * added safely until the backend defines its Report schema and endpoint.
+   */
+  const handleReportSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    setReportErrorMessage('');
+    setReportSuccessMessage('');
+
+    if (!tool) {
+      setReportErrorMessage('This listing is not available for reporting.');
+      return;
+    }
+
+    if (hasPendingReport) {
+      setReportErrorMessage(
+        'This listing has already been reported and is waiting for an admin review.',
+      );
+      return;
+    }
+
+    if (!reportReason) {
+      setReportErrorMessage('A report reason is required.');
+      return;
+    }
+
+    setHasPendingReport(true);
+    setIsReportFormOpen(false);
+    setReportSuccessMessage(
+      'Report submitted. Status: PENDING_REVIEW. An admin will review this listing.',
+    );
+    setReportReason('');
+    setReportComment('');
+  };
+
+  /**
    * Friendly error page if the URL has an invalid toolId.
    */
   if (!tool) {
@@ -203,7 +252,10 @@ function ToolDetailPage() {
         <div className="empty-state-card">
           <p className="eyebrow">Tool Not Found</p>
           <h1>We could not find this tool.</h1>
-          <p>The selected tool may not exist in the current mock data.</p>
+          <p>
+        This listing is not available for reporting. It may not exist, be
+        deactivated, or belong to a deleted account.
+      </p>
 
           <Link className="primary-link narrow-link" to="/tools">
             Back to Browse Tools
@@ -237,6 +289,116 @@ function ToolDetailPage() {
           </Link>
         </div>
       </div>
+
+      {reportSuccessMessage && (
+        <p
+          className="success-message report-status-message"
+          role="status"
+          aria-live="polite"
+        >
+          {reportSuccessMessage}
+        </p>
+      )}
+
+      {hasPendingReport && (
+        <section
+          className="pending-report-message"
+          aria-label="Pending listing report"
+        >
+          <strong>Report pending review</strong>
+          <p>
+            This listing has already been reported and is waiting for an admin
+            review.
+          </p>
+        </section>
+      )}
+
+      {isReportFormOpen && !hasPendingReport && (
+        <section
+          className="listing-report-card"
+          aria-labelledby="listing-report-heading"
+        >
+          <p className="eyebrow">Community Safety</p>
+          <h2 id="listing-report-heading">Report this listing</h2>
+          <p>
+            Tell the admin team why this listing may be inappropriate, unsafe,
+            or against community rules.
+          </p>
+
+          <form
+            className="listing-report-form"
+            onSubmit={handleReportSubmit}
+            noValidate
+          >
+            <label htmlFor="listing-report-reason">
+              Report Reason
+              <select
+                id="listing-report-reason"
+                value={reportReason}
+                onChange={(event) => {
+                  setReportReason(event.target.value);
+                  setReportErrorMessage('');
+                }}
+                required
+              >
+                <option value="">Select a report reason</option>
+                <option value="Unsafe tool or condition">
+                  Unsafe tool or condition
+                </option>
+                <option value="Inappropriate listing content">
+                  Inappropriate listing content
+                </option>
+                <option value="Misleading listing information">
+                  Misleading listing information
+                </option>
+                <option value="Violates community rules">
+                  Violates community rules
+                </option>
+                <option value="Other concern">Other concern</option>
+              </select>
+            </label>
+
+            <label htmlFor="listing-report-comment">
+              Additional Comment
+              <textarea
+                id="listing-report-comment"
+                value={reportComment}
+                onChange={(event) => setReportComment(event.target.value)}
+                placeholder="Optional details that may help the admin review the listing"
+                rows={5}
+              />
+            </label>
+
+            <p className="report-form-help">
+              The reason is required. The additional comment is optional.
+            </p>
+
+            {reportErrorMessage && (
+              <p className="form-error" role="alert">
+                {reportErrorMessage}
+              </p>
+            )}
+
+            <div className="report-form-actions">
+              <button type="submit" className="report-submit-button">
+                Submit Report
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setIsReportFormOpen(false);
+                  setReportReason('');
+                  setReportComment('');
+                  setReportErrorMessage('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {/* Main detail layout */}
       <div className="tool-detail-layout">
