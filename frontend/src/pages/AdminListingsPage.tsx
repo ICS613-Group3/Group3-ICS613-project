@@ -7,6 +7,7 @@ import {
   mockReservations,
   mockTools,
 } from '../data/mockData';
+import { getCurrentHstTimestamp as getMockHstTimestamp } from '../utils/hstDateTime';
 
 /**
  * AdminListingStatus
@@ -74,18 +75,6 @@ const initialManagedListings: ManagedListing[] = mockTools.map((tool) => ({
  * - PICKED_UP reservations block admin deactivation.
  */
 const autoCancelCandidateStatuses = ['REQUESTED', 'APPROVED'];
-
-/**
- * Create a readable HST timestamp for frontend demo messages.
- *
- * This is frontend display only.
- * Backend should later create the authoritative audit timestamp.
- */
-function getMockHstTimestamp() {
-  return `${new Date().toLocaleString('en-US', {
-    timeZone: 'Pacific/Honolulu',
-  })} HST`;
-}
 
 /**
  * Build a CSS class for admin listing status badges.

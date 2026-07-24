@@ -9,6 +9,7 @@ import type {
   PublicMemberReview,
   ToolResponse,
 } from '../types/api';
+import { formatHstDate as formatProfileDate } from '../utils/hstDateTime';
 
 /**
  * Convert an enum-like backend value into readable text.
@@ -22,30 +23,6 @@ function formatEnumLabel(value: string) {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-}
-
-/**
- * Format backend dates for member-facing display.
- *
- * Hawaii Standard Time is used consistently with the rest of the project.
- */
-function formatProfileDate(value: string) {
-  const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? `${value}T12:00:00Z`
-    : value;
-
-  const date = new Date(normalizedValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'Pacific/Honolulu',
-  }).format(date);
 }
 
 /**

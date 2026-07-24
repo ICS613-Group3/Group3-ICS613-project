@@ -5,6 +5,7 @@ import {
   mockTools,
   type ToolCategory,
 } from '../data/mockData';
+import { HST_UI_NOTE } from '../utils/hstDateTime';
 
 /**
  * AvailableToolsPage
@@ -112,24 +113,32 @@ function AvailableToolsPage() {
           ))}
         </select>
 
-        <input
-          type="date"
-          aria-label="Start date"
-          value={startDate}
-          onChange={(event) => setStartDate(event.target.value)}
-        />
+        <label className="filter-date-field">
+          <span>Start Date (HST)</span>
+          <input
+            type="date"
+            aria-label="Start Date (HST)"
+            value={startDate}
+            onChange={(event) => setStartDate(event.target.value)}
+          />
+        </label>
 
-        <input
-          type="date"
-          aria-label="End date"
-          value={endDate}
-          onChange={(event) => setEndDate(event.target.value)}
-        />
+        <label className="filter-date-field">
+          <span>End Date (HST)</span>
+          <input
+            type="date"
+            aria-label="End Date (HST)"
+            value={endDate}
+            onChange={(event) => setEndDate(event.target.value)}
+          />
+        </label>
 
         <button type="button" onClick={clearFilters}>
           Clear Filters
         </button>
       </div>
+
+      <p className="hst-note filter-hst-note">{HST_UI_NOTE}</p>
 
       <p className="results-summary">
         Showing {filteredTools.length} of {mockTools.length} tools.

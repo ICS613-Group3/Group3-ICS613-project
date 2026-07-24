@@ -3118,3 +3118,23 @@ select {
     display: grid;
   }
 }
+
+/* ================================
+   Issue #136 HST Filter Labels
+   ================================ */
+
+.filter-date-field {
+  display: grid;
+  gap: 0.35rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.filter-date-field input {
+  width: 100%;
+}
+
+.filter-hst-note {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}

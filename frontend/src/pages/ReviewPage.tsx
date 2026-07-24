@@ -12,6 +12,7 @@ import type {
   ReviewResponse,
   UserProfile,
 } from '../types/api';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 const reviewEditWindowMilliseconds = 24 * 60 * 60 * 1000;
 
@@ -44,21 +45,6 @@ function isWithinReviewEditWindow(createdAt: string) {
     elapsedMilliseconds >= 0 &&
     elapsedMilliseconds <= reviewEditWindowMilliseconds
   );
-}
-
-/**
- * Format an API timestamp for Hawaii display.
- */
-function formatHstDateTime(value: string) {
-  const parsedDate = new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return `${parsedDate.toLocaleString('en-US', {
-    timeZone: 'Pacific/Honolulu',
-  })} HST`;
 }
 
 /**

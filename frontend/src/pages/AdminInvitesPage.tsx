@@ -6,6 +6,7 @@ import {
 } from 'react';
 import { authApi } from '../api/auth';
 import type { InviteResponse } from '../types/api';
+import { formatHstDateTime as formatDateTime } from '../utils/hstDateTime';
 
 type InviteStatus = 'sent' | 'used' | 'expired' | 'revoked';
 
@@ -41,16 +42,6 @@ function getStatusClass(status: InviteStatus) {
 
 function formatStatus(status: InviteStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-
-  return date.toLocaleString();
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string) {
