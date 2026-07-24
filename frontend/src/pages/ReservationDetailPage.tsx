@@ -4,6 +4,7 @@ import { reservationsApi } from '../api/reservations';
 import { toolsApi } from '../api/tools';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import MessageThread from '../components/MessageThread';
 import type { ReservationResponse, ReservationState, ToolResponse } from '../types/api';
 
 function formatStatus(status: ReservationState): string {
@@ -167,7 +168,13 @@ function ReservationDetailPage() {
               </div>
             )}
           </dl>
-
+          
+          <MessageThread
+            reservationId={reservation.id}
+            state={state}
+            canSend={Boolean(isBorrower || isToolOwner || user?.is_admin)}
+          />
+          
           {actionMessage && (
             <p className={actionMessage.includes('failed') || actionMessage.includes('error') ? 'form-error' : 'success-message'}>
               {actionMessage}
