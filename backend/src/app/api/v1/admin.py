@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_db
+from app.core.exceptions import ValidationError
 from app.models.user import User
 from app.schemas.admin import (
     AdminUserDeactivate,
@@ -179,8 +180,18 @@ async def list_audit_log(
     Supports filtering by action_type, target_type, target_id, and a
     date range. Paginated 50/page default.
     """
-    parsed_from = datetime.fromisoformat(date_from) if date_from else None
-    parsed_to = datetime.fromisoformat(date_to) if date_to else None
+    parsed_from = None
+    try:
+        if date_from:
+            parsed_from = datetime.fromisoformat(date_from)
+    except ValueError:
+        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
+    parsed_to = None
+    try:
+        if date_to:
+            parsed_to = datetime.fromisoformat(date_to)
+    except ValueError:
+        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
 
     entries, total = await AdminService().list_audit_log(
         db,
@@ -221,8 +232,20 @@ async def admin_list_all_reservations(
     """
     from datetime import date
 
-    parsed_from = date.fromisoformat(date_from) if date_from else None
-    parsed_to = date.fromisoformat(date_to) if date_to else None
+    parsed_from = None
+    try:
+        if date_from:
+            parsed_from = date.fromisoformat(date_from)
+    except ValueError:
+        raise ValidationError(
+            f"Invalid date_from format: '{date_from}'. Use ISO date format"
+        ) from None
+    parsed_to = None
+    try:
+        if date_to:
+            parsed_to = date.fromisoformat(date_to)
+    except ValueError:
+        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO date format") from None
 
     reservations, total = await AdminService().list_all_reservations(
         db,
@@ -260,8 +283,18 @@ async def generate_moderation_report(
     """
     from app.services.admin_report import ModerationReportService
 
-    parsed_from = datetime.fromisoformat(date_from) if date_from else None
-    parsed_to = datetime.fromisoformat(date_to) if date_to else None
+    parsed_from = None
+    try:
+        if date_from:
+            parsed_from = datetime.fromisoformat(date_from)
+    except ValueError:
+        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
+    parsed_to = None
+    try:
+        if date_to:
+            parsed_to = datetime.fromisoformat(date_to)
+    except ValueError:
+        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
 
     service = ModerationReportService()
     report = await service.generate_report(
@@ -312,8 +345,18 @@ async def export_moderation_report_csv(
     """
     from app.services.admin_report import ModerationReportService
 
-    parsed_from = datetime.fromisoformat(date_from) if date_from else None
-    parsed_to = datetime.fromisoformat(date_to) if date_to else None
+    parsed_from = None
+    try:
+        if date_from:
+            parsed_from = datetime.fromisoformat(date_from)
+    except ValueError:
+        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
+    parsed_to = None
+    try:
+        if date_to:
+            parsed_to = datetime.fromisoformat(date_to)
+    except ValueError:
+        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
 
     service = ModerationReportService()
     report = await service.generate_report(

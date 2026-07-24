@@ -171,8 +171,8 @@ export default function AdminInvitesPage() {
                         {invite.status}
                       </span>
                     </td>
-                    <td>{new Date(invite.expires_at).toLocaleDateString()}</td>
-                    <td>{new Date(invite.created_at).toLocaleDateString()}</td>
+                    <td>{invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : '—'}</td>
+                    <td>{invite.created_at ? new Date(invite.created_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>

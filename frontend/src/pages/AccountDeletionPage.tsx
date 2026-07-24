@@ -28,11 +28,20 @@ function AccountDeletionPage() {
     if (!user) return;
     setCheckingReservations(true);
     try {
-      const data = await reservationsApi.list({
-        role: 'all',
-        state: 'REQUESTED,APPROVED,PICKED_UP',
-      });
-      setActiveReservations(data.total);
+      // Backend only supports role='borrower'|'owner' and single state values.
+      // Make parallel calls for each active state.
+      const states = ['REQUESTED', 'APPROVED', 'PICKED_UP'] as const;
+      const roles = ['borrower', 'owner'] as const;
+      const results = await Promise.all(
+        roles.flatMap((role) =>
+          states.map((state) =>
+            reservationsApi.list({ role, state, page_size: 1 })
+              .then((d) => d.total)
+              .catch(() => 0)
+          )
+        )
+      );
+      setActiveReservations(results.reduce((a, b) => a + b, 0));
     } catch {
       // If the API call fails, allow deletion to proceed
       setActiveReservations(0);

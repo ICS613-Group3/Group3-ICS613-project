@@ -8,12 +8,7 @@ import type { ReportReason } from '../api/reports';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import type { ToolResponse } from '../types/api';
-
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
-};
-
+import { useCategories } from '../hooks/useCategories';
 const reportReasonOptions: { value: ReportReason; label: string }[] = [
   { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate Content' },
   { value: 'PROHIBITED_ITEM', label: 'Prohibited Item' },
@@ -22,8 +17,8 @@ const reportReasonOptions: { value: ReportReason; label: string }[] = [
   { value: 'DUPLICATE_LISTING', label: 'Duplicate Listing' },
   { value: 'OTHER', label: 'Other' },
 ];
-
 function ToolDetailPage() {
+  const { categoryLabels } = useCategories();
   const { toolId } = useParams();
   const { user } = useAuth();
   const [tool, setTool] = useState<ToolResponse | null>(null);
@@ -34,7 +29,6 @@ function ToolDetailPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [reserveError, setReserveError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Report modal state
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason | ''>('');
@@ -42,7 +36,6 @@ function ToolDetailPage() {
   const [reportError, setReportError] = useState('');
   const [reportSuccess, setReportSuccess] = useState('');
   const [isReporting, setIsReporting] = useState(false);
-
   useEffect(() => {
     if (!toolId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -53,36 +46,29 @@ function ToolDetailPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load tool'))
       .finally(() => setIsLoading(false));
   }, [toolId]);
-
   const isOwner = user && tool && user.id === tool.owner_id;
-
   const getImageUrl = (): string => {
     if (tool?.photos && tool.photos.length > 0) {
       return tool.photos[0].url;
     }
     return `https://placehold.co/600x400?text=${encodeURIComponent(tool?.name || 'Tool')}`;
   };
-
   const handleReservationSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSuccessMessage('');
     setReserveError('');
-
     if (!tool || !toolId) {
       setReserveError('Tool not found.');
       return;
     }
-
     if (!startDate || !endDate) {
       setReserveError('Please select both a start date and an end date.');
       return;
     }
-
     if (endDate < startDate) {
       setReserveError('End date cannot be before start date.');
       return;
     }
-
     setIsSubmitting(true);
     try {
       await reservationsApi.create({
@@ -105,7 +91,6 @@ function ToolDetailPage() {
       setIsSubmitting(false);
     }
   };
-
   const handleReport = async () => {
     if (!toolId || !reportReason) return;
     setReportError('');
@@ -130,7 +115,6 @@ function ToolDetailPage() {
       setIsReporting(false);
     }
   };
-
   if (isLoading) {
     return (
       <section className="page-section">
@@ -138,7 +122,6 @@ function ToolDetailPage() {
       </section>
     );
   }
-
   if (!tool || error) {
     return (
       <section className="page-section">
@@ -153,7 +136,6 @@ function ToolDetailPage() {
       </section>
     );
   }
-
   return (
     <section className="page-section">
       <div className="page-header">
@@ -184,13 +166,10 @@ function ToolDetailPage() {
           </Link>
         </div>
       </div>
-
       {reportSuccess && <p className="success-message">{reportSuccess}</p>}
-
       <div className="tool-detail-layout">
         <article className="tool-detail-card">
           <img className="tool-detail-image" src={getImageUrl()} alt={tool.name} />
-
           <div className="tool-detail-content">
             <div className="tool-detail-title-row">
               <span className="tool-category-badge">
@@ -200,10 +179,8 @@ function ToolDetailPage() {
                 Rating: {tool.avg_rating}/5 ({tool.rating_count} reviews)
               </span>
             </div>
-
             <h2>{tool.name}</h2>
             <p>{tool.description}</p>
-
             <dl className="tool-detail-meta-grid">
               <div>
                 <dt>Owner</dt>
@@ -216,13 +193,11 @@ function ToolDetailPage() {
             </dl>
           </div>
         </article>
-
         {!isOwner && (
           <aside className="reservation-request-card">
             <p className="eyebrow">Reservation Request</p>
             <h2>Request this tool</h2>
             <p>Select your desired borrowing dates (HST).</p>
-
             <form className="reservation-form" onSubmit={handleReservationSubmit}>
               <label htmlFor="reservation-start-date">
                 Start Date (HST)
@@ -234,7 +209,6 @@ function ToolDetailPage() {
                   required
                 />
               </label>
-
               <label htmlFor="reservation-end-date">
                 End Date (HST)
                 <input
@@ -245,14 +219,11 @@ function ToolDetailPage() {
                   required
                 />
               </label>
-
               <p className="hst-note">
                 All reservation dates are in Hawaii Standard Time (HST).
               </p>
-
               {reserveError && <p className="form-error">{reserveError}</p>}
               {successMessage && <p className="success-message">{successMessage}</p>}
-
               <button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Submitting...' : 'Submit Reservation Request'}
               </button>
@@ -260,7 +231,6 @@ function ToolDetailPage() {
           </aside>
         )}
       </div>
-
       {/* Report Listing Modal */}
       {showReportModal && (
         <div
@@ -279,7 +249,6 @@ function ToolDetailPage() {
             <p className="muted-text">
               Help us keep the community safe by reporting inappropriate or problematic listings.
             </p>
-
             <label htmlFor="report-reason">
               Reason *
               <select
@@ -294,7 +263,6 @@ function ToolDetailPage() {
                 ))}
               </select>
             </label>
-
             <label htmlFor="report-comment">
               Comment (optional)
               <textarea
@@ -306,9 +274,7 @@ function ToolDetailPage() {
                 rows={3}
               />
             </label>
-
             {reportError && <p className="form-error">{reportError}</p>}
-
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -333,5 +299,4 @@ function ToolDetailPage() {
     </section>
   );
 }
-
 export default ToolDetailPage;

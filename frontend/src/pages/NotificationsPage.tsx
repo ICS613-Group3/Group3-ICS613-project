@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notificationsApi } from '../api/notifications';
 import { ApiRequestError } from '../api/client';
@@ -13,7 +13,7 @@ function NotificationsPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError('');
     try {
@@ -26,12 +26,11 @@ function NotificationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     setStatusMessage('');

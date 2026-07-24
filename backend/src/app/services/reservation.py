@@ -163,7 +163,7 @@ class ReservationService:
         # Paginated results
         query = (
             query.options(
-                selectinload(Reservation.tool),
+                selectinload(Reservation.tool).selectinload(Tool.owner),
                 selectinload(Reservation.borrower),
             )
             .order_by(Reservation.created_at.desc())

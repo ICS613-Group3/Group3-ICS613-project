@@ -4,16 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toolsApi } from '../api/tools';
 import { ApiRequestError } from '../api/client';
 import type { ToolCategory, ToolCondition } from '../types/api';
-
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools',
-  POWER_TOOLS: 'Power Tools',
-  GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools',
-  OUTDOOR_GEAR: 'Outdoor Gear',
-};
-
-const categoryOptions = Object.entries(categoryLabels) as Array<[string, string]>;
+import { useCategories } from '../hooks/useCategories';
 
 const conditionOptions: ToolCondition[] = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR'];
 
@@ -23,6 +14,7 @@ const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 function CreateToolPage() {
   const navigate = useNavigate();
+  const { categoryLabels, categoryOptions } = useCategories();
   const [toolName, setToolName] = useState('');
   const [category, setCategory] = useState<ToolCategory | ''>('');
   const [condition, setCondition] = useState<ToolCondition | ''>('');

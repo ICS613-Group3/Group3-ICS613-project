@@ -42,6 +42,28 @@ async def list_notifications(
     )
 
 
+@router.post("/read-all")
+async def mark_all_read(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_member)],
+) -> dict:
+    """Mark all unread notifications as read for the current user."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import update
+
+    from app.models.notification import Notification
+
+    now = datetime.now(UTC)
+    await db.execute(
+        update(Notification)
+        .where(Notification.user_id == current_user.id, Notification.read_at.is_(None))
+        .values(read_at=now)
+    )
+    await db.flush()
+    return {"message": "All notifications marked as read"}
+
+
 @router.post("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_read(
     notification_id: uuid.UUID,

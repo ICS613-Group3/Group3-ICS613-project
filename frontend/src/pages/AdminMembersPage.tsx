@@ -179,7 +179,7 @@ function AdminMembersPage() {
                     </span>
                   </td>
                   <td>{m.is_admin ? 'Yes' : 'No'}</td>
-                  <td>{new Date(m.created_at).toLocaleDateString()}</td>
+                  <td>{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
                   <td>
                     {m.id === user?.id ? (
                       <span className="muted-text">Yourself</span>

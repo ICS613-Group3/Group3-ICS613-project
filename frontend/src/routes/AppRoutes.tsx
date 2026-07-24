@@ -12,6 +12,7 @@ import AdminModerationIndividualProfile from '../pages/AdminModerationIndividual
 import AdminModerationProfiles from '../pages/AdminModerationProfiles';
 import AdminModerationReportsPage from '../pages/AdminModerationReportsPage';
 import AdminReportedListingsPage from '../pages/AdminReportedListingsPage';
+import AdminReportsPage from '../pages/AdminReportsPage';
 import AdminReservationPage from '../pages/AdminReservationPage';
 import ModerationHistoryPage from '../pages/ModerationHistoryPage';
 
@@ -28,6 +29,7 @@ import AccountDeletionPage from '../pages/AccountDeletionPage';
 // Import profile pages.
 import EditProfilePage from '../pages/EditProfilePage';
 import ProfileSetupPage from '../pages/ProfileSetupPage';
+import PublicMemberProfilePage from '../pages/PublicMemberProfilePage';
 
 // Import main app pages.
 import BrowseToolsPage from '../pages/BrowseToolsPage';
@@ -68,6 +70,30 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <section className="page-section">
+        <div className="page-header">
+          <h1>Loading...</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 /**
  * AppRoutes
  *
@@ -95,6 +121,9 @@ function AppRoutes() {
         <Route path="/profile/setup" element={<RequireAuth><ProfileSetupPage /></RequireAuth>} />
         <Route path="/profile/edit" element={<RequireAuth><EditProfilePage /></RequireAuth>} />
 
+        {/* Public member profile. */}
+        <Route path="/members/:memberId" element={<RequireAuth><PublicMemberProfilePage /></RequireAuth>} />
+
         {/* Account deletion. */}
         <Route path="/account/delete" element={<RequireAuth><AccountDeletionPage /></RequireAuth>} />
 
@@ -118,16 +147,17 @@ function AppRoutes() {
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
 
         {/* Admin routes. */}
-        <Route path="/admin/members" element={<RequireAuth><AdminMembersPage /></RequireAuth>} />
-        <Route path="/admin/invites" element={<RequireAuth><AdminInvitesPage /></RequireAuth>} />
-        <Route path="/admin/listings" element={<RequireAuth><AdminListingsPage /></RequireAuth>} />
-        <Route path="/admin/reported" element={<RequireAuth><AdminReportedListingsPage /></RequireAuth>} />
-        <Route path="/admin/categories" element={<RequireAuth><AdminCategoriesPage /></RequireAuth>} />
-        <Route path="/admin/reservations" element={<RequireAuth><AdminReservationPage /></RequireAuth>} />
-        <Route path="/admin/moderation" element={<RequireAuth><AdminModerationProfiles /></RequireAuth>} />
-        <Route path="/admin/moderation/history" element={<RequireAuth><ModerationHistoryPage /></RequireAuth>} />
-        <Route path="/admin/moderation/reports" element={<RequireAuth><AdminModerationReportsPage /></RequireAuth>} />
-        <Route path="/admin/moderation/:memberId" element={<RequireAuth><AdminModerationIndividualProfile /></RequireAuth>} />
+        <Route path="/admin/members" element={<RequireAdmin><AdminMembersPage /></RequireAdmin>} />
+        <Route path="/admin/invites" element={<RequireAdmin><AdminInvitesPage /></RequireAdmin>} />
+        <Route path="/admin/listings" element={<RequireAdmin><AdminListingsPage /></RequireAdmin>} />
+        <Route path="/admin/reported" element={<RequireAdmin><AdminReportedListingsPage /></RequireAdmin>} />
+        <Route path="/admin/reports" element={<RequireAdmin><AdminReportsPage /></RequireAdmin>} />
+        <Route path="/admin/categories" element={<RequireAdmin><AdminCategoriesPage /></RequireAdmin>} />
+        <Route path="/admin/reservations" element={<RequireAdmin><AdminReservationPage /></RequireAdmin>} />
+        <Route path="/admin/moderation" element={<RequireAdmin><AdminModerationProfiles /></RequireAdmin>} />
+        <Route path="/admin/moderation/history" element={<RequireAdmin><ModerationHistoryPage /></RequireAdmin>} />
+        <Route path="/admin/moderation/reports" element={<RequireAdmin><AdminModerationReportsPage /></RequireAdmin>} />
+        <Route path="/admin/moderation/:memberId" element={<RequireAdmin><AdminModerationIndividualProfile /></RequireAdmin>} />
 
         {/* Catch-all for unknown pages. */}
         <Route path="*" element={<NotFoundPage />} />

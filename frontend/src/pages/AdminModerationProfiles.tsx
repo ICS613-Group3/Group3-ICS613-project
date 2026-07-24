@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/admin';
 import type { UserProfile } from '../types/api';
@@ -16,11 +16,7 @@ function AdminModerationProfiles() {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
 
-  useEffect(() => {
-    loadMembers();
-  }, []);
-
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage('');
     try {
@@ -35,7 +31,11 @@ function AdminModerationProfiles() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadMembers();
+  }, [loadMembers]);
 
   const filteredMembers = members.filter((member) => {
     if (!searchText) return true;

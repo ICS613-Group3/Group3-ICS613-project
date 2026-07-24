@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.models.enums import ReservationState
@@ -100,6 +101,11 @@ class ReviewService:
         query = (
             select(Review)
             .where(Review.reviewee_id == user_id)
+            .options(
+                selectinload(Review.reviewer),
+                selectinload(Review.reviewee),
+                selectinload(Review.reservation),
+            )
             .order_by(Review.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -139,6 +145,11 @@ class ReviewService:
         query = (
             select(Review)
             .where(column == user_id)
+            .options(
+                selectinload(Review.reviewer),
+                selectinload(Review.reviewee),
+                selectinload(Review.reservation),
+            )
             .order_by(Review.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -155,7 +166,15 @@ class ReviewService:
         reservation_id: uuid.UUID,
     ) -> list[Review]:
         """Get all reviews for a specific reservation."""
-        result = await db.execute(select(Review).where(Review.reservation_id == reservation_id))
+        result = await db.execute(
+            select(Review)
+            .where(Review.reservation_id == reservation_id)
+            .options(
+                selectinload(Review.reviewer),
+                selectinload(Review.reviewee),
+                selectinload(Review.reservation),
+            )
+        )
         return list(result.scalars().all())
 
     async def update_review(

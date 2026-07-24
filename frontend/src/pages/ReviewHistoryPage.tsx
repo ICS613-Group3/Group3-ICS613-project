@@ -46,9 +46,14 @@ function ReviewHistoryPage() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     if (!normalizedSearch) return reviews;
     return reviews.filter((review) => {
-      const toolName = ''; // reviews don't include tool name directly
+      const reviewerName = review.reviewer_name?.toLowerCase() || '';
+      const revieweeName = review.reviewee_name?.toLowerCase() || '';
       const comment = review.comment?.toLowerCase() || '';
-      return comment.includes(normalizedSearch) || toolName.includes(normalizedSearch);
+      return (
+        comment.includes(normalizedSearch) ||
+        reviewerName.includes(normalizedSearch) ||
+        revieweeName.includes(normalizedSearch)
+      );
     });
   }, [reviews, searchTerm]);
 

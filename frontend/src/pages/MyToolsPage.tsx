@@ -4,15 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toolsApi } from '../api/tools';
 import type { ToolResponse } from '../types/api';
-
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools',
-  POWER_TOOLS: 'Power Tools',
-  GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools',
-  OUTDOOR_GEAR: 'Outdoor Gear',
-};
-
+import { useCategories } from '../hooks/useCategories';
 const conditionLabels: Record<string, string> = {
   NEW: 'New',
   LIKE_NEW: 'Like New',
@@ -20,8 +12,8 @@ const conditionLabels: Record<string, string> = {
   FAIR: 'Fair',
   POOR: 'Poor',
 };
-
 function MyToolsPage() {
+  const { categoryLabels } = useCategories();
   const [tools, setTools] = useState<ToolResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +22,6 @@ function MyToolsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState('');
-
   const fetchTools = useCallback(async () => {
     setIsLoading(true);
     setError('');
@@ -44,11 +35,9 @@ function MyToolsPage() {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchTools();
   }, [fetchTools]);
-
   const handleDelete = async (toolId: string, toolName: string) => {
     setActionMessage('');
     try {
@@ -60,7 +49,6 @@ function MyToolsPage() {
       setActionMessage(err instanceof Error ? err.message : 'Failed to delete tool.');
     }
   };
-
   // Client-side filtering for search and status
   const filteredTools = tools.filter((tool) => {
     const matchesSearch =
@@ -73,10 +61,8 @@ function MyToolsPage() {
       (statusFilter === 'inactive' && !tool.is_active);
     return matchesSearch && matchesStatus;
   });
-
   const activeCount = tools.filter((t) => t.is_active).length;
   const inactiveCount = tools.filter((t) => !t.is_active).length;
-
   return (
     <section className="page-section">
       <div className="page-header">
@@ -92,7 +78,6 @@ function MyToolsPage() {
           + New Tool
         </Link>
       </div>
-
       {/* Summary cards */}
       <div className="admin-listing-summary-grid">
         <article className="summary-card">
@@ -108,7 +93,6 @@ function MyToolsPage() {
           <span>Inactive</span>
         </article>
       </div>
-
       {/* Filter panel */}
       <section className="admin-listing-filter-panel">
         <label htmlFor="my-tools-search">
@@ -133,18 +117,15 @@ function MyToolsPage() {
           </select>
         </label>
       </section>
-
       {error && <p className="form-error">{error}</p>}
       {actionMessage && <p className="success-message">{actionMessage}</p>}
       {isLoading && <p>Loading your tools...</p>}
-
       {/* Tools grid */}
       {!isLoading && !error && (
         <>
           <p className="results-summary">
             Showing {filteredTools.length} of {total} tools.
           </p>
-
           {filteredTools.length > 0 ? (
             <section className="admin-listings-grid">
               {filteredTools.map((tool) => (
@@ -167,7 +148,6 @@ function MyToolsPage() {
                       {tool.is_active ? 'active' : 'inactive'}
                     </span>
                   </div>
-
                   <dl className="admin-listing-meta-grid">
                     <div>
                       <dt>Condition</dt>
@@ -185,13 +165,11 @@ function MyToolsPage() {
                       <dd>{new Date(tool.created_at).toLocaleDateString()}</dd>
                     </div>
                   </dl>
-
                   {tool.deactivation_reason && (
                     <p className="form-error">
                       <strong>Deactivation reason:</strong> {tool.deactivation_reason}
                     </p>
                   )}
-
                   <div className="admin-listing-actions">
                     <Link
                       className="primary-link"
@@ -256,5 +234,4 @@ function MyToolsPage() {
     </section>
   );
 }
-
 export default MyToolsPage;

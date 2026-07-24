@@ -5,17 +5,14 @@ import { toolsApi } from '../api/tools';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import type { ToolCategory, ToolCondition, ToolResponse } from '../types/api';
+import { useCategories } from '../hooks/useCategories';
 
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
-};
-const categoryOptions = Object.entries(categoryLabels) as Array<[string, string]>;
 const conditionOptions: ToolCondition[] = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR'];
 
 function EditToolPage() {
   const { toolId } = useParams();
   const { user } = useAuth();
+  const { categoryOptions } = useCategories();
   const [tool, setTool] = useState<ToolResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,6 +49,7 @@ function EditToolPage() {
   }, [loadTool]);
 
   const isOwner = user && tool && user.id === tool.owner_id;
+  const isAdmin = user?.is_admin === true;
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -211,12 +209,18 @@ function EditToolPage() {
               </button>
             </div>
           ) : (
+            isAdmin ? (
             <div>
-              <p>This listing is currently deactivated. Reactivate it to make it available again. (Admin-only in production.)</p>
+              <p>This listing is currently deactivated. Reactivate it to make it available again.</p>
               <button className="action-button approve-button" type="button" onClick={handleReactivate} disabled={isReactivating}>
                 {isReactivating ? 'Reactivating...' : 'Reactivate Listing'}
               </button>
             </div>
+            ) : (
+            <div>
+              <p>This listing is currently deactivated. Only an admin can reactivate it.</p>
+            </div>
+            )
           )}
         </aside>
       </div>

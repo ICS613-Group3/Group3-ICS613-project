@@ -3,19 +3,15 @@ import { Link } from 'react-router-dom';
 import { reservationsApi } from '../api/reservations';
 import { toolsApi } from '../api/tools';
 import type { ReservationResponse, ToolResponse } from '../types/api';
-
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
-};
+import { useCategories } from '../hooks/useCategories';
 
 function ReturnedToolsPage() {
+  const { categoryLabels } = useCategories();
   const [tools, setTools] = useState<Array<{ tool: ToolResponse; reservation: ReservationResponse }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-
   useEffect(() => {
     const fetchReturned = async () => {
       setIsLoading(true);
@@ -41,10 +37,8 @@ function ReturnedToolsPage() {
         setIsLoading(false);
       }
     };
-
     fetchReturned();
   }, []);
-
   const filteredTools = tools.filter(({ tool }) => {
     const matchesCategory = !categoryFilter || tool.category === categoryFilter;
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -55,7 +49,6 @@ function ReturnedToolsPage() {
       (tool.owner.full_name || '').toLowerCase().includes(normalizedSearch);
     return matchesCategory && matchesSearch;
   });
-
   return (
     <section className="page-section">
       <div className="page-header">
@@ -67,7 +60,6 @@ function ReturnedToolsPage() {
           </p>
         </div>
       </div>
-
       <div className="filter-panel">
         <input
           type="text"
@@ -82,16 +74,13 @@ function ReturnedToolsPage() {
           ))}
         </select>
       </div>
-
       {error && <p className="form-error">{error}</p>}
       {isLoading && <p>Loading returned tools...</p>}
-
       {!isLoading && !error && (
         <p className="results-summary">
           Showing {filteredTools.length} of {tools.length} returned tools.
         </p>
       )}
-
       {!isLoading && filteredTools.length === 0 ? (
         <div className="empty-state-card">
           <p className="eyebrow">No Results</p>
@@ -107,22 +96,18 @@ function ReturnedToolsPage() {
                 alt={tool.name}
                 className="tool-image"
               />
-
               <div className="tool-card-body">
                 <div className="tool-card-top">
                   <span className="status-badge">{categoryLabels[tool.category] || tool.category}</span>
                   <span className="rating">Rating: {tool.avg_rating}/5</span>
                 </div>
-
                 <h2>{tool.name}</h2>
                 <p>{tool.description}</p>
-
                 <dl className="tool-meta">
                   <div><dt>Owner</dt><dd>{tool.owner.full_name || 'Unknown'}</dd></div>
                   <div><dt>Condition</dt><dd>{tool.condition}</dd></div>
                   <div><dt>Returned</dt><dd>{reservation.returned_at ? new Date(reservation.returned_at).toLocaleDateString() : reservation.end_date}</dd></div>
                 </dl>
-
                 <Link className="primary-link" to={`/tools/${tool.id}`}>View Details</Link>
                 <Link className="secondary-link returned-review-link" to={`/reservations/${reservation.id}/review`}>
                   Review This Tool
@@ -135,5 +120,4 @@ function ReturnedToolsPage() {
     </section>
   );
 }
-
 export default ReturnedToolsPage;

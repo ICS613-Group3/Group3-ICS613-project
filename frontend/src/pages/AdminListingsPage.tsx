@@ -4,13 +4,9 @@ import { toolsApi } from '../api/tools';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import type { ToolResponse } from '../types/api';
-
-const categoryLabels: Record<string, string> = {
-  HAND_TOOLS: 'Hand Tools', POWER_TOOLS: 'Power Tools', GARDEN_TOOLS: 'Garden Tools',
-  CLEANING_TOOLS: 'Cleaning Tools', OUTDOOR_GEAR: 'Outdoor Gear',
-};
-
+import { useCategories } from '../hooks/useCategories';
 function AdminListingsPage() {
+  const { categoryLabels } = useCategories();
   const { user } = useAuth();
   const [tools, setTools] = useState<ToolResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -20,7 +16,6 @@ function AdminListingsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [deactivationReason, setDeactivationReason] = useState<Record<string, string>>({});
-
   const fetchTools = useCallback(async () => {
     setIsLoading(true);
     setError('');
@@ -37,12 +32,10 @@ function AdminListingsPage() {
       setIsLoading(false);
     }
   }, [statusFilter, search]);
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTools();
   }, [fetchTools]);
-
   const handleDeactivate = async (toolId: string, toolName: string) => {
     const reason = deactivationReason[toolId]?.trim();
     if (!reason) {
@@ -59,7 +52,6 @@ function AdminListingsPage() {
       setActionMessage(err instanceof ApiRequestError ? err.detail : 'Deactivation failed.');
     }
   };
-
   const handleReactivate = async (toolId: string, toolName: string) => {
     setActionMessage('');
     try {
@@ -70,7 +62,6 @@ function AdminListingsPage() {
       setActionMessage(err instanceof ApiRequestError ? err.detail : 'Reactivation failed.');
     }
   };
-
   if (!user?.is_admin) {
     return (
       <section className="page-section">
@@ -82,10 +73,8 @@ function AdminListingsPage() {
       </section>
     );
   }
-
   const activeCount = tools.filter((t) => t.is_active).length;
   const deactivatedCount = tools.filter((t) => !t.is_active).length;
-
   return (
     <section className="page-section">
       <div className="page-header">
@@ -98,13 +87,11 @@ function AdminListingsPage() {
         </div>
         <Link className="secondary-link header-action-link" to="/admin/invites">Admin Invites</Link>
       </div>
-
       <div className="admin-listing-summary-grid">
         <article className="summary-card"><strong>{total}</strong><span>Total Listings</span></article>
         <article className="summary-card"><strong>{activeCount}</strong><span>Active</span></article>
         <article className="summary-card"><strong>{deactivatedCount}</strong><span>Deactivated</span></article>
       </div>
-
       <section className="admin-listing-filter-panel">
         <label htmlFor="admin-listing-search">
           Search Listings
@@ -119,11 +106,9 @@ function AdminListingsPage() {
           </select>
         </label>
       </section>
-
       {error && <p className="form-error">{error}</p>}
       {actionMessage && <p className="success-message">{actionMessage}</p>}
       {isLoading && <p>Loading listings...</p>}
-
       <section className="admin-listings-grid">
         {tools.map((tool) => {
           const reason = deactivationReason[tool.id] ?? '';
@@ -139,17 +124,14 @@ function AdminListingsPage() {
                   {tool.is_active ? 'active' : 'deactivated'}
                 </span>
               </div>
-
               <dl className="admin-listing-meta-grid">
                 <div><dt>Owner</dt><dd>{tool.owner.full_name || 'Unknown'}</dd></div>
                 <div><dt>Condition</dt><dd>{tool.condition}</dd></div>
                 <div><dt>Rating</dt><dd>{tool.avg_rating}/5 ({tool.rating_count})</dd></div>
               </dl>
-
               {tool.deactivation_reason && (
                 <p><strong>Deactivation reason:</strong> {tool.deactivation_reason}</p>
               )}
-
               <div className="admin-listing-actions">
                 {tool.is_active ? (
                   <>
@@ -171,7 +153,6 @@ function AdminListingsPage() {
           );
         })}
       </section>
-
       {!isLoading && tools.length === 0 && (
         <section className="empty-state-card">
           <h2>No listings found</h2>
@@ -181,5 +162,4 @@ function AdminListingsPage() {
     </section>
   );
 }
-
 export default AdminListingsPage;
