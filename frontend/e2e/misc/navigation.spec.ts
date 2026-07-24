@@ -20,7 +20,7 @@ test.describe('AppLayout navigation', () => {
 
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav.getByRole('link', { name: 'Dashboard' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Reservations' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Reservations', exact: true })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Admin Invites' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Admin Listings' })).toBeVisible();
 
