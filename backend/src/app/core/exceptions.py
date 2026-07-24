@@ -61,7 +61,9 @@ class VerifyTokenError(AppError):
         resend_available: bool = True,
         details: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(message, details=details)
+        merged = dict(details or {})
+        merged["resend_available"] = resend_available
+        super().__init__(message, details=merged)
         self.resend_available = resend_available
 
 
