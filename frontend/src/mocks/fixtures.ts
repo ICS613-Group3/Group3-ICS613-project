@@ -197,7 +197,7 @@ export const mockReservations: ReservationResponse[] = [
 export const mockNotifications: NotificationResponse[] = [
   {
     id: 'notif-1',
-    type: 'RESERVATION_REQUEST',
+    type: 'RESERVATION_REQUESTED',
     title: 'New Reservation Request',
     body: 'Yafei Wang wants to borrow your Cordless Drill.',
     payload: { reservation_id: 'res-1', tool_id: 'tool-1' },
@@ -215,7 +215,7 @@ export const mockNotifications: NotificationResponse[] = [
   },
   {
     id: 'notif-3',
-    type: 'TOOL_RETURNED',
+    type: 'RESERVATION_RETURNED',
     title: 'Tool Returned',
     body: 'Step Ladder has been returned.',
     payload: { reservation_id: 'res-3', tool_id: 'tool-3' },

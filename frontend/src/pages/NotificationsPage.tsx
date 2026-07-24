@@ -1,336 +1,385 @@
-import { useMemo, useState } from 'react';
-
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 
-import { mockNotifications } from '../data/mockData';
+import { notificationsApi } from '../api/notifications';
+import type { NotificationResponse } from '../types/api';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
-/**
- * NotificationFilter
- *
- * Controls which notifications are visible on the page.
- */
 type NotificationFilter = 'all' | 'unread' | 'read';
 
 /**
- * NotificationType
- *
- * Gives each mock notification a readable frontend category.
- * The backend can later send these values directly.
+ * Return a readable API error message.
  */
-type NotificationType =
-  | 'Reservation Update'
-  | 'Owner Action'
-  | 'Pickup Reminder'
-  | 'Return Reminder';
-
-/**
- * NotificationRecord
- *
- * Frontend-friendly notification structure.
- * It extends the simple mock data with title, type, route link, and read state.
- */
-interface NotificationRecord {
-  id: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  read: boolean;
-  createdAt: string;
-  linkTo: string;
-  linkLabel: string;
-}
-
-/**
- * localStorage key for frontend-only notification read state.
- *
- * Purpose:
- * - Keeps mark-as-read behavior visible during the demo.
- * - Lets AppLayout and DashboardPage update unread counts.
- */
-const notificationReadStateKey = 'mockNotificationReadState';
-
-/**
- * notificationDetails
- *
- * Adds richer display details to the current mock notification data.
- * This avoids changing the backend-facing mockData.ts shape right now.
- */
-const notificationDetails: Record<
-  string,
-  Omit<NotificationRecord, 'id' | 'message' | 'read' | 'createdAt'>
-> = {
-  'notification-1': {
-    title: 'New reservation request',
-    type: 'Owner Action',
-    linkTo: '/reservations/reservation-1',
-    linkLabel: 'Open reservation',
-  },
-  'notification-2': {
-    title: 'Reservation approved',
-    type: 'Reservation Update',
-    linkTo: '/reservations/reservation-2',
-    linkLabel: 'View approved reservation',
-  },
-  'notification-3': {
-    title: 'Pickup confirmed',
-    type: 'Pickup Reminder',
-    linkTo: '/reservations/reservation-3',
-    linkLabel: 'View pickup status',
-  },
-};
-
-/**
- * getStoredNotificationReadState
- *
- * Reads frontend-only notification read state from localStorage.
- * Returns an empty object if nothing was saved or JSON is invalid.
- */
-function getStoredNotificationReadState() {
-  const storedValue = localStorage.getItem(notificationReadStateKey);
-
-  if (!storedValue) {
-    return {} as Record<string, boolean>;
+function getErrorMessage(error: unknown, fallbackMessage: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
   }
 
-  try {
-    return JSON.parse(storedValue) as Record<string, boolean>;
-  } catch {
-    return {} as Record<string, boolean>;
-  }
+  return fallbackMessage;
 }
 
 /**
- * saveNotificationReadState
- *
- * Saves read/unread state to localStorage and notifies other components.
- * AppLayout and DashboardPage listen for this event to update their badge/count.
+ * Safely read a string from a notification payload.
  */
-function saveNotificationReadState(notifications: NotificationRecord[]) {
-  const nextReadState = notifications.reduce<Record<string, boolean>>(
-    (readState, notification) => {
-      readState[notification.id] = notification.read;
-      return readState;
-    },
-    {},
-  );
+function getPayloadString(
+  payload: Record<string, unknown> | null,
+  key: string,
+) {
+  const value = payload?.[key];
 
-  localStorage.setItem(
-    notificationReadStateKey,
-    JSON.stringify(nextReadState),
-  );
-
-  window.dispatchEvent(new Event('mock-notifications-change'));
+  return typeof value === 'string' && value.trim()
+    ? value
+    : null;
 }
 
 /**
- * buildInitialNotifications
+ * Build the display category and destination for a notification.
  *
- * Combines mockData.ts notifications with richer frontend metadata.
- * It also applies any saved read/unread state from localStorage.
+ * Issue #51:
+ * A RESERVATION_RETURNED notification with a reservation_id links directly
+ * to the review form for that returned reservation.
  */
-function buildInitialNotifications(): NotificationRecord[] {
-  const storedReadState = getStoredNotificationReadState();
+function getNotificationPresentation(
+  notification: NotificationResponse,
+) {
+  const reservationId = getPayloadString(
+    notification.payload,
+    'reservation_id',
+  );
 
-  return mockNotifications.map((notification) => {
-    const details = notificationDetails[notification.id] ?? {
-      title: 'Notification',
-      type: 'Reservation Update' as NotificationType,
-      linkTo: '/notifications',
-      linkLabel: 'View notification',
+  if (
+    notification.type === 'RESERVATION_RETURNED' &&
+    reservationId
+  ) {
+    return {
+      category: 'Review Available',
+      linkTo: `/reservations/${reservationId}/review`,
+      linkLabel: 'Leave or manage review',
     };
+  }
+
+  if (notification.type === 'RESERVATION_OVERDUE') {
+    return {
+      category: 'Return Reminder',
+      linkTo: reservationId
+        ? `/reservations/${reservationId}`
+        : '/reservations',
+      linkLabel: reservationId
+        ? 'Open reservation'
+        : 'View reservations',
+    };
+  }
+
+  if (
+    notification.type === 'RESERVATION_REQUESTED' ||
+    notification.type === 'RESERVATION_APPROVED' ||
+    notification.type === 'RESERVATION_DENIED' ||
+    notification.type === 'RESERVATION_CANCELLED' ||
+    notification.type === 'RESERVATION_PICKED_UP'
+  ) {
+    return {
+      category: 'Reservation Update',
+      linkTo: reservationId
+        ? `/reservations/${reservationId}`
+        : '/reservations',
+      linkLabel: reservationId
+        ? 'Open reservation'
+        : 'View reservations',
+    };
+  }
+
+  if (
+    notification.type === 'TOOL_DEACTIVATED' ||
+    notification.type === 'TOOL_REACTIVATED'
+  ) {
+    const toolId = getPayloadString(
+      notification.payload,
+      'tool_id',
+    );
 
     return {
-      id: notification.id,
-      title: details.title,
-      message: notification.message,
-      type: details.type,
-      read: storedReadState[notification.id] ?? notification.read,
-      createdAt: notification.createdAt,
-      linkTo: details.linkTo,
-      linkLabel: details.linkLabel,
+      category: 'Tool Update',
+      linkTo: toolId ? `/tools/${toolId}` : '/tools',
+      linkLabel: toolId ? 'Open tool' : 'View tools',
     };
-  });
+  }
+
+  return {
+    category: 'Account or System',
+    linkTo: '/notifications',
+    linkLabel: 'View notification',
+  };
 }
 
 /**
- * getNotificationTypeClass
- *
- * Builds a type-specific badge class for notification categories.
+ * Create a CSS-safe notification category class.
  */
-function getNotificationTypeClass(type: NotificationType) {
-  return `notification-type-badge notification-type-${type
+function getNotificationTypeClass(category: string) {
+  return `notification-type-badge notification-type-${category
     .toLowerCase()
     .replaceAll(' ', '-')}`;
 }
 
 /**
- * NotificationsPage
+ * Issue #51 notification integration:
  *
- * Improved notification center for Task 4.
+ * - Loads notifications from the real backend.
+ * - Routes RESERVATION_RETURNED notifications to the review form.
+ * - Persists read state through the real mark-read endpoint.
  *
- * Frontend responsibilities:
- * - Show notification summary counts.
- * - Show All / Unread / Read filters.
- * - Show notification type badges.
- * - Mark one notification as read.
- * - Mark all notifications as read.
- * - Reset demo state for testing.
- *
- * Important:
- * - This is frontend-only mock behavior.
- * - Backend notification model, polling, and persistence can be connected later.
+ * The backend remains responsible for creating and scheduling notifications.
  */
 function NotificationsPage() {
-  // Store the current frontend notification list.
-  const [notifications, setNotifications] = useState<NotificationRecord[]>(
-    buildInitialNotifications,
-  );
+  const [notifications, setNotifications] =
+    useState<NotificationResponse[]>([]);
 
-  // Store current filter tab.
-  const [filter, setFilter] = useState<NotificationFilter>('all');
+  const [filter, setFilter] =
+    useState<NotificationFilter>('all');
 
-  // Store success/status message after user actions.
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+
+  const [
+    markingNotificationId,
+    setMarkingNotificationId,
+  ] = useState<string | null>(null);
+
+  const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
 
   /**
-   * Calculate notification counts for summary cards and filter buttons.
+   * Load both read and unread notifications.
    */
+  const loadNotifications = useCallback(
+    async (showRefreshingState = false) => {
+      if (showRefreshingState) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      setErrorMessage('');
+
+      try {
+        const response = await notificationsApi.list({
+          include_read: true,
+          page: 1,
+          page_size: 100,
+        });
+
+        setNotifications(response.items);
+      } catch (error) {
+        setErrorMessage(
+          getErrorMessage(
+            error,
+            'Unable to load notifications.',
+          ),
+        );
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
+
   const notificationCounts = useMemo(() => {
-    const unread = notifications.filter((notification) => !notification.read)
-      .length;
-    const read = notifications.filter((notification) => notification.read)
-      .length;
+    const unread = notifications.filter(
+      (notification) => notification.read_at === null,
+    ).length;
 
     return {
       total: notifications.length,
       unread,
-      read,
+      read: notifications.length - unread,
     };
   }, [notifications]);
 
-  /**
-   * Filter notifications by selected tab.
-   */
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') {
-      return notifications.filter((notification) => !notification.read);
+      return notifications.filter(
+        (notification) => notification.read_at === null,
+      );
     }
 
     if (filter === 'read') {
-      return notifications.filter((notification) => notification.read);
+      return notifications.filter(
+        (notification) => notification.read_at !== null,
+      );
     }
 
     return notifications;
   }, [filter, notifications]);
 
   /**
-   * Update notifications state and persist read/unread changes.
+   * Mark one notification as read through the backend API.
    */
-  function updateNotifications(nextNotifications: NotificationRecord[]) {
-    setNotifications(nextNotifications);
-    saveNotificationReadState(nextNotifications);
+  async function handleMarkAsRead(notificationId: string) {
+    setMarkingNotificationId(notificationId);
+    setErrorMessage('');
+    setStatusMessage('');
+
+    try {
+      const updatedNotification =
+        await notificationsApi.markRead(notificationId);
+
+      setNotifications((currentNotifications) =>
+        currentNotifications.map((notification) =>
+          notification.id === updatedNotification.id
+            ? updatedNotification
+            : notification,
+        ),
+      );
+
+      setStatusMessage('Notification marked as read.');
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(
+          error,
+          'Unable to mark the notification as read.',
+        ),
+      );
+    } finally {
+      setMarkingNotificationId(null);
+    }
   }
 
   /**
-   * Mark one notification as read.
+   * The backend does not expose a read-all endpoint.
+   *
+   * Mark every currently unread notification through the supported
+   * individual mark-read endpoint.
    */
-  function handleMarkAsRead(notificationId: string) {
-    const nextNotifications = notifications.map((notification) =>
-      notification.id === notificationId
-        ? { ...notification, read: true }
-        : notification,
+  async function handleMarkAllAsRead() {
+    const unreadNotifications = notifications.filter(
+      (notification) => notification.read_at === null,
     );
 
-    updateNotifications(nextNotifications);
-    setStatusMessage('Notification marked as read.');
+    if (unreadNotifications.length === 0) {
+      return;
+    }
+
+    setIsMarkingAll(true);
+    setErrorMessage('');
+    setStatusMessage('');
+
+    try {
+      const updatedNotifications = await Promise.all(
+        unreadNotifications.map((notification) =>
+          notificationsApi.markRead(notification.id),
+        ),
+      );
+
+      const updatedById = new Map(
+        updatedNotifications.map((notification) => [
+          notification.id,
+          notification,
+        ]),
+      );
+
+      setNotifications((currentNotifications) =>
+        currentNotifications.map(
+          (notification) =>
+            updatedById.get(notification.id) ?? notification,
+        ),
+      );
+
+      setStatusMessage('All notifications marked as read.');
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(
+          error,
+          'Unable to mark all notifications as read.',
+        ),
+      );
+    } finally {
+      setIsMarkingAll(false);
+    }
   }
 
-  /**
-   * Mark all notifications as read.
-   */
-  function handleMarkAllAsRead() {
-    const nextNotifications = notifications.map((notification) => ({
-      ...notification,
-      read: true,
-    }));
-
-    updateNotifications(nextNotifications);
-    setStatusMessage('All notifications marked as read.');
-  }
-
-  /**
-   * Reset notification demo state back to mockData.ts defaults.
-   * This is helpful when testing the demo repeatedly.
-   */
-  function handleResetDemoNotifications() {
-    localStorage.removeItem(notificationReadStateKey);
-
-    const resetNotifications = mockNotifications.map((notification) => {
-      const details = notificationDetails[notification.id] ?? {
-        title: 'Notification',
-        type: 'Reservation Update' as NotificationType,
-        linkTo: '/notifications',
-        linkLabel: 'View notification',
-      };
-
-      return {
-        id: notification.id,
-        title: details.title,
-        message: notification.message,
-        type: details.type,
-        read: notification.read,
-        createdAt: notification.createdAt,
-        linkTo: details.linkTo,
-        linkLabel: details.linkLabel,
-      };
-    });
-
-    setNotifications(resetNotifications);
-    window.dispatchEvent(new Event('mock-notifications-change'));
-    setFilter('all');
-    setStatusMessage('Notification demo state was reset.');
+  if (isLoading) {
+    return (
+      <section className="page-section">
+        <div className="empty-state-card">
+          <p className="eyebrow">Notification Center</p>
+          <h1>Loading Notifications</h1>
+          <p>Loading your latest notification activity...</p>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="page-section">
-      {/* Page header */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Notification Center</p>
           <h1>Notifications</h1>
+
           <p className="page-description">
-            Review reservation updates, owner actions, pickup reminders, and
-            frontend demo alerts.
+            Review reservation updates and open returned reservations
+            directly when a rating and review are available.
           </p>
         </div>
 
-        {/* Back link for easy demo navigation */}
-        <Link className="secondary-link" to="/dashboard">
-          Back to Dashboard
-        </Link>
+        <div className="page-header-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void loadNotifications(true)}
+            disabled={isRefreshing || isMarkingAll}
+          >
+            {isRefreshing
+              ? 'Refreshing...'
+              : 'Refresh Notifications'}
+          </button>
+
+          <Link className="secondary-link" to="/dashboard">
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
 
-      {/* Summary cards for notification counts. */}
       <div className="notification-summary-grid">
         <article className="summary-card">
-          <span className="summary-number">{notificationCounts.total}</span>
-          <span className="summary-label">Total Notifications</span>
+          <span className="summary-number">
+            {notificationCounts.total}
+          </span>
+          <span className="summary-label">
+            Total Notifications
+          </span>
         </article>
 
         <article className="summary-card notification-unread-summary">
-          <span className="summary-number">{notificationCounts.unread}</span>
+          <span className="summary-number">
+            {notificationCounts.unread}
+          </span>
           <span className="summary-label">Unread</span>
         </article>
 
         <article className="summary-card">
-          <span className="summary-number">{notificationCounts.read}</span>
+          <span className="summary-number">
+            {notificationCounts.read}
+          </span>
           <span className="summary-label">Read</span>
         </article>
       </div>
 
-      {/* Toolbar with filters and bulk action buttons. */}
       <section className="notification-toolbar">
-        <div className="notification-filter-group" aria-label="Notification filters">
+        <div
+          className="notification-filter-group"
+          aria-label="Notification filters"
+        >
           <button
             type="button"
             className={
@@ -373,98 +422,128 @@ function NotificationsPage() {
             type="button"
             className="secondary-button"
             onClick={handleMarkAllAsRead}
-            disabled={notificationCounts.unread === 0}
+            disabled={
+              notificationCounts.unread === 0 ||
+              isMarkingAll ||
+              markingNotificationId !== null
+            }
           >
-            Mark All as Read
-          </button>
-
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleResetDemoNotifications}
-          >
-            Reset Demo
+            {isMarkingAll
+              ? 'Marking All...'
+              : 'Mark All as Read'}
           </button>
         </div>
       </section>
 
-      {/* Action status message. */}
-      {statusMessage && <p className="form-success">{statusMessage}</p>}
+      {errorMessage && (
+        <p className="form-error" role="alert">
+          {errorMessage}
+        </p>
+      )}
 
-      {/* Notification list. */}
+      {statusMessage && (
+        <p className="form-success" role="status">
+          {statusMessage}
+        </p>
+      )}
+
       <div className="notification-list">
-        {filteredNotifications.map((notification) => (
-          <article
-            className={
-              notification.read
-                ? 'notification-card notification-card-read'
-                : 'notification-card notification-card-unread'
-            }
-            key={notification.id}
-          >
-            {/* Notification card header. */}
-            <div className="notification-card-header">
-              <div>
-                <span className={getNotificationTypeClass(notification.type)}>
-                  {notification.type}
+        {filteredNotifications.map((notification) => {
+          const presentation =
+            getNotificationPresentation(notification);
+
+          const isRead = notification.read_at !== null;
+
+          return (
+            <article
+              className={
+                isRead
+                  ? 'notification-card notification-card-read'
+                  : 'notification-card notification-card-unread'
+              }
+              key={notification.id}
+            >
+              <div className="notification-card-header">
+                <div>
+                  <span
+                    className={getNotificationTypeClass(
+                      presentation.category,
+                    )}
+                  >
+                    {presentation.category}
+                  </span>
+
+                  <h2>{notification.title}</h2>
+                </div>
+
+                <span
+                  className={
+                    isRead
+                      ? 'notification-read-status read'
+                      : 'notification-read-status unread'
+                  }
+                >
+                  {isRead ? 'Read' : 'Unread'}
+                </span>
+              </div>
+
+              <p className="notification-message">
+                {notification.body}
+              </p>
+
+              <div className="notification-footer">
+                <span className="auth-helper-text">
+                  Created:{' '}
+                  {formatHstDateTime(notification.created_at)}
                 </span>
 
-                <h2>{notification.title}</h2>
-              </div>
-
-              <span
-                className={
-                  notification.read
-                    ? 'notification-read-status read'
-                    : 'notification-read-status unread'
-                }
-              >
-                {notification.read ? 'Read' : 'Unread'}
-              </span>
-            </div>
-
-            {/* Notification message. */}
-            <p className="notification-message">{notification.message}</p>
-
-            {/* Notification metadata and actions. */}
-            <div className="notification-footer">
-              <span className="auth-helper-text">
-                Created: {notification.createdAt}
-              </span>
-
-              <div className="notification-card-actions">
-                <Link className="secondary-link" to={notification.linkTo}>
-                  {notification.linkLabel}
-                </Link>
-
-                {!notification.read && (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => handleMarkAsRead(notification.id)}
+                <div className="notification-card-actions">
+                  <Link
+                    className="secondary-link"
+                    to={presentation.linkTo}
                   >
-                    Mark as Read
-                  </button>
-                )}
+                    {presentation.linkLabel}
+                  </Link>
+
+                  {!isRead && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        void handleMarkAsRead(notification.id)
+                      }
+                      disabled={
+                        markingNotificationId === notification.id ||
+                        isMarkingAll
+                      }
+                    >
+                      {markingNotificationId === notification.id
+                        ? 'Marking...'
+                        : 'Mark as Read'}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
-      {/* Empty state when a filter has no results. */}
       {filteredNotifications.length === 0 && (
         <section className="empty-state-card">
           <h2>No notifications found</h2>
-          <p>Try switching to a different filter.</p>
+
+          <p>
+            There are no notifications matching the selected filter.
+          </p>
         </section>
       )}
 
-      {/* Demo note documents frontend-only behavior. */}
       <p className="demo-note">
-        Demo note: notification read/unread changes are saved in localStorage for
-        the frontend demo only. Backend notification delivery, polling, and
-        persistence can be connected later.
+        Issue #51 note: the frontend opens the review form when the backend
+        supplies a RESERVATION_RETURNED notification with a reservation ID.
+        Scheduling a separate reminder three days after return remains a
+        backend responsibility.
       </p>
     </section>
   );

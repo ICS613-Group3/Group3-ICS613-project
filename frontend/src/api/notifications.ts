@@ -1,6 +1,9 @@
-// Notifications API — /notifications/* endpoints.
+// Notifications API — backend notification list and mark-read endpoints.
 import { apiRequest } from './client';
-import type { NotificationListResponse, NotificationResponse } from '../types/api';
+import type {
+  NotificationListResponse,
+  NotificationResponse,
+} from '../types/api';
 
 export const notificationsApi = {
   list: (params?: {
@@ -9,13 +12,26 @@ export const notificationsApi = {
     page_size?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.include_read) searchParams.set('include_read', 'true');
-    if (params?.page) searchParams.set('page', String(params.page));
-    if (params?.page_size) searchParams.set('page_size', String(params.page_size));
-    const qs = searchParams.toString();
+
+    if (params?.include_read) {
+      searchParams.set('include_read', 'true');
+    }
+
+    if (params?.page) {
+      searchParams.set('page', String(params.page));
+    }
+
+    if (params?.page_size) {
+      searchParams.set('page_size', String(params.page_size));
+    }
+
+    const queryString = searchParams.toString();
+
     return apiRequest<NotificationListResponse>(
       'GET',
-      qs ? `/notifications?${qs}` : '/notifications',
+      queryString
+        ? `/notifications?${queryString}`
+        : '/notifications',
     );
   },
 
@@ -23,11 +39,5 @@ export const notificationsApi = {
     apiRequest<NotificationResponse>(
       'POST',
       `/notifications/${notificationId}/read`,
-    ),
-
-  markAllRead: () =>
-    apiRequest<NotificationResponse[]>(
-      'POST',
-      '/notifications/read-all',
     ),
 };
