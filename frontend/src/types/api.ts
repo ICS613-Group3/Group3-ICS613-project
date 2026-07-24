@@ -217,6 +217,21 @@ export interface ReservationForceReturn {
   reason: string;
 }
 
+// ── Reservation Message Between Users ───────────────────────────────────────────────────────
+
+export interface MessageCreate {
+  body: string;
+}
+
+export interface ReservationMessageResponse {
+  id: string;
+  reservation_id: string;
+  sender_id: string;
+  sender: OwnerSummary;
+  body: string;
+  created_at: string;
+}
+
 // ── Review ─────────────────────────────────────────────────────────────
 
 export interface ReviewCreate {
@@ -260,3 +275,4 @@ export interface NotificationListResponse {
   page_size: number;
   pages: number;
 }
+
