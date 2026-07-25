@@ -10,13 +10,14 @@ Jobs:
     tokens that have been expired for more than 30 days (bounds table growth).
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import delete, select
 
 from app.config import get_settings
 from app.core.logging import get_logger
+from app.core.timezone import utc_to_hst
 from app.db.session import get_session
 from app.models.email_verification import EmailVerificationToken
 from app.models.enums import (
@@ -92,7 +93,7 @@ class SchedulerService:
         """
         settings = get_settings()
         grace_days = settings.scheduler_grace_period_days
-        cutoff = date.today() - timedelta(days=grace_days)
+        cutoff = utc_to_hst(datetime.now(UTC)).date() - timedelta(days=grace_days)
         async with get_session() as db:
             result = await db.execute(
                 select(Reservation).where(
@@ -142,8 +143,8 @@ class SchedulerService:
         settings = get_settings()
         escalation_days = settings.scheduler_escalation_days
         hard_escalation_days = settings.scheduler_hard_escalation_days
-        soft_cutoff = date.today() - timedelta(days=escalation_days)
-        hard_cutoff = date.today() - timedelta(days=hard_escalation_days)
+        soft_cutoff = utc_to_hst(datetime.now(UTC)).date() - timedelta(days=escalation_days)
+        hard_cutoff = utc_to_hst(datetime.now(UTC)).date() - timedelta(days=hard_escalation_days)
         async with get_session() as db:
             # Hard-resolve anything that has been overdue too long.
             hard_result = await db.execute(
