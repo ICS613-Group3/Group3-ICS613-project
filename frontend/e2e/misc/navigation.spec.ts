@@ -1,4 +1,4 @@
-import { test, expect, loginAsMockUser } from '../fixtures';
+import { test, expect, loginAsMockUser, loginAsAdmin } from '../fixtures';
 
 // Covers AppLayout's mock-auth-driven navigation: logged-out users only see
 // Login/Register, logged-in users see the full member nav plus Logout, and
@@ -16,11 +16,11 @@ test.describe('AppLayout navigation', () => {
   test('logged-in users see full member navigation and can log out', async ({
     page,
   }) => {
-    await loginAsMockUser(page);
+    await loginAsAdmin(page);
 
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav.getByRole('link', { name: 'Dashboard' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Reservations' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Reservations', exact: true })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Admin Invites' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Admin Listings' })).toBeVisible();
 

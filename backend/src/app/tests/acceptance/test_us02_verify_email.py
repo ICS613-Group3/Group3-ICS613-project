@@ -56,13 +56,6 @@ class TestScenario1VerifyWithValidToken:
 
 
 class TestScenario2VerifyWithExpiredOrInvalidToken:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: AuthService.verify_email raises VerifyTokenError, which "
-        "app.main's exception mapping does not include -> falls through to a bare "
-        "500 Internal Server Error instead of a 4xx with resend_available. "
-        "Fix: add VerifyTokenError to the status-code mapping in app/main.py.",
-    )
     async def test_invalid_token_returns_4xx_with_resend_option(self, client) -> None:
         response = await client.post(
             "/api/v1/auth/verify-email",
@@ -71,11 +64,6 @@ class TestScenario2VerifyWithExpiredOrInvalidToken:
         assert 400 <= response.status_code < 500
         assert response.json().get("resend_available") is True
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: same VerifyTokenError-not-mapped issue as the invalid-token "
-        "case above; an expired token also currently 500s.",
-    )
     async def test_expired_token_returns_4xx_with_resend_option(
         self, client, db_session: AsyncSession
     ) -> None:

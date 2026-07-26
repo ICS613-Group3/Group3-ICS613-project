@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
-from app.models.enums import CancellerType, NotificationType, ReservationState
+from app.models.enums import CancellerType, DeactivationActor, NotificationType, ReservationState
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
@@ -46,7 +46,7 @@ class ReservationService:
         """
         # Business rules
         if start_date > end_date:
-            raise ValidationError("start_date must be on or before end_date")
+            raise ValidationError("start_date must be before end_date")
         if start_date < date.today():
             raise ValidationError("Cannot request a reservation starting in the past")
 
@@ -100,7 +100,7 @@ class ReservationService:
             select(Reservation)
             .where(Reservation.id == reservation_id)
             .options(
-                selectinload(Reservation.tool),
+                selectinload(Reservation.tool).selectinload(Tool.owner),
                 selectinload(Reservation.borrower),
             )
         )
@@ -163,7 +163,7 @@ class ReservationService:
         # Paginated results
         query = (
             query.options(
-                selectinload(Reservation.tool),
+                selectinload(Reservation.tool).selectinload(Tool.owner),
                 selectinload(Reservation.borrower),
             )
             .order_by(Reservation.created_at.desc())
@@ -220,13 +220,14 @@ class ReservationService:
         tool_name = (
             reservation.tool.name if hasattr(reservation, "tool") and reservation.tool else "Tool"
         )
+        owner_name = owner.full_name or owner.email
 
         await NotificationService().create(
             db,
             user_id=reservation.borrower_id,
             type_=NotificationType.RESERVATION_APPROVED,
             title="Reservation approved",
-            body=f'Your reservation for "{tool_name}" ({reservation.start_date} → {reservation.end_date}) was approved.',
+            body=f'Your reservation for "{tool_name}" ({reservation.start_date} → {reservation.end_date}) was approved by {owner_name}.',
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -305,7 +306,16 @@ class ReservationService:
 
         # Notify the other party.
         recipient_id = reservation.tool.owner_id if is_borrower else reservation.borrower_id
-        tool_name = reservation.tool.name if reservation.tool else "Tool"
+        tool_name = (
+            reservation.tool.name if hasattr(reservation, "tool") and reservation.tool else "Tool"
+        )
+        (
+            reservation.borrower.full_name or reservation.borrower.email
+            if is_owner
+            else (reservation.tool.owner.full_name or reservation.tool.owner.email)
+            if hasattr(reservation.tool, "owner") and reservation.tool.owner
+            else "The other party"
+        )
         await NotificationService().create(
             db,
             user_id=recipient_id,
@@ -355,6 +365,16 @@ class ReservationService:
             ),
             payload={"reservation_id": str(reservation.id)},
         )
+
+        # Notify the borrower who performed the pickup (confirmation).
+        await NotificationService().create(
+            db,
+            user_id=borrower.id,
+            type_=NotificationType.RESERVATION_PICKED_UP,
+            title="Pickup confirmed",
+            body=(f'You picked up "{reservation.tool.name}". Due back on {reservation.end_date}.'),
+            payload={"reservation_id": str(reservation.id)},
+        )
         return reservation
 
     async def mark_returned(
@@ -381,6 +401,16 @@ class ReservationService:
             type_=NotificationType.RESERVATION_RETURNED,
             title="Tool returned",
             body=f"Tool from reservation {reservation.id} was returned. You can now leave a review.",
+            payload={"reservation_id": str(reservation.id)},
+        )
+
+        # Notify the borrower who performed the return (confirmation).
+        await NotificationService().create(
+            db,
+            user_id=borrower.id,
+            type_=NotificationType.RESERVATION_RETURNED,
+            title="Return confirmed",
+            body=f"You returned the tool from reservation {reservation.id}. Thank you!",
             payload={"reservation_id": str(reservation.id)},
         )
         return reservation
@@ -421,6 +451,7 @@ class ReservationService:
         tool = await db.get(Tool, reservation.tool_id)
         if tool:
             tool.is_active = False
+            tool.deactivated_by = DeactivationActor.DAMAGE_REPORT
             tool.deactivated_at = datetime.now(UTC)
             tool.deactivation_reason = f"Damage reported: {description[:200]}"
             tool.updated_at = datetime.now(UTC)
@@ -527,7 +558,6 @@ class ReservationService:
         reservation.force_resolution_reason = reason
         reservation.updated_at = datetime.now(UTC)
         db.add(reservation)
-        await db.flush()
 
         # R1.C: audit-log the admin escalation action.
         await AdminService().record_reservation_force_return(

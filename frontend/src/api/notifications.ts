@@ -4,12 +4,12 @@ import type { NotificationListResponse, NotificationResponse } from '../types/ap
 
 export const notificationsApi = {
   list: (params?: {
-    include_read?: boolean;
+    unread_only?: boolean;
     page?: number;
     page_size?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.include_read) searchParams.set('include_read', 'true');
+    if (params?.unread_only) searchParams.set('unread_only', 'true');
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.page_size) searchParams.set('page_size', String(params.page_size));
     const qs = searchParams.toString();
@@ -26,7 +26,7 @@ export const notificationsApi = {
     ),
 
   markAllRead: () =>
-    apiRequest<NotificationResponse[]>(
+    apiRequest<{ message: string }>(
       'POST',
       '/notifications/read-all',
     ),

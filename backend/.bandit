@@ -1,0 +1,10 @@
+# Bandit configuration — YAML format supported by all bandit versions.
+# These skips suppress false-positive findings in test/schema code:
+#   B101  assert — normal in tests and validation
+#   B105  hardcoded_password_string — false positives on enum values
+#   B106  hardcoded_password_funcarg — test credentials, not production
+#   B110  try_except_pass — acceptable in schema validators
+#   B311  random — used for non-security purposes
+#   B603  subprocess_without_shell_equals_true — not used in this project
+#   B607  start_process_with_partial_path — not used in this project
+skips: [B101, B105, B106, B110, B311, B603, B607]

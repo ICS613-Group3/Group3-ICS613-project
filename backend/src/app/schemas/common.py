@@ -7,6 +7,16 @@ from pydantic import BaseModel, ConfigDict
 T = TypeVar("T")
 
 
+def validate_full_name(v: str | None) -> str | None:
+    """Validate a display name: strip whitespace, reject blank or overlong."""
+    if v is not None:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Display name cannot be empty or whitespace-only")
+        return stripped
+    return v
+
+
 class MessageResponse(BaseModel):
     """Generic success message response."""
 

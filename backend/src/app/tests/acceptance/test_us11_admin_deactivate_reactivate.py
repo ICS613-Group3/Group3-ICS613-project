@@ -40,11 +40,6 @@ class TestScenario1AdminDeactivatesActiveListing:
 
 
 class TestScenario2AdminCannotDeactivatePickedUpTool:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: same as US10 Scenario 4 -- ToolService.deactivate_tool has "
-        "no PICKED_UP guard for any actor, admin included.",
-    )
     async def test_deactivate_rejected_while_picked_up(
         self, client, db_session: AsyncSession
     ) -> None:

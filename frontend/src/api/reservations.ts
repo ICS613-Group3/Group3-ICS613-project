@@ -70,7 +70,7 @@ export const reservationsApi = {
   reportDamage: (reservationId: string, data: ReservationDamageReport) =>
     apiRequest<ReservationResponse>(
       'POST',
-      `/reservations/${reservationId}/report-damage`,
+      `/reservations/${reservationId}/mark-damaged`,
       data,
     ),
 
@@ -78,7 +78,7 @@ export const reservationsApi = {
   forceReturn: (reservationId: string, data: ReservationForceReturn) =>
     apiRequest<ReservationResponse>(
       'POST',
-      `/reservations/${reservationId}/force-return`,
+      `/reservations/${reservationId}/admin-force-return`,
       data,
     ),
 };

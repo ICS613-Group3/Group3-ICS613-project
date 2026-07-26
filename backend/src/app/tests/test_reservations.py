@@ -1242,6 +1242,7 @@ class TestReservationModerationAuditLog:
         owner_token = create_access_token(owner.id)
         tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
         borrower = await UserFactory.create_async(db_session, email=_make_email())
+        create_access_token(borrower.id)
 
         from datetime import UTC, datetime, timedelta
 
@@ -1384,7 +1385,7 @@ class TestMarkDamagedAutoCancelNotifications:
         notif_result = await db_session.execute(
             select(Notification).where(
                 Notification.user_id == borrower2.id,
-                Notification.type == NotificationType.RESERVATION_CANCELLED,
+                Notification.type == NotificationType.RESERVATION_CANCELLED.value,
             )
         )
         notifs = notif_result.scalars().all()
@@ -1432,7 +1433,7 @@ class TestForceReturnOwnerNotification:
         owner_notifs = await db_session.execute(
             select(Notification).where(
                 Notification.user_id == owner.id,
-                Notification.type == NotificationType.RESERVATION_RETURNED,
+                Notification.type == NotificationType.RESERVATION_RETURNED.value,
             )
         )
         owner_notif_list = owner_notifs.scalars().all()

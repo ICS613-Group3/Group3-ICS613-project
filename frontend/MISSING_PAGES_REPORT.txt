@@ -1,0 +1,321 @@
+================================================================================
+FRONTEND MISSING PAGES REPORT
+Generated: 2026-07-21
+Cross-reference: 36 User Stories (backend/_local_drafts/User_stories/) vs
+                 28 existing frontend pages (frontend/src/pages/)
+================================================================================
+
+SUMMARY
+-------
+  Total User Stories: 36
+  Covered by existing pages: 28 stories
+  Missing frontend pages: 6
+  Partial gaps (actions missing on existing pages): 3
+
+================================================================================
+PART 1: MISSING PAGES
+================================================================================
+
+1. MY TOOLS PAGE (Owner's Tool Management)
+   User Story: "Member Views Their Own Tool Listings" (Section 2, before US9)
+   Backend endpoint: GET /tools/me
+   Existing API method: toolsApi.listMy() — already implemented in tools.ts
+   TypeScript type: ToolResponse — already defined in types/api.ts
+
+   Requirements:
+   - Shows all own tool listings (ACTIVE and DEACTIVATED)
+   - Each listing: thumbnail, name, condition, category, status, active reservation count
+   - Click to navigate to edit (EditToolPage), deactivate, or delete
+   - Empty state: "You have not listed any tools yet" + "Create First Listing" button
+   - Non-owner cannot access (403)
+
+   Suggested route: /my-tools
+   Suggested nav: "My Tools" link for logged-in members
+
+
+2. MESSAGING THREAD PAGE (US22)
+   User Story: "Send and Receive Messages in a Reservation Thread" (Section 5)
+   Backend endpoints:
+     POST /reservations/{reservation_id}/messages  (send message)
+     GET  /reservations/{reservation_id}/messages  (list messages)
+   Schemas:
+     MessageCreate: { body: str (1-5000 chars) }
+     MessageResponse: { id, reservation_id, sender_id, sender_name, body, created_at }
+
+   Requirements:
+   - Thread-based messaging within a specific reservation
+   - Works only for REQUESTED, APPROVED, or PICKED_UP reservations
+   - Read-only for RETURNED or CANCELLED threads
+   - Shows: sender name, timestamp, message body in chronological order
+   - Input field to send new messages
+   - Non-party cannot view or send (403)
+   - Unauthenticated cannot access (401)
+
+   Suggested route: /reservations/:reservationId/messages
+   Suggested nav: Link from ReservationDetailPage
+
+
+3. ADMIN REPORTED LISTINGS PAGE (US27)
+   User Story: "Admin Reviews Reported Listings" (Section 8)
+   Backend endpoints:
+     GET  /reports                     (list pending reports)
+     POST /reports/{report_id}/resolve (mark valid or invalid)
+   Schemas:
+     ReportResponse: { id, tool_id, tool_name, reporter_id, reporter_name,
+                       reason, comment, status, resolved_by, resolver_name,
+                       resolved_at, resolution_note, created_at, updated_at }
+     ReportResolve:  { valid: bool, note: str|None }
+
+   Requirements:
+   - Table of PENDING_REVIEW listing reports
+   - Each row: listing title, owner name, reporter name, reason, date, comment
+   - "Mark Valid" button → hides listing, deactivates it, auto-cancels reservations
+   - "Mark Invalid" button → keeps listing active
+   - Optional admin note on resolution
+   - Non-admin cannot access (403)
+
+   Suggested route: /admin/reported-listings
+   Suggested nav: "Reported Listings" under Admin section
+
+
+4. ADMIN CATEGORY MANAGEMENT PAGE (US28)
+   User Story: "Admin Manages Tool Categories" (Section 8)
+   Backend endpoints:
+     GET    /categories           (list all — all members read-only)
+     POST   /categories           (admin creates new category)
+     DELETE /categories/{cat_id}  (admin deletes category)
+   Schemas:
+     CategoryCreate:    { name: str (1-100), description: str|None }
+     CategoryResponse:  { id, name, description, created_by, created_at }
+     CategoryListResponse: { categories: CategoryResponse[] }
+
+   Requirements:
+   - List all allowed tool categories
+   - Add new category (name + optional description)
+   - Remove category (blocked if ACTIVE tool listings use it)
+   - Shows admin ID and timestamp for each category
+   - Non-admin cannot manage (403)
+
+   Suggested route: /admin/categories
+   Suggested nav: "Categories" under Admin section
+
+
+5. ADMIN MODERATION REPORTS PAGE (US33)
+   User Story: "Admin Generates Community Moderation Reports" (Section 8)
+   Backend endpoints:
+     GET /reports (with date range filters)
+   Note: Backend has /reports endpoint but no dedicated report-generation
+         endpoint. This page may need to aggregate data from multiple endpoints
+         (reports, audit-log, tools/admin/all, users).
+
+   Requirements:
+   - Select report type (reported listings, violations, suspensions, activity)
+   - Select date range
+   - "Generate Report" button → displays totals + matching records
+   - "Export" button → downloads CSV
+   - Empty state: "No matching records found"
+   - Non-admin cannot access (403)
+
+   Suggested route: /admin/reports
+   Suggested nav: "Reports" under Admin section
+
+   NOTE: Backend may need a dedicated /admin/reports endpoint for this.
+         Current /reports is for listing reports (US27).
+         This page may need to combine data from:
+           - GET /reports (listing reports)
+           - GET /admin/audit-log (moderation actions)
+           - GET /admin/users (user stats)
+
+
+6. REPORT LISTING (US26) — add to existing ToolDetailPage
+   User Story: "Member Reports an Inappropriate Tool Listing" (Section 8)
+   Backend endpoint:
+     POST /tools/{tool_id}/report
+   Schema:
+     ReportCreate: { reason: ReportReason, comment: str|None }
+     ReportReason enum: INAPPROPRIATE_CONTENT, PROHIBITED_ITEM,
+                        MISLEADING_LISTING, SCAM_OR_FRAUD,
+                        DUPLICATE_LISTING, OTHER
+
+   Requirements:
+   - "Report Listing" button on ToolDetailPage (visible to non-owners only)
+   - Modal/form with:
+     * Reason dropdown (6 options from enum)
+     * Optional comment text area (max 2000 chars)
+     * Submit button
+   - Prevents duplicate reports (shows "already reported" message)
+   - Unauthenticated users cannot report (401)
+
+   Location: Add to ToolDetailPage.tsx (existing page)
+   No new route needed — modal on existing page
+
+
+================================================================================
+PART 2: PARTIAL GAPS (existing pages need additional actions)
+================================================================================
+
+A. AdminModerationIndividualProfile.tsx
+   Missing actions for US30 and US31:
+   - "Suspend" button → POST /admin/users/{user_id}/deactivate
+     Body: { reason: string }
+   - "Reactivate" button → POST /admin/users/{user_id}/reactivate
+     Body: { reason: string }
+   - Suspend button visible when user is ACTIVE
+   - Reactivate button visible when user is SUSPENDED
+   - Confirmation dialog before action
+   - Show suspension reason and timestamp if suspended
+
+B. EditToolPage.tsx
+   Missing actions for US10:
+   - "Delete" button → DELETE /tools/{tool_id}
+     (only when no active reservations)
+   - "Deactivate" button → POST /tools/{tool_id}/deactivate
+     Body: { reason: string }
+     (only when no PICKED_UP reservations)
+   - Confirmation dialog before delete/deactivate
+   - Show error if active reservations prevent action
+
+C. AdminListingsPage.tsx
+   Missing actions for US11:
+   - "Deactivate" button → POST /tools/{tool_id}/deactivate
+     Body: { reason: string }
+   - "Reactivate" button → POST /tools/{tool_id}/reactivate
+   - Show deactivation status and reason for each listing
+
+
+================================================================================
+PART 3: COMPLETE USER STORY COVERAGE TABLE
+================================================================================
+
+Section 1: Account & Profile
+  Admin Invites Member ........... AdminInvitesPage.tsx          [OK]
+  US1  Register .................. RegisterPage.tsx               [OK]
+  US2  Verify Email .............. VerifyEmailPage.tsx            [OK]
+  US3  Login/Logout .............. LoginPage.tsx + AuthContext    [OK]
+  US4  Reset Password ............ ForgotPasswordPage.tsx         [OK]
+                                  ResetPasswordPage.tsx           [OK]
+  US5  Set Up Profile ............ ProfileSetupPage.tsx           [OK]
+  US6  Edit Profile .............. EditProfilePage.tsx            [OK]
+  US7  Delete Account ............ AccountDeletionPage.tsx        [OK]
+
+Section 2: Tool Listings
+  US8  Create Tool Listing ....... CreateToolPage.tsx             [OK]
+  US:  View Own Tools ............ MISSING — needs MyToolsPage    [MISSING]
+  US9  Edit Tool Listing ......... EditToolPage.tsx               [OK]
+  US10 Delete/Deactivate Tool .... EditToolPage.tsx               [PARTIAL — needs buttons]
+  US11 Admin Deactivate/React ... AdminListingsPage.tsx           [PARTIAL — needs buttons]
+
+Section 3: Browse & Search
+  US12 Browse & Search ........... AvailableToolsPage.tsx         [OK]
+
+Section 4: Reservations
+  US13 Submit Reservation ........ ToolDetailPage.tsx             [OK]
+  US14 Approve/Deny ............. ReservationsPage.tsx            [OK]
+  US15 Cancel (Borrower) ........ ReservationsPage.tsx            [OK]
+  US16 Cancel (Owner) ........... ReservationsPage.tsx            [OK]
+  US17 Confirm Pickup ........... ReservationDetailPage.tsx       [OK]
+  US18 Auto-Cancel Overdue ...... Backend scheduler               [OK — no UI needed]
+  US19 Timezone Normalization ... Backend logic                   [OK — no UI needed]
+  US20 Confirm Return ........... ReturnedToolsPage.tsx           [OK]
+  US21 View History ............. ReservationsPage.tsx            [OK]
+
+Section 5: Messaging
+  US22 Messaging Thread .......... MISSING — needs MessageThread  [MISSING]
+
+Section 6: Notifications
+  US23 Notifications ............. NotificationsPage.tsx          [OK]
+
+Section 7: Reviews & Ratings
+  US24 Leave Review ............. ReviewPage.tsx                  [OK]
+  US25 View Member Reviews ...... ReviewHistoryPage.tsx           [OK]
+
+Section 8: Reporting & Moderation
+  US26 Report Listing ........... ToolDetailPage.tsx              [MISSING — needs modal]
+  US27 Admin Reviews Reports .... MISSING — needs AdminReported   [MISSING]
+  US28 Admin Manage Categories .. MISSING — needs AdminCategories [MISSING]
+  US29 Track Violations ......... AdminModerationProfiles.tsx     [OK]
+  US30 Suspend Member ........... AdminModerationIndividualP..tsx [PARTIAL — needs button]
+  US31 Reactivate Member ........ AdminModerationIndividualP..tsx [PARTIAL — needs button]
+  US32 Moderation History ....... ModerationHistoryPage.tsx       [OK]
+  US33 Admin Reports ............ MISSING — needs AdminReports    [MISSING]
+  US34 Admin View Reservations .. AdminReservationPage.tsx        [OK]
+
+
+================================================================================
+PART 4: BACKEND ENDPOINT REFERENCE (for implementing missing pages)
+================================================================================
+
+MESSAGES:
+  POST /api/v1/reservations/{reservation_id}/messages
+    Body: { "body": "string" }
+    Response: MessageResponse { id, reservation_id, sender_id, sender_name, body, created_at }
+
+  GET /api/v1/reservations/{reservation_id}/messages?page=1&page_size=20
+    Response: PaginatedResponse[MessageResponse]
+
+REPORTS:
+  POST /api/v1/tools/{tool_id}/report
+    Body: { "reason": "INAPPROPRIATE_CONTENT|PROHIBITED_ITEM|MISLEADING_LISTING|SCAM_OR_FRAUD|DUPLICATE_LISTING|OTHER", "comment": "optional string" }
+    Response: ReportResponse
+
+  GET /api/v1/reports?status=PENDING_REVIEW&page=1&page_size=20
+    Response: PaginatedResponse[ReportResponse]
+
+  POST /api/v1/reports/{report_id}/resolve
+    Body: { "valid": true|false, "note": "optional string" }
+    Response: ReportResponse
+
+  GET /api/v1/reports/me?page=1&page_size=20
+    Response: PaginatedResponse[ReportResponse] (reports filed by current user)
+
+CATEGORIES:
+  GET /api/v1/categories
+    Response: CategoryListResponse { categories: [{ id, name, description, created_by, created_at }] }
+
+  POST /api/v1/categories
+    Body: { "name": "string", "description": "optional string" }
+    Response: CategoryResponse
+
+  DELETE /api/v1/categories/{category_id}
+    Response: { "message": "..." }
+
+TOOLS (already implemented):
+  GET /api/v1/tools/me?page=1&page_size=20
+    Response: PaginatedResponse[ToolResponse] (current user's listings)
+
+ADMIN:
+  POST /api/v1/admin/users/{user_id}/deactivate
+    Body: { "reason": "string" }
+    Response: { "message": "User suspended successfully" }
+
+  POST /api/v1/admin/users/{user_id}/reactivate
+    Body: { "reason": "string" }
+    Response: { "message": "..." }
+
+  GET /api/v1/admin/audit-log?page=1&page_size=20
+    Response: PaginatedResponse[AuditLogEntry]
+
+
+================================================================================
+PART 5: IMPLEMENTATION PRIORITY
+================================================================================
+
+Priority 1 (Core features):
+  - MyToolsPage (US: View Own Listings) — needed for tool management flow
+  - Report Listing modal on ToolDetailPage (US26) — safety feature
+
+Priority 2 (Admin features):
+  - AdminReportedListingsPage (US27) — admin moderation workflow
+  - AdminCategoriesPage (US28) — admin tool management
+  - Suspend/Reactivate buttons on AdminModerationIndividualProfile (US30/31)
+
+Priority 3 (Communication):
+  - MessageThreadPage (US22) — needed for borrower/owner coordination
+
+Priority 4 (Reporting):
+  - AdminModerationReportsPage (US33) — reporting, may need new backend endpoint
+
+
+================================================================================
+END OF REPORT
+================================================================================

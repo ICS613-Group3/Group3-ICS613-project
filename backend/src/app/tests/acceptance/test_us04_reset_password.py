@@ -68,15 +68,6 @@ class TestScenario2CompletePasswordReset:
         stale_response = await client.get("/api/v1/auth/me", headers=old_access_headers)
         assert stale_response.status_code == 401
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: 'all existing session tokens invalidated' holds for access "
-        "tokens (get_current_user checks password_changed_at vs the token's iat) but "
-        "NOT for refresh tokens - AuthService.refresh() never checks password_changed_at, "
-        "so a refresh token issued before the reset can still mint a fresh, valid access "
-        "token after the password was changed. Fix: check password_changed_at in "
-        "AuthService.refresh() the same way get_current_user does.",
-    )
     async def test_stale_refresh_token_is_rejected_after_reset(
         self, client, db_session: AsyncSession
     ) -> None:

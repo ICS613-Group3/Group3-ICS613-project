@@ -1,1 +1,17 @@
 .env
+
+# CI/CD scripts
+scripts/
+
+# pgadmin config
+backend/db/pgadmin/
+
+# R2 draft documents (not for remote)
+backend/R2-*.md
+backend/_local_drafts/
+
+# Manual browser test scripts (local only)
+manual_test/
+
+# Uploaded test artifacts
+backend/static/

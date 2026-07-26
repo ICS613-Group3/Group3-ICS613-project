@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import DeactivationActor, ToolCategory, ToolCondition
+from app.models.enums import DeactivationActor, ToolCondition
 
 
 class PhotoOut(BaseModel):
@@ -38,7 +38,7 @@ class ToolUpdate(BaseModel):
 
     name: str | None = None
     description: str | None = None
-    category: ToolCategory | None = None
+    category: str | None = None
     condition: ToolCondition | None = None
 
 
@@ -52,7 +52,7 @@ class ToolResponse(BaseModel):
     owner: OwnerSummary
     name: str
     description: str | None
-    category: ToolCategory
+    category: str
     condition: ToolCondition
     is_active: bool
     deactivated_by: DeactivationActor | None = None

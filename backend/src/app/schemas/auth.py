@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.schemas.common import validate_full_name
+
 
 class TokenPairResponse(BaseModel):
     """Access and refresh token pair returned on login/refresh/verify."""
@@ -33,16 +35,6 @@ class InviteResponse(BaseModel):
     created_at: datetime
 
 
-def _validate_full_name(v: str | None) -> str | None:
-    """Validate a display name: strip whitespace, reject blank or overlong."""
-    if v is not None:
-        stripped = v.strip()
-        if not stripped:
-            raise ValueError("Display name cannot be empty or whitespace-only")
-        return stripped
-    return v
-
-
 class RegisterRequest(BaseModel):
     """Registration request using an invite token."""
 
@@ -51,7 +43,7 @@ class RegisterRequest(BaseModel):
     full_name: str | None = Field(None, max_length=255)
     invite_token: str = Field(..., min_length=1)
 
-    _validate_name = field_validator("full_name", mode="before")(_validate_full_name)
+    _validate_name = field_validator("full_name", mode="before")(validate_full_name)
 
 
 class VerifyEmailRequest(BaseModel):

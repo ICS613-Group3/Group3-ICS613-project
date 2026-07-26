@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.models.enums import (
     InviteStatus,
+    ReportStatus,
     ReservationState,
-    ToolCategory,
     ToolCondition,
     UserStatus,
 )
 from app.models.invite import InviteToken
+from app.models.listing_report import ListingReport
+from app.models.message import Message
 from app.models.reservation import Reservation
 from app.models.review import Review
 from app.models.tool import Tool
@@ -85,7 +87,7 @@ class ToolFactory(AsyncSQLAlchemyFactory):
 
     name = factory.Sequence(lambda n: f"Tool {n}")
     description = "A useful tool for sharing"
-    category = ToolCategory.HAND_TOOLS
+    category = "HAND_TOOLS"
     condition = ToolCondition.GOOD
     is_active = True
 
@@ -129,6 +131,41 @@ class ReviewFactory(AsyncSQLAlchemyFactory):
     @classmethod
     async def create_async(cls, db: AsyncSession, **kwargs: Any) -> Review:
         obj: Review = cls.build(**kwargs)  # type: ignore[assignment]
+        db.add(obj)
+        await db.flush()
+        await db.refresh(obj)
+        return obj
+
+
+class MessageFactory(AsyncSQLAlchemyFactory):
+    """Factory for Message model."""
+
+    class Meta:
+        model = Message
+
+    body = "Test message"
+
+    @classmethod
+    async def create_async(cls, db: AsyncSession, **kwargs: Any) -> Message:
+        obj: Message = cls.build(**kwargs)
+        db.add(obj)
+        await db.flush()
+        await db.refresh(obj)
+        return obj
+
+
+class ListingReportFactory(AsyncSQLAlchemyFactory):
+    """Factory for ListingReport model."""
+
+    class Meta:
+        model = ListingReport
+
+    reason = "INAPPROPRIATE_CONTENT"
+    status = ReportStatus.PENDING
+
+    @classmethod
+    async def create_async(cls, db: AsyncSession, **kwargs: Any) -> ListingReport:
+        obj: ListingReport = cls.build(**kwargs)
         db.add(obj)
         await db.flush()
         await db.refresh(obj)

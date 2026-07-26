@@ -76,8 +76,11 @@ The application handles authentication (JWT), background scheduling (APScheduler
 
 ### Architecture Diagram
 
+![Architecture Diagram](docs/images/architecture.png)
 
 ### Domain Model
+
+![Domain Model / ER Diagram](docs/images/erd.png)
 
 
 
@@ -105,12 +108,12 @@ The application handles authentication (JWT), background scheduling (APScheduler
 | | JWT (JSON Web Tokens for user authentication) |
 | | APScheduler | ≥3.10, <4.0 (background tasks) |
 | | python-multipart | Photo uploads |
-| | Alembic | Database migrations |
+| 
 | | email-validator | Email format validation |
 | **Database** | PostgreSQL 15 |
 |  | Docker Container (for PostgreSQL) |
 | **Environment / Secrets** | `.env` file (for DB passwords, API keys) | python-dotenv (loads `.env` into the app) |
-| **Testing** | pytest | `src/app/tests/` (119 tests) |
+| **Testing** | pytest | `src/app/tests/` (394 tests) |
 | | pytest-asyncio | Async test support |
 | | httpx | ASGI test client |
 | **Code Quality** | ruff | Linting and import sorting |
@@ -127,10 +130,6 @@ The application handles authentication (JWT), background scheduling (APScheduler
 ```
 /
 ├── backend/
-│   ├── alembic/                  # Database migrations (R1A → R1D)
-│   │   ├── env.py
-│   │   └── versions/
-│   ├── alembic.ini
 │   ├── db/init/                  # SQL init for new databases
 │   ├── docker-compose.yml        # PostgreSQL only — app runs on host
 │   ├── Dockerfile                # Production build
@@ -140,9 +139,10 @@ The application handles authentication (JWT), background scheduling (APScheduler
 │   ├── run.py                    # Cross-platform server launcher
 │   ├── scripts/
 │   │   ├── check_db.py           # Database connectivity check
+│   │   ├── clean_dev.py          # Wipe all rows (keep tables)
+│   │   ├── init_db.py            # Create all tables from ORM models
 │   │   ├── seed_dev.py           # Demo data seeder (dev only)
 │   │   ├── seed_photos/          # Tracked seed images
-│   │   └── clean_dev.py          # Wipe all rows (keep tables)
 │   ├── src/
 │   │   └── app/
 │   │       ├── api/v1/           # REST endpoints
@@ -159,11 +159,12 @@ The application handles authentication (JWT), background scheduling (APScheduler
 │   ├── src/
 │   │   ├── assets/               # Images, fonts, and other static files
 │   │   ├── components/           # Reusable UI components
-│   │   ├── data/                 # Mock data and frontend type definitions
+│   │   ├── types/                # TypeScript type definitions
+│   │   ├── mocks/                # Mock data for dev mode
 │   │   ├── pages/                # Page-level components
 │   │   ├── routes/               # Route definitions (AppRoutes.tsx)
-│   │   ├── app.css               # Global app styles
-│   │   ├── app.tsx               # Root application component
+│   │   ├── App.css               # Global app styles
+│   │   ├── App.tsx               # Root application component
 │   │   ├── index.css             # Base/reset styles
 │   │   └── main.tsx              # Application entry point
 │   ├── .gitignore
@@ -193,7 +194,7 @@ The application handles authentication (JWT), background scheduling (APScheduler
 | Python | 3.11, 3.12, or 3.13 | `python --version` |
 | Docker + Docker Compose | Docker 24+ | `docker --version` |
 
-> **Windows users:** See `backend/BACKEND_SETUP.md` for PowerShell vs Git Bash vs cmd.exe notes and a tip on adding Python to PATH during install.
+> **Windows users:** See `backend/Backend_Setup.md` for PowerShell vs Git Bash vs cmd.exe notes and a tip on adding Python to PATH during install.
 
 ### Setup
 
@@ -211,8 +212,8 @@ docker compose up -d
 docker compose ps
 
 # 4. Create and activate a Python virtual environment
-python -m venv venv_py313
-source venv_py313/bin/activate        # PowerShell: .\venv_py313\Scripts\Activate.ps1
+python -m venv venv
+source venv/bin/activate               # PowerShell: .\venv\Scripts\Activate.ps1
 
 # 5. Install dependencies
 pip install -r requirements.txt
@@ -226,8 +227,8 @@ cp .env.example .env
 python scripts/check_db.py
 # All 6 checks should report [OK]
 
-# 8. Run database migrations
-python -m alembic upgrade head
+# 8. Create database tables
+python scripts/init_db.py
 
 # 9. (Optional) Load seed data — development only
 python scripts/seed_dev.py
@@ -243,7 +244,7 @@ cd frontend
 # Flag for additional documentation on npm install and start commands
 ```
 
-For full detail on each step — including Windows-specific commands, troubleshooting, and seed user credentials — see [`backend/BACKEND_SETUP.md`](backend/BACKEND_SETUP.md).
+For full detail on each step — including Windows-specific commands, troubleshooting, and seed user credentials — see [`backend/Backend_Setup.md`](backend/Backend_Setup.md).
 
 
 # Local security tooling setup
@@ -287,7 +288,7 @@ incident (rotate/remove the credential) instead of baselining it away.
 ### Backend
 ```bash
 cd backend
-source venv_py313/bin/activate      # PowerShell: .\venv_py313\Scripts\Activate.ps1
+source venv/bin/activate             # PowerShell: .\venv\Scripts\Activate.ps1
 python run.py --reload
 ```
 - API: `http://localhost:8000`
@@ -304,7 +305,7 @@ cd frontend
 
 | Container | Image | Purpose | Port |
 |-----------|-------|---------|------|
-| `tool-share-db-1` | postgres:15 | Database | 5432 → 5432 |
+| `tool-db` | postgres:15 | Database | 5432 → 5432 |
 
 > The FastAPI app runs **on the host** via `python run.py`, not inside Docker. If `docker ps` shows a `tool-share-backend-1` container, your `docker-compose.yml` is out of date — pull the latest changes and run `docker compose up -d --remove-orphans`.
 
@@ -314,8 +315,8 @@ cd frontend
 
 ```bash
 cd backend
-source venv_py313/bin/activate
-pytest src/app/tests/ -q          # all 119 tests
+source venv/bin/activate
+pytest src/app/tests/ -q          # all 394 tests
 pytest src/app/tests/ -v          # verbose output
 pytest src/app/tests/test_auth.py -v   # single file
 ```
@@ -344,7 +345,9 @@ All endpoints are prefixed with `/api/v1`. Authentication uses a **JWT Bearer to
 | Messages | `/reservations/{id}/messages` | send and list thread messages |
 | Notifications | `/notifications` | list, mark-read |
 | Reviews | `/reviews` | create, edit (24h window), delete (24h window) |
-| Admin | `/admin` | suspend/reactivate members, audit log, moderation reports |
+| Categories | `/categories` | list, create, delete (admin-only) |
+| Reports | `/tools/{id}/report` | report a listing, admin moderation queue |
+| Admin | `/admin` | suspend/reactivate members, audit log, moderation reports, categories |
 
 Full interactive documentation is available at `http://localhost:8000/docs` when the backend is running.
 
@@ -352,7 +355,7 @@ Full interactive documentation is available at `http://localhost:8000/docs` when
 
 ## 11. Database
 
-**PostgreSQL 15** running in Docker. Schema is managed with **Alembic** migrations.
+**PostgreSQL 15** running in Docker. Schema is managed with `init_db.py` (SQLAlchemy `create_all()`).
 
 ### Key design decisions
 - **UUID primary keys** — prevents ID enumeration.
@@ -361,9 +364,9 @@ Full interactive documentation is available at `http://localhost:8000/docs` when
 - **Soft deletes** — users and tools are never hard-deleted; records are preserved for audit history.
 - **Async driver (asyncpg)** — all database access is non-blocking via SQLAlchemy's async interface.
 
-### Tables (14 total)
+### Tables (13 total)
 
-`users`, `invite_tokens`, `email_verification_tokens`, `password_reset_tokens`, `tools`, `photos`, `reservations`, `messages`, `notifications`, `reviews`, `listing_reports`, `suspension_records`, `admin_audit_log`, `listing_rules`
+`users`, `invite_tokens`, `email_verification_tokens`, `password_reset_tokens`, `tools`, `photos`, `reservations`, `messages`, `notifications`, `reviews`, `listing_reports`, `tool_categories`, `admin_audit_log`
 
 ### Reservation states
 

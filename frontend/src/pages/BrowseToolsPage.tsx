@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import AvailableToolsPage from './AvailableToolsPage';
 import ReturnedToolsPage from './ReturnedToolsPage';
-// R1 QA note: Browse Tools page is part of the frontend mock review workflow.
+
 /**
  * BrowseToolsPage
  *

@@ -60,7 +60,6 @@ alembic/__pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-coverage.xml
 
 # mypy
 .mypy_cache/
@@ -69,9 +68,6 @@ dmypy.json
 
 # ruff
 .ruff_cache/
-
-# Local working drafts — never committed.
-_local_drafts/
 
 # AI / agent tooling state — local to each machine, not for committing.
 # .omo/ holds OhMyOpenCode session continuation files.

@@ -36,11 +36,11 @@ from app.config import get_settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models.enums import (  # noqa: E402
     InviteStatus,
-    ToolCategory,
     ToolCondition,
     UserStatus,
 )
 from app.models.invite import InviteToken  # noqa: E402
+from app.models.category import Category  # noqa: E402
 from app.models.photo import Photo  # noqa: E402
 from app.models.tool import Tool  # noqa: E402
 from app.models.user import User  # noqa: E402
@@ -166,20 +166,32 @@ async def _seed(db: AsyncSession, password_hash: str) -> None:
     )
     db.add(invite)
 
+    # ── Categories (admin-managed, US28) ──
+    categories_data = [
+        ("HAND_TOOLS", "Manual tools like hammers, wrenches, screwdrivers"),
+        ("POWER_TOOLS", "Electric and battery-powered tools"),
+        ("GARDEN_TOOLS", "Outdoor gardening and yard tools"),
+        ("CLEANING_TOOLS", "Cleaning equipment and supplies"),
+        ("OUTDOOR_GEAR", "Camping, hiking, and outdoor recreation gear"),
+    ]
+    for name, desc in categories_data:
+        db.add(Category(name=name, description=desc, created_by=admin.id))
+    await db.flush()
+
     # ── Tools (one per photo we have seeded) ──
     tools_data = [
-        {"name": "Cordless Drill", "category": ToolCategory.POWER_TOOLS, "condition": ToolCondition.GOOD},
-        {"name": "Hammer", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.LIKE_NEW},
-        {"name": "Wrench", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.GOOD},
-        {"name": "Screwdriver", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.GOOD},
-        {"name": "Ladder", "category": ToolCategory.OUTDOOR_GEAR, "condition": ToolCondition.GOOD},
-        {"name": "Hand Saw", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.FAIR},
-        {"name": "Circular Saw", "category": ToolCategory.POWER_TOOLS, "condition": ToolCondition.GOOD},
-        {"name": "Pliers", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.LIKE_NEW},
-        {"name": "Tape Measure", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.GOOD},
-        {"name": "Paint Roller", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.FAIR},
-        {"name": "Rake", "category": ToolCategory.GARDEN_TOOLS, "condition": ToolCondition.FAIR},
-        {"name": "Utility Knife", "category": ToolCategory.HAND_TOOLS, "condition": ToolCondition.GOOD},
+        {"name": "Cordless Drill", "category": "POWER_TOOLS", "condition": ToolCondition.GOOD},
+        {"name": "Hammer", "category": "HAND_TOOLS", "condition": ToolCondition.LIKE_NEW},
+        {"name": "Wrench", "category": "HAND_TOOLS", "condition": ToolCondition.GOOD},
+        {"name": "Screwdriver", "category": "HAND_TOOLS", "condition": ToolCondition.GOOD},
+        {"name": "Ladder", "category": "OUTDOOR_GEAR", "condition": ToolCondition.GOOD},
+        {"name": "Hand Saw", "category": "HAND_TOOLS", "condition": ToolCondition.FAIR},
+        {"name": "Circular Saw", "category": "POWER_TOOLS", "condition": ToolCondition.GOOD},
+        {"name": "Pliers", "category": "HAND_TOOLS", "condition": ToolCondition.LIKE_NEW},
+        {"name": "Tape Measure", "category": "HAND_TOOLS", "condition": ToolCondition.GOOD},
+        {"name": "Paint Roller", "category": "HAND_TOOLS", "condition": ToolCondition.FAIR},
+        {"name": "Rake", "category": "GARDEN_TOOLS", "condition": ToolCondition.FAIR},
+        {"name": "Utility Knife", "category": "HAND_TOOLS", "condition": ToolCondition.GOOD},
     ]
 
     # Split tools across both non-admin users (odd → owner, even → borrower)
@@ -189,7 +201,7 @@ async def _seed(db: AsyncSession, password_hash: str) -> None:
         tool = Tool(
             owner_id=owner.id,
             name=td["name"],
-            description=f"A {td['category'].value.replace('_', ' ').lower()} available for sharing.",
+            description=f"A {td['category'].lower()} available for sharing.",
             category=td["category"],
             condition=td["condition"],
             is_active=True,
