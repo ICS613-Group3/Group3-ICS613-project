@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
+import { reservationsApi } from '../api/reservations';
 import {
   mockReservations,
   type MockReservation,
   type ReservationStatus,
 } from '../data/mockData';
+import type { ReservationResponse } from '../types/api';
 
 /**
  * US18 frontend demo constants.
@@ -18,6 +21,18 @@ import {
  */
 const pickupGraceDays = 3;
 const mockTodayHst = '2026-07-08';
+
+interface ReservationDisplay {
+  id: string;
+  toolId: string;
+  toolName: string;
+  borrowerName: string;
+  ownerName: string;
+  startDate: string;
+  endDate: string;
+  role: 'borrower' | 'owner';
+  message?: string;
+}
 
 /**
  * addDaysToDateString
@@ -90,90 +105,215 @@ function getPickupAutoCancelInfo(
   };
 }
 
+function normalizeBackendReservation(
+  reservation: ReservationResponse,
+): ReservationDisplay {
+  return {
+    id: reservation.id,
+    toolId: reservation.tool_id,
+    toolName: `Tool ${reservation.tool_id}`,
+    borrowerName: reservation.borrower_id,
+    ownerName: 'Owner details unavailable in reservation response',
+    startDate: reservation.start_date,
+    endDate: reservation.end_date,
+    role: 'borrower',
+    message: '',
+  };
+}
+
 /**
  * ReservationDetailPage
  *
- * This page shows one reservation and mock action buttons.
- * The buttons simulate the reservation lifecycle for R1:
+ * This page shows one reservation and workflow action buttons.
  *
- * REQUESTED -> APPROVED / DENIED
- * APPROVED -> PICKED_UP
- * PICKED_UP -> RETURNED
- *
- * PR #131 review fix:
- * - When a reservation reaches RETURNED status, show a real "Leave Review"
- *   link instead of a disabled "Leave Review Coming Next" button.
- *
- * US18 added:
- * - Shows overdue pickup indicator.
- * - Shows detailed auto-cancel notice.
- * - Provides a mock auto-cancel action for demo purposes only.
- *
- * Later backend behavior:
- * - Ivan can connect each action button to backend API endpoints.
- * - The review link can stay the same because it already matches the route:
- *   /reservations/:reservationId/review
- * - Celery/backend job can perform the real US18 auto-cancel.
+ * Issue #47:
+ * - Confirm Return now calls the real backend mark-returned endpoint for
+ *   backend reservation IDs.
+ * - Original frontend mock reservation IDs still use local state so the demo
+ *   remains usable without a seeded backend record.
  */
 function ReservationDetailPage() {
-  // Read reservationId from the route path: /reservations/:reservationId
   const { reservationId } = useParams();
 
-  // Find selected reservation from mock data.
   const reservation = mockReservations.find(
     (mockReservation) => mockReservation.id === reservationId,
   );
 
-  /**
-   * Local status state lets the demo update status without backend persistence.
-   *
-   * If the reservation exists, start with the mock reservation status.
-   * If the reservation does not exist, fall back to REQUESTED.
-   */
   const [currentStatus, setCurrentStatus] = useState<ReservationStatus>(
     reservation?.status ?? 'REQUESTED',
   );
 
-  // Message shown after a mock action button is clicked.
   const [actionMessage, setActionMessage] = useState('');
+  const [isConfirmingReturn, setIsConfirmingReturn] = useState(false);
+  const [returnErrorMessage, setReturnErrorMessage] = useState('');
 
-  /**
-   * Converts backend-style status values into readable text.
-   *
-   * Example:
-   * PICKED_UP -> PICKED UP
-   */
+  const [backendReservation, setBackendReservation] =
+    useState<ReservationResponse | null>(null);
+  const [isLoadingBackendReservation, setIsLoadingBackendReservation] =
+    useState(false);
+  const [backendReservationError, setBackendReservationError] = useState('');
+
   const formatStatus = (status: ReservationStatus) => {
     return status.replace('_', ' ');
   };
 
   /**
-   * Updates local status for the mock demo.
+   * Issue #47 backend reservation loading.
    *
-   * This simulates a backend response for the R1 frontend demo.
-   * A page refresh will reset the status back to the original mock data.
+   * The original page was mock-only. This keeps mock reservations working,
+   * but also loads real backend reservations when the URL uses a backend ID.
    */
+  useEffect(() => {
+    const backendReservationId = reservationId ?? '';
+
+    if (
+      reservation ||
+      !backendReservationId ||
+      backendReservationId.startsWith('reservation-')
+    ) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadBackendReservation() {
+      setIsLoadingBackendReservation(true);
+      setBackendReservationError('');
+
+      try {
+        const loadedReservation = await reservationsApi.get(
+          backendReservationId,
+        );
+
+        if (!isMounted) {
+          return;
+        }
+
+        setBackendReservation(loadedReservation);
+        setCurrentStatus(loadedReservation.state as ReservationStatus);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setBackendReservationError(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : 'Unable to load this reservation from the backend.',
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoadingBackendReservation(false);
+        }
+      }
+    }
+
+    void loadBackendReservation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reservation, reservationId]);
+
   const handleStatusChange = (
     nextStatus: ReservationStatus,
     message: string,
   ) => {
     setCurrentStatus(nextStatus);
     setActionMessage(message);
+    setReturnErrorMessage('');
   };
 
   /**
-   * Friendly error page for an invalid reservation ID.
+   * Issue #47 Confirm Tool Return.
    *
-   * This prevents the app from crashing if a user opens a bad URL.
+   * Calls the real backend mark-returned endpoint and updates this page from
+   * the returned reservation state.
    */
-  if (!reservation) {
+  async function handleConfirmReturn() {
+    setActionMessage('');
+    setReturnErrorMessage('');
+
+    const activeReservationId = reservation?.id ?? backendReservation?.id;
+
+    if (!activeReservationId) {
+      setReturnErrorMessage('Reservation not found.');
+      return;
+    }
+
+    const isFrontendMockReservation =
+      activeReservationId.startsWith('reservation-');
+
+    if (isFrontendMockReservation) {
+      handleStatusChange(
+        'RETURNED',
+        'Mock return confirmed. Status changed to RETURNED.',
+      );
+      return;
+    }
+
+    setIsConfirmingReturn(true);
+
+    try {
+      const updatedReservation = await reservationsApi.markReturned(
+        activeReservationId,
+      );
+
+      setBackendReservation(updatedReservation);
+      setCurrentStatus(updatedReservation.state as ReservationStatus);
+      setActionMessage(
+        updatedReservation.returned_at
+          ? 'Return confirmed. Status changed to RETURNED and return timestamp was saved.'
+          : 'Return confirmed. Status changed to RETURNED.',
+      );
+    } catch (error) {
+      setReturnErrorMessage(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'Unable to confirm return. Please try again.',
+      );
+    } finally {
+      setIsConfirmingReturn(false);
+    }
+  }
+
+  const displayReservation: ReservationDisplay | null = reservation
+    ? {
+        id: reservation.id,
+        toolId: reservation.toolId,
+        toolName: reservation.toolName,
+        borrowerName: reservation.borrowerName,
+        ownerName: reservation.ownerName,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        role: reservation.role,
+        message: reservation.message,
+      }
+    : backendReservation
+      ? normalizeBackendReservation(backendReservation)
+      : null;
+
+  if (isLoadingBackendReservation) {
+    return (
+      <section className="page-section">
+        <div className="empty-state-card">
+          <p className="eyebrow">Reservation Detail</p>
+          <h1>Loading reservation</h1>
+          <p>Loading this reservation from the backend...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!displayReservation) {
     return (
       <section className="page-section">
         <div className="empty-state-card">
           <p className="eyebrow">Reservation Not Found</p>
           <h1>We could not find this reservation.</h1>
           <p>
-            The selected reservation may not exist in the current mock data.
+            {backendReservationError ||
+              'The selected reservation may not exist in the current mock data or backend.'}
           </p>
           <Link className="primary-link narrow-link" to="/reservations">
             Back to Reservations
@@ -183,43 +323,38 @@ function ReservationDetailPage() {
     );
   }
 
-  // Determine which mock role this reservation is using for demo actions.
-  const isBorrower = reservation.role === 'borrower';
-  const isOwner = reservation.role === 'owner';
+  const isBorrower = displayReservation.role === 'borrower';
+  const isOwner = displayReservation.role === 'owner';
 
-  // US18 auto-cancel notice information for this reservation.
-  const autoCancelInfo = getPickupAutoCancelInfo(reservation, currentStatus);
+  const autoCancelInfo = reservation
+    ? getPickupAutoCancelInfo(reservation, currentStatus)
+    : null;
 
   return (
     <section className="page-section">
-      {/* Page header */}
       <div className="page-header">
         <div>
           <p className="eyebrow">Reservation Detail</p>
-          <h1>{reservation.toolName}</h1>
+          <h1>{displayReservation.toolName}</h1>
           <p className="page-description">
-            Review this reservation and test the mock R1 workflow actions for
-            borrower and owner roles.
+            Review this reservation and test workflow actions for borrower and
+            owner roles.
           </p>
         </div>
 
-        {/* Back link to the reservation list */}
         <Link className="secondary-link" to="/reservations">
           Back to Reservations
         </Link>
       </div>
 
-      {/* Main reservation detail layout */}
       <div className="reservation-detail-grid">
-        {/* Reservation information card */}
         <article className="reservation-detail-card">
-          {/* Reservation title and status */}
           <div className="reservation-card-header">
             <div>
               <p className="eyebrow">
                 {isOwner ? 'Owner Workflow' : 'Borrower Workflow'}
               </p>
-              <h2>{reservation.toolName}</h2>
+              <h2>{displayReservation.toolName}</h2>
             </div>
 
             <span
@@ -229,26 +364,25 @@ function ReservationDetailPage() {
             </span>
           </div>
 
-          {/* Reservation metadata */}
           <dl className="reservation-meta-grid detail-meta-grid">
             <div>
               <dt>Borrower</dt>
-              <dd>{reservation.borrowerName}</dd>
+              <dd>{displayReservation.borrowerName}</dd>
             </div>
 
             <div>
               <dt>Owner</dt>
-              <dd>{reservation.ownerName}</dd>
+              <dd>{displayReservation.ownerName}</dd>
             </div>
 
             <div>
               <dt>Start Date</dt>
-              <dd>{reservation.startDate}</dd>
+              <dd>{displayReservation.startDate}</dd>
             </div>
 
             <div>
               <dt>End Date</dt>
-              <dd>{reservation.endDate}</dd>
+              <dd>{displayReservation.endDate}</dd>
             </div>
 
             <div>
@@ -259,14 +393,13 @@ function ReservationDetailPage() {
             <div>
               <dt>Tool Link</dt>
               <dd>
-                <Link to={`/tools/${reservation.toolId}`}>
+                <Link to={`/tools/${displayReservation.toolId}`}>
                   View Tool Detail
                 </Link>
               </dd>
             </div>
           </dl>
 
-          {/* US18 detailed auto-cancel notice. */}
           {autoCancelInfo && (
             <section
               className={
@@ -285,9 +418,16 @@ function ReservationDetailPage() {
 
               <ul>
                 <li>Mock today: {mockTodayHst} HST</li>
-                <li>Reservation start date: {reservation.startDate}</li>
-                <li>Pickup grace deadline: {autoCancelInfo.graceDeadline} HST</li>
-                <li>Auto-cancel evaluation date: {autoCancelInfo.autoCancelDate} HST</li>
+                <li>
+                  Reservation start date: {displayReservation.startDate}
+                </li>
+                <li>
+                  Pickup grace deadline: {autoCancelInfo.graceDeadline} HST
+                </li>
+                <li>
+                  Auto-cancel evaluation date: {autoCancelInfo.autoCancelDate}{' '}
+                  HST
+                </li>
               </ul>
 
               {autoCancelInfo.isOverdue ? (
@@ -305,34 +445,35 @@ function ReservationDetailPage() {
             </section>
           )}
 
-          {/* Optional borrower request message */}
-          {reservation.message && (
+          {displayReservation.message && (
             <div className="info-panel">
               <h3>Request Message</h3>
-              <p>{reservation.message}</p>
+              <p>{displayReservation.message}</p>
             </div>
           )}
 
-          {/* Success/status message after mock action */}
           {actionMessage && (
             <div className="success-message" role="status">
               {actionMessage}
             </div>
           )}
+
+          {returnErrorMessage && (
+            <p className="form-error" role="alert">
+              {returnErrorMessage}
+            </p>
+          )}
         </article>
 
-        {/* Workflow action panel */}
         <aside className="workflow-actions-card">
           <p className="eyebrow">Workflow Actions</p>
           <h2>Available Actions</h2>
           <p>
-            These buttons are mock frontend actions. They update the status on
-            this page only. A page refresh will reset the mock data.
+            Confirm Return calls the backend for real reservations. The other
+            workflow buttons remain mock frontend actions for the demo.
           </p>
 
-          {/* Workflow buttons change based on status and role */}
           <div className="workflow-action-list">
-            {/* Owner can approve or deny REQUESTED reservations */}
             {currentStatus === 'REQUESTED' && isOwner && (
               <>
                 <button
@@ -363,7 +504,6 @@ function ReservationDetailPage() {
               </>
             )}
 
-            {/* Borrower can cancel REQUESTED reservations */}
             {currentStatus === 'REQUESTED' && isBorrower && (
               <button
                 type="button"
@@ -379,7 +519,6 @@ function ReservationDetailPage() {
               </button>
             )}
 
-            {/* Borrower can confirm pickup or cancel before pickup when APPROVED */}
             {currentStatus === 'APPROVED' && isBorrower && (
               <>
                 <button
@@ -410,7 +549,6 @@ function ReservationDetailPage() {
               </>
             )}
 
-            {/* Owner can cancel an APPROVED reservation */}
             {currentStatus === 'APPROVED' && isOwner && (
               <button
                 type="button"
@@ -426,7 +564,6 @@ function ReservationDetailPage() {
               </button>
             )}
 
-            {/* US18 mock auto-cancel action for overdue APPROVED reservation. */}
             {autoCancelInfo?.isOverdue && (
               <button
                 type="button"
@@ -442,33 +579,28 @@ function ReservationDetailPage() {
               </button>
             )}
 
-            {/* Borrower can confirm return when PICKED_UP */}
             {currentStatus === 'PICKED_UP' && isBorrower && (
               <button
                 type="button"
                 className="action-button approve-button"
-                onClick={() =>
-                  handleStatusChange(
-                    'RETURNED',
-                    'Return confirmed. Status changed to RETURNED.',
-                  )
-                }
+                onClick={() => void handleConfirmReturn()}
+                disabled={isConfirmingReturn}
               >
-                Confirm Return
+                {isConfirmingReturn
+                  ? 'Confirming Return...'
+                  : 'Confirm Return'}
               </button>
             )}
 
-            {/* PR #131 review fix: RETURNED reservations now link to ReviewPage */}
             {currentStatus === 'RETURNED' && (
               <Link
                 className="action-button approve-button workflow-review-link"
-                to={`/reservations/${reservation.id}/review`}
+                to={`/reservations/${displayReservation.id}/review`}
               >
                 Leave Review
               </Link>
             )}
 
-            {/* Closed states show a message instead of action buttons */}
             {(currentStatus === 'DENIED' || currentStatus === 'CANCELLED') && (
               <p className="closed-workflow-message">
                 This reservation is closed. No further action is available.
@@ -476,9 +608,8 @@ function ReservationDetailPage() {
             )}
           </div>
 
-          {/* R1 story coverage note */}
           <div className="workflow-note">
-            <h3>R1 stories covered</h3>
+            <h3>Stories covered</h3>
             <ul>
               <li>US14 Owner Approve / Deny</li>
               <li>US17 Borrower Confirm Pickup</li>
