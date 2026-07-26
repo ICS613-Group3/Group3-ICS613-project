@@ -1,67 +1,267 @@
-// Import React runtime hook for local page state.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-// Import React types only for event typing.
-import type { ChangeEvent, FormEvent } from 'react';
+import type {
+  ChangeEvent,
+  FormEvent,
+} from 'react';
 
-// Import routing helpers for access control and dashboard redirect.
-import { Navigate, useNavigate } from 'react-router-dom';
+import {
+  Navigate,
+  useNavigate,
+} from 'react-router-dom';
 
-// Import the existing authenticated profile API.
 import { authApi } from '../api/auth';
+import {
+  ApiRequestError,
+  clearTokens,
+  hasTokens,
+} from '../api/client';
 
-// Maximum display-name length for frontend validation.
 const maxDisplayNameLength = 40;
-
-// Maximum profile-photo size: 2 MB.
+const maxNeighborhoodLength = 255;
 const maxPhotoSizeBytes = 2 * 1024 * 1024;
 
-// Allowed profile-photo MIME types.
-const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedPhotoTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
+
+const mockAuthKey = 'mockAuthStatus';
+const mockProfileKey = 'mockUserProfile';
+
+const isMockMode =
+  import.meta.env.VITE_USE_MOCKS === 'true';
+
+interface CachedProfile {
+  userId?: string;
+  displayName?: string;
+  bio?: string;
+  neighborhood?: string;
+  photoFileName?: string;
+  profileSetupComplete?: boolean;
+}
+
+/**
+ * Read the temporary frontend profile cache safely.
+ *
+ * The backend remains authoritative for fields saved through PUT /auth/me.
+ * This cache preserves mock compatibility and records that setup was
+ * completed for a specific authenticated user.
+ */
+function readCachedProfile(): CachedProfile | null {
+  const savedProfile = localStorage.getItem(mockProfileKey);
+
+  if (!savedProfile) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedProfile) as CachedProfile;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * ProfileSetupPage
  *
- * Frontend issues covered:
- * - #95 Save the profile and redirect to the member dashboard.
- * - #97 Display validation message for missing display name.
- * - #98 Display maximum character limit message.
- * - #99 Display profile photo constraint error message.
- * - #100 Redirect unauthenticated user to login page.
- *
- * Current behavior:
- * - Uses the existing mock login-status check.
+ * Issue #32 / User Story 5:
+ * - Requires a display name.
+ * - Supports optional bio and neighborhood.
+ * - Validates an optional profile-photo selection.
+ * - Verifies authenticated API sessions through GET /auth/me.
  * - Saves supported profile fields through PUT /auth/me.
- * - Redirects only after the backend confirms the save.
- * - Keeps a local profile copy for compatibility with mock frontend pages.
+ * - Redirects unauthenticated users to Login.
+ * - Redirects a user who already completed setup to Edit Profile.
+ * - Redirects to Dashboard only after a successful save.
  *
- * Backend limitation:
- * - The current API does not support uploading a profile-photo file.
+ * Backend limitations:
+ * - The current API does not provide profile-photo file upload.
+ * - UserProfile does not expose an explicit profile-completed field.
  */
 function ProfileSetupPage() {
   const navigate = useNavigate();
 
-  // Existing mock authentication compatibility.
-  const mockAuthKey = 'mockAuthStatus';
-  const mockProfileKey = 'mockUserProfile';
+  const hasApiSession = hasTokens();
 
-  const isLoggedIn =
+  const hasMockSession =
+    isMockMode &&
     localStorage.getItem(mockAuthKey) === 'logged-in';
 
-  const [displayName, setDisplayName] = useState('Yafei Wang');
+  const isAuthenticated =
+    hasApiSession || hasMockSession;
+
+  const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [photoFileName, setPhotoFileName] = useState('');
+
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const [isCheckingProfile, setIsCheckingProfile] =
+    useState(true);
+
   const [isSaving, setIsSaving] = useState(false);
 
-  // Issue #100: redirect unauthenticated users to Login.
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
-  }
+  const [redirectToLogin, setRedirectToLogin] =
+    useState(!isAuthenticated);
 
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+  const [redirectToEdit, setRedirectToEdit] =
+    useState(false);
+
+  /**
+   * Validate the session, load the current backend profile, and determine
+   * whether this specific user has already completed frontend profile setup.
+   */
+  useEffect(() => {
+    let ignoreResult = false;
+
+    async function initializeProfile() {
+      if (!isAuthenticated) {
+        /**
+         * Remove a stale compatibility flag when the real application
+         * no longer has an authenticated API session.
+         */
+        if (!isMockMode) {
+          localStorage.removeItem(mockAuthKey);
+
+          window.dispatchEvent(
+            new Event('mock-auth-change'),
+          );
+        }
+
+        if (!ignoreResult) {
+          setRedirectToLogin(true);
+          setIsCheckingProfile(false);
+        }
+
+        return;
+      }
+
+      const cachedProfile = readCachedProfile();
+
+      /**
+       * Temporary mock-only compatibility.
+       *
+       * Mock sessions do not have a backend user ID, so the existing
+       * frontend completion marker is used.
+       */
+      if (!hasApiSession) {
+        if (!ignoreResult && cachedProfile) {
+          setDisplayName(cachedProfile.displayName ?? '');
+          setBio(cachedProfile.bio ?? '');
+          setNeighborhood(cachedProfile.neighborhood ?? '');
+          setPhotoFileName(cachedProfile.photoFileName ?? '');
+
+          if (cachedProfile.profileSetupComplete) {
+            setRedirectToEdit(true);
+          }
+        }
+
+        if (!ignoreResult) {
+          setIsCheckingProfile(false);
+        }
+
+        return;
+      }
+
+      try {
+        const currentUser = await authApi.me();
+
+        if (ignoreResult) {
+          return;
+        }
+
+        /**
+         * Completion markers are matched to the authenticated backend user
+         * so another account cannot inherit a stale browser marker.
+         */
+        const setupAlreadyCompleted =
+          cachedProfile?.profileSetupComplete === true &&
+          cachedProfile.userId === currentUser.id;
+
+        if (setupAlreadyCompleted) {
+          setRedirectToEdit(true);
+          return;
+        }
+
+        setDisplayName(
+          currentUser.full_name ??
+          cachedProfile?.displayName ??
+          '',
+        );
+
+        setBio(
+          currentUser.bio ??
+          cachedProfile?.bio ??
+          '',
+        );
+
+        setNeighborhood(
+          currentUser.neighborhood ??
+          cachedProfile?.neighborhood ??
+          '',
+        );
+
+        setPhotoFileName(
+          cachedProfile?.photoFileName ?? '',
+        );
+      } catch (error) {
+        if (ignoreResult) {
+          return;
+        }
+
+        if (
+          error instanceof ApiRequestError &&
+          error.status === 401
+        ) {
+          clearTokens();
+          localStorage.removeItem(mockAuthKey);
+
+          window.dispatchEvent(
+            new Event('auth-change'),
+          );
+
+          window.dispatchEvent(
+            new Event('mock-auth-change'),
+          );
+
+          setRedirectToLogin(true);
+          return;
+        }
+
+        setErrorMessage(
+          error instanceof ApiRequestError
+            ? error.detail
+            : 'Unable to load your profile. You may still enter your profile information and try saving.',
+        );
+      } finally {
+        if (!ignoreResult) {
+          setIsCheckingProfile(false);
+        }
+      }
+    }
+
+    void initializeProfile();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [hasApiSession, isAuthenticated]);
+
+  /**
+   * Validate the optional profile-photo selection.
+   *
+   * Invalid files are cleared without changing display name, bio,
+   * or neighborhood state.
+   */
+  function handlePhotoChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     setErrorMessage('');
+    setSuccessMessage('');
 
     const selectedFile = event.target.files?.[0];
 
@@ -73,24 +273,34 @@ function ProfileSetupPage() {
     if (!allowedPhotoTypes.includes(selectedFile.type)) {
       setPhotoFileName('');
       event.target.value = '';
+
       setErrorMessage(
         'Profile photo must be a JPG, PNG, or WebP image.',
       );
+
       return;
     }
 
     if (selectedFile.size > maxPhotoSizeBytes) {
       setPhotoFileName('');
       event.target.value = '';
+
       setErrorMessage(
         'Profile photo must be 2 MB or smaller.',
       );
+
       return;
     }
 
     setPhotoFileName(selectedFile.name);
   }
 
+  /**
+   * Save the supported profile fields.
+   *
+   * Real API sessions use PUT /auth/me. Mock-only sessions retain
+   * frontend demo compatibility.
+   */
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -103,73 +313,184 @@ function ProfileSetupPage() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    const normalizedDisplayName = displayName.trim();
-    const normalizedBio = bio.trim();
+    const normalizedDisplayName =
+      displayName.trim();
 
-    // Issue #97: display name is required.
+    const normalizedBio =
+      bio.trim();
+
+    const normalizedNeighborhood =
+      neighborhood.trim();
+
     if (!normalizedDisplayName) {
-      setErrorMessage('Display name is required.');
+      setErrorMessage(
+        'Display name is required.',
+      );
+
       return;
     }
 
-    // Issue #98: display name cannot exceed 40 characters.
-    if (normalizedDisplayName.length > maxDisplayNameLength) {
+    if (
+      normalizedDisplayName.length >
+      maxDisplayNameLength
+    ) {
       setErrorMessage(
         `Display name must be ${maxDisplayNameLength} characters or fewer.`,
       );
+
+      return;
+    }
+
+    if (
+      normalizedNeighborhood.length >
+      maxNeighborhoodLength
+    ) {
+      setErrorMessage(
+        `Neighborhood must be ${maxNeighborhoodLength} characters or fewer.`,
+      );
+
       return;
     }
 
     setIsSaving(true);
 
     try {
-      // Save the profile through the existing PUT /auth/me API.
-      await authApi.updateMe({
-        full_name: normalizedDisplayName,
-        bio: normalizedBio || null,
-      });
+      let savedUserId: string | undefined;
 
-      // Preserve compatibility with existing mock frontend pages.
-      // Failure to write this optional cache must not override a
-      // successful backend profile save.
-      try {
+      if (hasApiSession) {
+        const savedProfile =
+          await authApi.updateMe({
+            full_name: normalizedDisplayName,
+            bio: normalizedBio || null,
+            neighborhood:
+              normalizedNeighborhood || null,
+          });
+
+        savedUserId = savedProfile.id;
+      } else if (!hasMockSession) {
+        setRedirectToLogin(true);
+        return;
+      }
+
+      const cachedProfile: CachedProfile = {
+        userId: savedUserId,
+        displayName: normalizedDisplayName,
+        bio: normalizedBio,
+        neighborhood: normalizedNeighborhood,
+        photoFileName,
+        profileSetupComplete: true,
+      };
+
+      /**
+       * For API sessions, cache failure must not override a successful
+       * backend save. For mock-only sessions, localStorage is the save.
+       */
+      if (hasApiSession) {
+        try {
+          localStorage.setItem(
+            mockProfileKey,
+            JSON.stringify(cachedProfile),
+          );
+        } catch {
+          // The backend profile save is authoritative.
+        }
+      } else {
         localStorage.setItem(
           mockProfileKey,
-          JSON.stringify({
-            displayName: normalizedDisplayName,
-            bio: normalizedBio,
-            photoFileName,
-            profileSetupComplete: true,
-          }),
+          JSON.stringify(cachedProfile),
         );
-      } catch {
-        // The backend save is authoritative.
       }
 
       setSuccessMessage(
         'Profile saved successfully. Redirecting to dashboard...',
       );
 
-      // Issue #95: redirect only after successful profile persistence.
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard', {
+        replace: true,
+      });
     } catch (error) {
-      const message =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Unable to save your profile. Please try again.';
+      if (
+        error instanceof ApiRequestError &&
+        error.status === 401
+      ) {
+        clearTokens();
+        localStorage.removeItem(mockAuthKey);
 
-      setErrorMessage(message);
+        window.dispatchEvent(
+          new Event('auth-change'),
+        );
+
+        window.dispatchEvent(
+          new Event('mock-auth-change'),
+        );
+
+        setRedirectToLogin(true);
+        return;
+      }
+
+      setErrorMessage(
+        error instanceof ApiRequestError
+          ? error.detail
+          : error instanceof Error &&
+              error.message.trim()
+            ? error.message
+            : 'Unable to save your profile. Please try again.',
+      );
     } finally {
       setIsSaving(false);
     }
+  }
+
+  if (redirectToLogin) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
+  }
+
+  if (redirectToEdit) {
+    return (
+      <Navigate
+        to="/profile/edit"
+        replace
+      />
+    );
+  }
+
+  if (isCheckingProfile) {
+    return (
+      <section className="page-section">
+        <div className="empty-state-card">
+          <p className="eyebrow">
+            Profile Setup
+          </p>
+
+          <h1>
+            Checking your profile...
+          </h1>
+
+          <p>
+            Confirming your authenticated member profile before setup.
+          </p>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="page-section">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Profile Setup</p>
-          <h1>Set Up Your Profile</h1>
+          <p className="eyebrow">
+            Profile Setup
+          </p>
+
+          <h1>
+            Set Up Your Profile
+          </h1>
+
           <p className="page-description">
             Complete your member profile before using the
             tool-sharing dashboard.
@@ -184,10 +505,13 @@ function ProfileSetupPage() {
           noValidate
           aria-busy={isSaving}
         >
-          <h2>Member Profile</h2>
+          <h2>
+            Member Profile
+          </h2>
 
           <label htmlFor="profile-display-name">
             Display Name
+
             <input
               id="profile-display-name"
               type="text"
@@ -202,24 +526,48 @@ function ProfileSetupPage() {
           </label>
 
           <p className="auth-helper-text">
-            {displayName.trim().length}/{maxDisplayNameLength}
-            {' '}characters
+            {displayName.trim().length}/
+            {maxDisplayNameLength} characters
           </p>
 
           <label htmlFor="profile-bio">
             Short Bio
+
             <textarea
               id="profile-bio"
               value={bio}
-              onChange={(event) => setBio(event.target.value)}
+              onChange={(event) =>
+                setBio(event.target.value)
+              }
               rows={4}
               placeholder="Tell neighbors a little about yourself."
               disabled={isSaving}
             />
           </label>
 
+          <label htmlFor="profile-neighborhood">
+            Neighborhood or Location
+
+            <input
+              id="profile-neighborhood"
+              type="text"
+              value={neighborhood}
+              onChange={(event) =>
+                setNeighborhood(event.target.value)
+              }
+              maxLength={maxNeighborhoodLength}
+              placeholder="For example: Manoa, Kaimuki, or Honolulu"
+              disabled={isSaving}
+            />
+          </label>
+
+          <p className="auth-helper-text">
+            Optional. This location may appear on your public member profile.
+          </p>
+
           <label htmlFor="profile-photo">
             Profile Photo
+
             <input
               id="profile-photo"
               type="file"
@@ -240,22 +588,33 @@ function ProfileSetupPage() {
             type="submit"
             disabled={isSaving}
           >
-            {isSaving ? 'Saving Profile...' : 'Save Profile'}
+            {isSaving
+              ? 'Saving Profile...'
+              : 'Save Profile'}
           </button>
 
           <div aria-live="polite">
             {errorMessage && (
-              <p className="form-error">{errorMessage}</p>
+              <p
+                className="form-error"
+                role="alert"
+              >
+                {errorMessage}
+              </p>
             )}
 
             {successMessage && (
-              <p className="form-success">{successMessage}</p>
+              <p className="form-success">
+                {successMessage}
+              </p>
             )}
           </div>
         </form>
 
         <aside className="profile-card profile-preview-card">
-          <h2>Profile Preview</h2>
+          <h2>
+            Profile Preview
+          </h2>
 
           <div className="profile-avatar-preview">
             {photoFileName
@@ -264,15 +623,31 @@ function ProfileSetupPage() {
           </div>
 
           <h3>
-            {displayName.trim() || 'Display Name Required'}
+            {displayName.trim() ||
+              'Display Name Required'}
           </h3>
 
           <p>
-            {bio.trim() || 'Your short bio will appear here.'}
+            {bio.trim() ||
+              'Your short bio will appear here.'}
           </p>
 
+          <dl className="public-profile-detail-list">
+            <div>
+              <dt>
+                Neighborhood
+              </dt>
+
+              <dd>
+                {neighborhood.trim() ||
+                  'Not provided'}
+              </dd>
+            </div>
+          </dl>
+
           <p className="auth-helper-text">
-            Photo file: {photoFileName || 'No photo selected'}
+            Photo file:{' '}
+            {photoFileName || 'No photo selected'}
           </p>
         </aside>
       </div>
