@@ -82,7 +82,26 @@ function CreateToolPage() {
       setSuccessMessage(`Tool listing created: ${created.name}`);
       setTimeout(() => navigate(`/tools/${created.id}`), 1500);
     } catch (err) {
-      setErrorMessage(err instanceof ApiRequestError ? err.detail : 'Failed to create tool.');
+      if (err instanceof ApiRequestError) {
+        const normalizedError = `${err.errorCode} ${err.detail}`
+          .toLowerCase()
+          .replace(/[_-]/g, ' ');
+
+        const isDuplicateToolNameError =
+          err.status === 409 ||
+          normalizedError.includes('duplicate') ||
+          normalizedError.includes('already exists') ||
+          normalizedError.includes('already have a listing') ||
+          normalizedError.includes('same name');
+
+        setErrorMessage(
+          isDuplicateToolNameError
+            ? 'You already have a listing with that name.'
+            : err.detail,
+        );
+      } else {
+        setErrorMessage('Failed to create tool.');
+      }
     } finally {
       setIsSubmitting(false);
     }
