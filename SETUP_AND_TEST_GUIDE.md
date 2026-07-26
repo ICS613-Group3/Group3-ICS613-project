@@ -40,13 +40,13 @@ If any check fails, install that program before continuing.
 ## 2. Clone the repository
 
 ```bash
-git clone https://github.com/rionhawaii/Group3-ICS613.git
-cd Group3-ICS613
+git clone https://github.com/ICS613-Group3/Group3-ICS613-project.git
+cd Group3-ICS613-project
 ```
 
 ```cmd
-git clone https://github.com/rionhawaii/Group3-ICS613.git
-cd Group3-ICS613
+git clone https://github.com/ICS613-Group3/Group3-ICS613-project.git
+cd Group3-ICS613-project
 ```
 
 All paths in this guide are relative to the repository root.
@@ -527,7 +527,7 @@ cd backend
 pytest src/app/tests -q
 ```
 
-Expected: all tests pass (currently 394 tests collected).
+Expected: all tests pass (currently 392 tests: 241 acceptance + 151 unit/integration).
 
 ### 8.2 Frontend checks
 
@@ -675,4 +675,4 @@ npm run dev
 
 ---
 
-*Last updated: 2026-07-23 by Hermes. Fixed test counts (394), corrected US number mapping (US22-US34), fixed docker-compose container_name and pgadmin, and added messaging flow.*
+*Last updated: 2026-07-25. Updated repo URL to ICS613-Group3, fixed test counts (392: 241 acceptance + 151 unit/integration), updated test ownership table.*

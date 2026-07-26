@@ -69,8 +69,8 @@ To run a single command with an env var in cmd, wrap in a subshell:
 ## 3. Clone and enter the project
 
 ```powershell
-git clone https://github.com/rionhawaii/Group3-ICS613.git
-cd Group3-ICS613\backend
+git clone https://github.com/ICS613-Group3/Group3-ICS613-project.git
+cd Group3-ICS613-project\\backend
 ```
 
 All remaining commands run from `backend\`.
@@ -344,7 +344,7 @@ python run.py --help    # full uvicorn CLI help
 pytest src/app/tests/ -q
 ```
 
-All 198 tests should pass. The test database (`toolsharing_test`) is created automatically by `db/init/00-create-test-db.sql` when the Docker container first starts. `pyproject.toml` configures `pythonpath = ["src"]` and the test conftest sets default env vars, so no `PYTHONPATH` or `.env` setup is needed.
+All 392 tests should pass. The test database (`toolsharing_test`) is created automatically by `db/init/00-create-test-db.sql` when the Docker container first starts. `pyproject.toml` configures `pythonpath = ["src"]` and the test conftest sets default env vars, so no `PYTHONPATH` or `.env` setup is needed.
 
 Run a single test file:
 
@@ -354,17 +354,21 @@ pytest src/app/tests/test_auth.py -v
 
 ### What these tests cover (and what they do NOT cover)
 
-The 198 tests in `src/app/tests/` are **unit and integration tests** written by the backend lead. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
+The 392 tests in `src/app/tests/` are **unit, integration, and acceptance tests**. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
 
-**These tests do NOT cover user-facing acceptance scenarios.** The QA lead (Nick) owns the manual acceptance test cases — one per user story scenario (positive, negative, edge cases). Those are separate deliverables documented outside this repo (typically a `.docx` checklist) and are what the team walks through during the 7/6 demo.
+**Test breakdown:**
+- 151 unit/integration tests (`src/app/tests/` except `acceptance/`) — verify API endpoint behavior
+- 241 acceptance tests (`src/app/tests/acceptance/`) — verify user story scenarios via API calls
+
+**These tests cover user-facing acceptance scenarios.** Each acceptance test file maps 1:1 to a user story (US01–US34 + admin invite) with one class per scenario, following the convention in `src/app/tests/acceptance/__init__.py`.
 
 In short:
 
 | Test type | Owner | Purpose | Where it lives |
 |-----------|-------|---------|----------------|
-| Unit / integration tests | Backend lead | Verify each API endpoint behaves correctly | `src/app/tests/` (pytest, automated) |
-| Manual acceptance test cases | QA lead | Verify each user story scenario from a member's perspective | Separate document, not in code |
-| E2E browser automation | QA lead | Drive a full demo path through the UI | Playwright or similar, future work |
+|| Unit / integration tests | Backend lead | Verify each API endpoint behaves correctly | `src/app/tests/` except `acceptance/` (151 tests) |
+|| Acceptance tests | QA lead | Verify user story scenarios via API calls | `src/app/tests/acceptance/` (241 tests, pytest) |
+|| E2E browser automation | QA lead | Drive a full demo path through the UI | `manual_test/` (Playwright, local only) |
 
 If you change backend code, run the pytest suite to make sure the unit tests still pass. The QA lead's manual acceptance tests are a separate, complementary check.
 
@@ -494,7 +498,7 @@ backend/
 │       ├── models/           # SQLAlchemy ORM models (13 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── services/         # Business logic layer
-│       └── tests/            # Test suite (198 tests)
+│       └── tests/            # Test suite (392 tests: 241 acceptance + 151 unit/integration)
 ├── .env                      # Your local environment (gitignored)
 └── .env.example              # Safe template for .env
 ```
