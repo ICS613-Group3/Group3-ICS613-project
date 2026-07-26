@@ -40,7 +40,7 @@ If any check fails, install that program before continuing.
 ## 2. Clone the repository
 
 ```bash
-git clone https://github.com/rionhawaii/Group3-ICS613.git
+git clone https://github.com/ICS613-Group3/Group3-ICS613-project
 cd Group3-ICS613
 ```
 
@@ -675,4 +675,4 @@ npm run dev
 
 ---
 
-*Last updated: 2026-07-23 by Hermes. Fixed test counts (394), corrected US number mapping (US22-US34), fixed docker-compose container_name and pgadmin, and added messaging flow.*
+*Last updated: 2026-07-23. Fixed test counts (394), corrected US number mapping (US22-US34), fixed docker-compose container_name and pgadmin, and added messaging flow.*
