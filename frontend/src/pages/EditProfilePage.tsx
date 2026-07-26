@@ -1,351 +1,852 @@
-﻿import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import type { ChangeEvent, FormEvent } from 'react';
+import type {
+  ChangeEvent,
+  FormEvent,
+} from 'react';
 
-import { Link, Navigate } from 'react-router-dom';
+import {
+  Link,
+  Navigate,
+} from 'react-router-dom';
 
-// Maximum display name length for frontend validation.
+import { authApi } from '../api/auth';
+
+import {
+  ApiRequestError,
+  clearTokens,
+  hasTokens,
+} from '../api/client';
+
 const maxDisplayNameLength = 40;
-
-// Maximum profile photo size for frontend validation.
-// 2 MB = 2 * 1024 * 1024 bytes.
+const maxNeighborhoodLength = 255;
 const maxPhotoSizeBytes = 2 * 1024 * 1024;
 
-// Allowed profile photo MIME types.
-const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedPhotoTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
 
-// Define the shape of the mock profile stored in localStorage.
-interface MockUserProfile {
+const mockAuthKey = 'mockAuthStatus';
+const mockProfileKey = 'mockUserProfile';
+
+const isMockMode =
+  import.meta.env.VITE_USE_MOCKS === 'true';
+
+interface CachedProfile {
+  userId?: string;
+  displayName?: string;
+  bio?: string;
+  neighborhood?: string;
+  photoUrl?: string | null;
+  photoFileName?: string;
+  profileSetupComplete?: boolean;
+}
+
+interface EditableProfileSnapshot {
   displayName: string;
   bio: string;
-  photoFileName: string;
-  profileSetupComplete: boolean;
+  neighborhood: string;
+  photoUrl: string | null;
 }
 
 /**
- * getInitialProfile
+ * Read the temporary frontend profile cache safely.
  *
- * Reads the mock user profile from localStorage.
- *
- * Current R1 behavior:
- * - If profile data exists, use it.
- * - If profile data does not exist, show safe demo defaults.
- *
- * Future backend behavior:
- * - Replace this with a real profile API call.
+ * The backend remains authoritative when the application is connected
+ * to the real API. The cache supports mock mode and preserves the
+ * profile-completion marker shared with ProfileSetupPage.
  */
-function getInitialProfile(): MockUserProfile {
-  // localStorage key shared with ProfileSetupPage.
-  const mockProfileKey = 'mockUserProfile';
+function readCachedProfile(): CachedProfile | null {
+  const savedProfile =
+    localStorage.getItem(mockProfileKey);
 
-  // Read saved mock profile data.
-  const savedProfile = localStorage.getItem(mockProfileKey);
-
-  // If there is no saved profile, return demo defaults.
   if (!savedProfile) {
-    return {
-      displayName: 'Yafei Wang',
-      bio: '',
-      photoFileName: '',
-      profileSetupComplete: false,
-    };
+    return null;
   }
 
   try {
-    // Parse the saved profile data.
-    const parsedProfile = JSON.parse(savedProfile) as Partial<MockUserProfile>;
-
-    // Return parsed values with safe fallback defaults.
-    return {
-      displayName: parsedProfile.displayName ?? 'Yafei Wang',
-      bio: parsedProfile.bio ?? '',
-      photoFileName: parsedProfile.photoFileName ?? '',
-      profileSetupComplete: parsedProfile.profileSetupComplete ?? false,
-    };
+    return JSON.parse(savedProfile) as CachedProfile;
   } catch {
-    // If localStorage data is broken, return safe demo defaults.
-    return {
-      displayName: 'Yafei Wang',
-      bio: '',
-      photoFileName: '',
-      profileSetupComplete: false,
-    };
+    return null;
   }
 }
 
 /**
- * EditProfilePage
+ * Notify the application that authentication has ended.
+ */
+function clearInvalidAuthentication() {
+  clearTokens();
+  localStorage.removeItem(mockAuthKey);
+
+  window.dispatchEvent(
+    new Event('auth-change'),
+  );
+
+  window.dispatchEvent(
+    new Event('mock-auth-change'),
+  );
+}
+
+/**
+ * Issue #33 / User Story 6:
+ * Member edits their own profile.
  *
- * Frontend issue covered:
- * - #102 Add an edit profile page.
+ * Frontend behavior:
+ * - Loads the authenticated member through GET /auth/me.
+ * - Saves only through PUT /auth/me, so no other member ID can be targeted.
+ * - Supports display name, bio, and neighborhood editing.
+ * - Supports removal of an existing photo URL.
+ * - Validates selected replacement-photo files without changing the
+ *   existing saved photo.
+ * - Redirects unauthenticated users to Login.
+ * - Silently performs no action when no saved fields changed.
  *
- * Related validation behavior:
- * - Display name is required.
- * - Display name cannot exceed the maximum character limit.
- * - Profile photo must be JPG, PNG, or WebP.
- * - Profile photo must be 2 MB or smaller.
- *
- * Current behavior:
- * - Frontend mock/demo page only.
- * - Reads and writes profile data using localStorage.
- * - Redirects unauthenticated users to Login using mock auth.
- *
- * Future backend behavior:
- * - Replace localStorage with backend profile API.
- * - Backend should enforce authentication and validation.
+ * Backend limitation:
+ * - The API accepts photo_url but does not provide a profile-photo
+ *   file-upload endpoint. A selected replacement file is therefore
+ *   validated and previewed only; the existing saved photo is preserved.
  */
 function EditProfilePage() {
-  // localStorage key used by LoginPage, RegisterPage, and AppLayout for mock auth.
-  const mockAuthKey = 'mockAuthStatus';
+  const hasApiSession = hasTokens();
 
-  // localStorage key shared with ProfileSetupPage.
-  const mockProfileKey = 'mockUserProfile';
+  const hasMockSession =
+    isMockMode &&
+    localStorage.getItem(mockAuthKey) === 'logged-in';
 
-  // Check whether user is logged in using mock frontend auth.
-  const isLoggedIn = localStorage.getItem(mockAuthKey) === 'logged-in';
+  const isAuthenticated =
+    hasApiSession || hasMockSession;
 
-  // Load initial profile data from localStorage.
-  const initialProfile = getInitialProfile();
+  const [currentUserId, setCurrentUserId] =
+    useState<string | undefined>();
 
-  // Store editable display name.
-  const [displayName, setDisplayName] = useState(initialProfile.displayName);
+  const [displayName, setDisplayName] =
+    useState('');
 
-  // Store editable short bio.
-  const [bio, setBio] = useState(initialProfile.bio);
+  const [bio, setBio] =
+    useState('');
 
-  // Store selected or saved profile photo file name.
-  const [photoFileName, setPhotoFileName] = useState(initialProfile.photoFileName);
+  const [neighborhood, setNeighborhood] =
+    useState('');
 
-  // Store validation error messages.
-  const [errorMessage, setErrorMessage] = useState('');
+  const [photoUrl, setPhotoUrl] =
+    useState<string | null>(null);
 
-  // Store success message after saving profile changes.
-  const [successMessage, setSuccessMessage] = useState('');
+  const [
+    selectedPhotoFileName,
+    setSelectedPhotoFileName,
+  ] = useState('');
+
+  const [
+    initialProfile,
+    setInitialProfile,
+  ] = useState<EditableProfileSnapshot | null>(
+    null,
+  );
+
+  const [errorMessage, setErrorMessage] =
+    useState('');
+
+  const [successMessage, setSuccessMessage] =
+    useState('');
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  const [redirectToLogin, setRedirectToLogin] =
+    useState(!isAuthenticated);
 
   /**
-   * Redirect unauthenticated users to Login.
-   *
-   * Important:
-   * - This protects the route on the frontend for better user experience.
-   * - Backend authorization is still required later.
+   * Load the current authenticated member.
    */
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
-  }
+  useEffect(() => {
+    let ignoreResult = false;
+
+    async function loadProfile() {
+      if (!isAuthenticated) {
+        if (!isMockMode) {
+          localStorage.removeItem(mockAuthKey);
+
+          window.dispatchEvent(
+            new Event('mock-auth-change'),
+          );
+        }
+
+        if (!ignoreResult) {
+          setRedirectToLogin(true);
+          setIsLoading(false);
+        }
+
+        return;
+      }
+
+      const cachedProfile =
+        readCachedProfile();
+
+      /**
+       * Compatibility path for a mock-only session without API tokens.
+       */
+      if (!hasApiSession) {
+        const loadedProfile: EditableProfileSnapshot = {
+          displayName:
+            cachedProfile?.displayName ?? '',
+          bio:
+            cachedProfile?.bio ?? '',
+          neighborhood:
+            cachedProfile?.neighborhood ?? '',
+          photoUrl:
+            cachedProfile &&
+            Object.prototype.hasOwnProperty.call(
+              cachedProfile,
+              'photoUrl',
+            )
+              ? cachedProfile.photoUrl ?? null
+              : null,
+        };
+
+        if (!ignoreResult) {
+          setCurrentUserId(cachedProfile?.userId);
+          setDisplayName(loadedProfile.displayName);
+          setBio(loadedProfile.bio);
+          setNeighborhood(
+            loadedProfile.neighborhood,
+          );
+          setPhotoUrl(loadedProfile.photoUrl);
+          setInitialProfile(loadedProfile);
+          setIsLoading(false);
+        }
+
+        return;
+      }
+
+      try {
+        const currentUser =
+          await authApi.me();
+
+        if (ignoreResult) {
+          return;
+        }
+
+        /**
+         * Mock API handlers do not persist fixture changes between calls.
+         * In mock mode only, a matching user cache may override fixture
+         * values so a refresh still displays the saved mock profile.
+         */
+        const useMockCache =
+          isMockMode &&
+          cachedProfile?.userId === currentUser.id;
+
+        const cachedPhotoUrl =
+          useMockCache &&
+          Object.prototype.hasOwnProperty.call(
+            cachedProfile,
+            'photoUrl',
+          )
+            ? cachedProfile?.photoUrl ?? null
+            : currentUser.photo_url;
+
+        const loadedProfile: EditableProfileSnapshot = {
+          displayName: useMockCache
+            ? cachedProfile?.displayName ??
+              currentUser.full_name ??
+              ''
+            : currentUser.full_name ?? '',
+          bio: useMockCache
+            ? cachedProfile?.bio ??
+              currentUser.bio ??
+              ''
+            : currentUser.bio ?? '',
+          neighborhood: useMockCache
+            ? cachedProfile?.neighborhood ??
+              currentUser.neighborhood ??
+              ''
+            : currentUser.neighborhood ?? '',
+          photoUrl: cachedPhotoUrl,
+        };
+
+        setCurrentUserId(currentUser.id);
+        setDisplayName(loadedProfile.displayName);
+        setBio(loadedProfile.bio);
+        setNeighborhood(
+          loadedProfile.neighborhood,
+        );
+        setPhotoUrl(loadedProfile.photoUrl);
+        setInitialProfile(loadedProfile);
+      } catch (error) {
+        if (ignoreResult) {
+          return;
+        }
+
+        if (
+          error instanceof ApiRequestError &&
+          error.status === 401
+        ) {
+          clearInvalidAuthentication();
+          setRedirectToLogin(true);
+          return;
+        }
+
+        if (
+          error instanceof ApiRequestError &&
+          error.status === 403
+        ) {
+          setErrorMessage(
+            'You do not have permission to edit this profile.',
+          );
+
+          return;
+        }
+
+        setErrorMessage(
+          error instanceof ApiRequestError
+            ? error.detail
+            : 'Unable to load your profile. Please try again.',
+        );
+      } finally {
+        if (!ignoreResult) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [hasApiSession, isAuthenticated]);
 
   /**
-   * Validate selected profile photo.
+   * Validate a selected replacement photo.
    *
-   * Rules:
-   * - Photo is optional.
-   * - If selected, it must be JPG, PNG, or WebP.
-   * - If selected, it must be 2 MB or smaller.
+   * Invalid selection never changes photoUrl, so the currently saved
+   * profile photo remains unchanged.
    */
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
-    // Clear old messages when the user selects a new file.
+  function handlePhotoChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // Read the first selected file.
-    const selectedFile = event.target.files?.[0];
+    const selectedFile =
+      event.target.files?.[0];
 
-    // If user clears the file input, do not change the saved photo name.
     if (!selectedFile) {
+      setSelectedPhotoFileName('');
       return;
     }
 
-    // Reject unsupported image file types.
-    if (!allowedPhotoTypes.includes(selectedFile.type)) {
+    if (
+      !allowedPhotoTypes.includes(
+        selectedFile.type,
+      )
+    ) {
       event.target.value = '';
-      setErrorMessage('Profile photo must be a JPG, PNG, or WebP image.');
+      setSelectedPhotoFileName('');
+
+      setErrorMessage(
+        'Profile photo must be a JPG, PNG, or WebP image. Your existing photo was not changed.',
+      );
+
       return;
     }
 
-    // Reject image files that are too large.
-    if (selectedFile.size > maxPhotoSizeBytes) {
+    if (
+      selectedFile.size >
+      maxPhotoSizeBytes
+    ) {
       event.target.value = '';
-      setErrorMessage('Profile photo must be 2 MB or smaller.');
+      setSelectedPhotoFileName('');
+
+      setErrorMessage(
+        'Profile photo must be 2 MB or smaller. Your existing photo was not changed.',
+      );
+
       return;
     }
 
-    // Save the selected file name for frontend preview text.
-    setPhotoFileName(selectedFile.name);
+    setSelectedPhotoFileName(
+      selectedFile.name,
+    );
   }
 
   /**
-   * Remove selected profile photo from the mock profile.
+   * Remove the current saved photo URL.
    *
-   * Current frontend behavior:
-   * - Clears only the displayed file name.
-   * - No real file upload/delete happens in R1 mock mode.
+   * This is supported by PUT /auth/me using photo_url: null.
    */
   function handleRemovePhoto() {
-    // Clear old messages before removing photo.
     setErrorMessage('');
     setSuccessMessage('');
-
-    // Clear mock profile photo file name.
-    setPhotoFileName('');
+    setSelectedPhotoFileName('');
+    setPhotoUrl(null);
   }
 
   /**
-   * Handle edit profile submit.
-   *
-   * Validation:
-   * - Display name is required.
-   * - Display name cannot be longer than 40 characters.
-   * - Profile photo validation happens when file is selected.
+   * Save the current member's profile.
    */
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
-    // Clear old messages before validating the new submit.
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    // Normalize display name before validation.
-    const normalizedDisplayName = displayName.trim();
-
-    // Show validation message when display name is missing.
-    if (!normalizedDisplayName) {
-      setErrorMessage('Display name is required.');
+    if (isSaving) {
       return;
     }
 
-    // Show maximum character limit message.
-    if (normalizedDisplayName.length > maxDisplayNameLength) {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const normalizedDisplayName =
+      displayName.trim();
+
+    const normalizedBio =
+      bio.trim();
+
+    const normalizedNeighborhood =
+      neighborhood.trim();
+
+    if (!normalizedDisplayName) {
+      setErrorMessage(
+        'Display name is required.',
+      );
+
+      return;
+    }
+
+    if (
+      normalizedDisplayName.length >
+      maxDisplayNameLength
+    ) {
       setErrorMessage(
         `Display name must be ${maxDisplayNameLength} characters or fewer.`,
       );
+
       return;
     }
 
-    // Save updated mock profile data.
-    // Real backend version should send this data to a profile API.
-    localStorage.setItem(
-      mockProfileKey,
-      JSON.stringify({
-        displayName: normalizedDisplayName,
-        bio: bio.trim(),
-        photoFileName,
-        profileSetupComplete: true,
-      }),
-    );
+    if (
+      normalizedNeighborhood.length >
+      maxNeighborhoodLength
+    ) {
+      setErrorMessage(
+        `Neighborhood must be ${maxNeighborhoodLength} characters or fewer.`,
+      );
 
-    // Confirm that profile changes were saved.
-    setSuccessMessage('Profile changes saved successfully.');
+      return;
+    }
+
+    if (!initialProfile) {
+      setErrorMessage(
+        'Your profile has not finished loading. Please try again.',
+      );
+
+      return;
+    }
+
+    const savedFieldsChanged =
+      normalizedDisplayName !==
+        initialProfile.displayName ||
+      normalizedBio !==
+        initialProfile.bio ||
+      normalizedNeighborhood !==
+        initialProfile.neighborhood ||
+      photoUrl !== initialProfile.photoUrl;
+
+    /**
+     * Scenario 7: submitting unchanged saved fields is a silent no-op.
+     */
+    if (
+      !savedFieldsChanged &&
+      !selectedPhotoFileName
+    ) {
+      return;
+    }
+
+    /**
+     * A selected file cannot be persisted until the backend provides
+     * a profile-photo upload endpoint.
+     */
+    if (
+      !savedFieldsChanged &&
+      selectedPhotoFileName
+    ) {
+      setErrorMessage(
+        'Profile-photo upload is not available yet. Your existing profile photo remains unchanged.',
+      );
+
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      let savedUserId = currentUserId;
+
+      let savedSnapshot: EditableProfileSnapshot = {
+        displayName: normalizedDisplayName,
+        bio: normalizedBio,
+        neighborhood: normalizedNeighborhood,
+        photoUrl,
+      };
+
+      if (hasApiSession) {
+        const savedProfile =
+          await authApi.updateMe({
+            full_name:
+              normalizedDisplayName,
+            bio:
+              normalizedBio || null,
+            neighborhood:
+              normalizedNeighborhood || null,
+            photo_url:
+              photoUrl,
+          });
+
+        savedUserId = savedProfile.id;
+
+        savedSnapshot = {
+          displayName:
+            savedProfile.full_name ??
+            normalizedDisplayName,
+          bio:
+            savedProfile.bio ?? '',
+          neighborhood:
+            savedProfile.neighborhood ?? '',
+          photoUrl:
+            savedProfile.photo_url,
+        };
+      } else if (!hasMockSession) {
+        setRedirectToLogin(true);
+        return;
+      }
+
+      const cachedProfile: CachedProfile = {
+        userId: savedUserId,
+        displayName:
+          savedSnapshot.displayName,
+        bio:
+          savedSnapshot.bio,
+        neighborhood:
+          savedSnapshot.neighborhood,
+        photoUrl:
+          savedSnapshot.photoUrl,
+        photoFileName: '',
+        profileSetupComplete: true,
+      };
+
+      if (hasApiSession) {
+        try {
+          localStorage.setItem(
+            mockProfileKey,
+            JSON.stringify(cachedProfile),
+          );
+        } catch {
+          // The backend profile save remains authoritative.
+        }
+      } else {
+        localStorage.setItem(
+          mockProfileKey,
+          JSON.stringify(cachedProfile),
+        );
+      }
+
+      setCurrentUserId(savedUserId);
+      setDisplayName(
+        savedSnapshot.displayName,
+      );
+      setBio(savedSnapshot.bio);
+      setNeighborhood(
+        savedSnapshot.neighborhood,
+      );
+      setPhotoUrl(
+        savedSnapshot.photoUrl,
+      );
+      setInitialProfile(savedSnapshot);
+      setSelectedPhotoFileName('');
+
+      setSuccessMessage(
+        selectedPhotoFileName
+          ? 'Profile details saved. The selected photo was not uploaded because profile-photo upload is not available yet.'
+          : 'Profile changes saved successfully.',
+      );
+    } catch (error) {
+      if (
+        error instanceof ApiRequestError &&
+        error.status === 401
+      ) {
+        clearInvalidAuthentication();
+        setRedirectToLogin(true);
+        return;
+      }
+
+      if (
+        error instanceof ApiRequestError &&
+        error.status === 403
+      ) {
+        setErrorMessage(
+          'You can only edit your own profile.',
+        );
+
+        return;
+      }
+
+      setErrorMessage(
+        error instanceof ApiRequestError
+          ? error.detail
+          : error instanceof Error &&
+              error.message.trim()
+            ? error.message
+            : 'Unable to save your profile. Please try again.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (redirectToLogin) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <section className="page-section">
+        <div className="empty-state-card">
+          <p className="eyebrow">
+            Member Profile
+          </p>
+
+          <h1>
+            Loading your profile...
+          </h1>
+
+          <p>
+            Retrieving your current profile information.
+          </p>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="page-section">
-      {/* Page header explains the edit profile workflow. */}
       <div className="page-header">
         <div>
-          <p className="eyebrow">Member Profile</p>
-          <h1>Edit Profile</h1>
+          <p className="eyebrow">
+            Member Profile
+          </p>
+
+          <h1>
+            Edit Profile
+          </h1>
+
           <p className="page-description">
-            Update your display name, short bio, and optional profile photo.
+            Update your display name, short bio,
+            neighborhood, and profile photo.
           </p>
         </div>
 
-        {/* Header action returns user to Dashboard. */}
-        <Link className="secondary-link header-action-link" to="/dashboard">
+        <Link
+          className="secondary-link header-action-link"
+          to="/dashboard"
+        >
           Back to Dashboard
         </Link>
       </div>
 
-      {/* Profile edit layout includes the form and a live preview card. */}
       <div className="profile-layout">
-        {/* Edit profile form card. */}
-        <form className="profile-card" onSubmit={handleSubmit} noValidate>
-          <h2>Profile Details</h2>
+        <form
+          className="profile-card"
+          onSubmit={handleSubmit}
+          noValidate
+          aria-busy={isSaving}
+        >
+          <h2>
+            Profile Details
+          </h2>
 
-          {/* Display name field with required and max-length validation. */}
           <label htmlFor="edit-profile-display-name">
             Display Name
+
             <input
               id="edit-profile-display-name"
               type="text"
               value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              maxLength={maxDisplayNameLength + 10}
+              onChange={(event) =>
+                setDisplayName(
+                  event.target.value,
+                )
+              }
+              maxLength={
+                maxDisplayNameLength + 10
+              }
               required
+              disabled={isSaving}
             />
           </label>
 
-          {/* Character counter helps the user stay under the limit. */}
           <p className="auth-helper-text">
-            {displayName.trim().length}/{maxDisplayNameLength} characters
+            {displayName.trim().length}/
+            {maxDisplayNameLength} characters
           </p>
 
-          {/* Optional short bio field. */}
           <label htmlFor="edit-profile-bio">
             Short Bio
+
             <textarea
               id="edit-profile-bio"
               value={bio}
-              onChange={(event) => setBio(event.target.value)}
+              onChange={(event) =>
+                setBio(event.target.value)
+              }
               rows={4}
               placeholder="Tell neighbors a little about yourself."
+              disabled={isSaving}
             />
           </label>
 
-          {/* Optional profile photo upload field. */}
+          <label htmlFor="edit-profile-neighborhood">
+            Neighborhood or Location
+
+            <input
+              id="edit-profile-neighborhood"
+              type="text"
+              value={neighborhood}
+              onChange={(event) =>
+                setNeighborhood(
+                  event.target.value,
+                )
+              }
+              maxLength={maxNeighborhoodLength}
+              placeholder="For example: Manoa, Kaimuki, or Honolulu"
+              disabled={isSaving}
+            />
+          </label>
+
+          <p className="auth-helper-text">
+            Optional. This location may appear on
+            your public member profile.
+          </p>
+
           <label htmlFor="edit-profile-photo">
-            Profile Photo
+            Replacement Profile Photo
+
             <input
               id="edit-profile-photo"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handlePhotoChange}
+              disabled={isSaving}
             />
           </label>
 
-          {/* Photo constraint helper text. */}
           <p className="auth-helper-text">
-            Accepted photo types: JPG, PNG, or WebP. Maximum size: 2 MB.
+            Accepted types: JPG, PNG, or WebP.
+            Maximum size: 2 MB. A selected replacement
+            file is preview-only until backend upload
+            support is available.
           </p>
 
-          {/* Remove photo button only appears when a mock photo is selected/saved. */}
-          {photoFileName && (
+          {photoUrl && (
             <button
               className="secondary-button"
               type="button"
               onClick={handleRemovePhoto}
+              disabled={isSaving}
             >
-              Remove Photo
+              Remove Current Photo
             </button>
           )}
 
-          {/* Save profile changes button. */}
-          <button className="primary-button" type="submit">
-            Save Changes
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={isSaving}
+          >
+            {isSaving
+              ? 'Saving Changes...'
+              : 'Save Changes'}
           </button>
 
-          {/* Inline validation and success messages. */}
-          {errorMessage && <p className="form-error">{errorMessage}</p>}
-          {successMessage && <p className="form-success">{successMessage}</p>}
+          <div aria-live="polite">
+            {errorMessage && (
+              <p
+                className="form-error"
+                role="alert"
+              >
+                {errorMessage}
+              </p>
+            )}
+
+            {successMessage && (
+              <p className="form-success">
+                {successMessage}
+              </p>
+            )}
+          </div>
         </form>
 
-        {/* Live preview card helps user see the updated profile. */}
         <aside className="profile-card profile-preview-card">
-          <h2>Profile Preview</h2>
+          <h2>
+            Profile Preview
+          </h2>
 
-          <div className="profile-avatar-preview">
-            {photoFileName ? photoFileName.slice(0, 1).toUpperCase() : '👤'}
-          </div>
+          {selectedPhotoFileName ? (
+            <div className="profile-avatar-preview">
+              {selectedPhotoFileName
+                .slice(0, 1)
+                .toUpperCase()}
+            </div>
+          ) : photoUrl ? (
+            <img
+              className="public-profile-avatar"
+              src={photoUrl}
+              alt={`${displayName.trim() || 'Member'} profile`}
+            />
+          ) : (
+            <div className="profile-avatar-preview">
+              {'\u{1F464}'}
+            </div>
+          )}
 
-          <h3>{displayName.trim() || 'Display Name Required'}</h3>
+          <h3>
+            {displayName.trim() ||
+              'Display Name Required'}
+          </h3>
 
-          <p>{bio.trim() || 'Your short bio will appear here.'}</p>
-
-          <p className="auth-helper-text">
-            Photo file: {photoFileName || 'No photo selected'}
+          <p>
+            {bio.trim() ||
+              'Your short bio will appear here.'}
           </p>
 
+          <dl className="public-profile-detail-list">
+            <div>
+              <dt>
+                Neighborhood
+              </dt>
+
+              <dd>
+                {neighborhood.trim() ||
+                  'Not provided'}
+              </dd>
+            </div>
+          </dl>
+
           <p className="auth-helper-text">
-            Demo note: profile changes are saved in localStorage for R1 frontend
-            testing.
+            {selectedPhotoFileName
+              ? `Selected replacement: ${selectedPhotoFileName}`
+              : photoUrl
+                ? 'Current saved profile photo'
+                : 'No saved profile photo'}
           </p>
         </aside>
       </div>
