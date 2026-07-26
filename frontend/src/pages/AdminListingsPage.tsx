@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import PaginationControls from '../components/PaginationControls';
+import { DEFAULT_PAGE_SIZE } from '../hooks/useClientPagination';
+
 import { toolsApi } from '../api/tools';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
@@ -10,6 +14,9 @@ function AdminListingsPage() {
   const { user } = useAuth();
   const [tools, setTools] = useState<ToolResponse[]>([]);
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
@@ -20,18 +27,23 @@ function AdminListingsPage() {
     setIsLoading(true);
     setError('');
     try {
-      const params: Record<string, string> = {};
-      if (statusFilter) params.status = statusFilter;
-      if (search.trim()) params.search = search.trim();
-      const data = await toolsApi.adminListAll(params);
+      const data = await toolsApi.adminListAll({
+        status: statusFilter || undefined,
+        search: search.trim() || undefined,
+        page: currentPage,
+        page_size: DEFAULT_PAGE_SIZE,
+      });
+
       setTools(data.items);
       setTotal(data.total);
+      setPageSize(data.page_size);
+      setTotalPages(data.pages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tools');
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, search, currentPage]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTools();
@@ -95,11 +107,17 @@ function AdminListingsPage() {
       <section className="admin-listing-filter-panel">
         <label htmlFor="admin-listing-search">
           Search Listings
-          <input id="admin-listing-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by tool name" />
+          <input id="admin-listing-search" value={search} onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }} placeholder="Search by tool name" />
         </label>
         <label htmlFor="admin-listing-status-filter">
           Status Filter
-          <select id="admin-listing-status-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select id="admin-listing-status-filter" value={statusFilter} onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}>
             <option value="">All</option>
             <option value="active">Active</option>
             <option value="inactive">Deactivated</option>
@@ -153,6 +171,18 @@ function AdminListingsPage() {
           );
         })}
       </section>
+
+      {!isLoading && !error && (
+        <PaginationControls
+          currentPage={currentPage}
+          itemLabel="listings"
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          totalItems={total}
+          totalPages={totalPages}
+        />
+      )}
+
       {!isLoading && tools.length === 0 && (
         <section className="empty-state-card">
           <h2>No listings found</h2>

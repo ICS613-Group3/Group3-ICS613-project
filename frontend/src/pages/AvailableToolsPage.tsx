@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import PaginationControls from '../components/PaginationControls';
+import { DEFAULT_PAGE_SIZE } from '../hooks/useClientPagination';
+
 import { toolsApi } from '../api/tools';
 import type { ToolResponse } from '../types/api';
 import { useCategories } from '../hooks/useCategories';
@@ -9,6 +13,9 @@ function AvailableToolsPage() {
   const { categoryLabels, categoryOptions } = useCategories();
   const [tools, setTools] = useState<ToolResponse[]>([]);
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,22 +26,27 @@ function AvailableToolsPage() {
     setIsLoading(true);
     setError('');
     try {
-      const params: Record<string, string> = {};
-      if (categoryFilter) params.category = categoryFilter;
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      if (startDate && endDate) {
-        params.available_start = startDate;
-        params.available_end = endDate;
-      }
-      const data = await toolsApi.list(params);
+      const data = await toolsApi.list({
+        category: categoryFilter || undefined,
+        search: searchTerm.trim() || undefined,
+        available_start:
+          startDate && endDate ? startDate : undefined,
+        available_end:
+          startDate && endDate ? endDate : undefined,
+        page: currentPage,
+        page_size: DEFAULT_PAGE_SIZE,
+      });
+
       setTools(data.items);
       setTotal(data.total);
+      setPageSize(data.page_size);
+      setTotalPages(data.pages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tools');
     } finally {
       setIsLoading(false);
     }
-  }, [categoryFilter, searchTerm, startDate, endDate]);
+  }, [categoryFilter, searchTerm, startDate, endDate, currentPage]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTools();
@@ -44,6 +56,7 @@ function AvailableToolsPage() {
     setCategoryFilter('');
     setStartDate('');
     setEndDate('');
+    setCurrentPage(1);
   };
   const getImageUrl = (tool: ToolResponse): string => {
     if (tool.photos.length > 0) {
@@ -67,11 +80,17 @@ function AvailableToolsPage() {
           type="text"
           placeholder="Search by tool name or keyword"
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
+            setCurrentPage(1);
+          }}
         />
         <select
           value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value)}
+          onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="">All categories</option>
           {categoryOptions.map(([value, label]) => (
@@ -86,7 +105,10 @@ function AvailableToolsPage() {
             type="date"
             aria-label="Start Date (HST)"
             value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
+            onChange={(event) => {
+              setStartDate(event.target.value);
+              setCurrentPage(1);
+            }}
           />
         </label>
 
@@ -96,7 +118,10 @@ function AvailableToolsPage() {
             type="date"
             aria-label="End Date (HST)"
             value={endDate}
-            onChange={(event) => setEndDate(event.target.value)}
+            onChange={(event) => {
+              setEndDate(event.target.value);
+              setCurrentPage(1);
+            }}
           />
         </label>
         <button type="button" onClick={clearFilters}>
@@ -155,6 +180,17 @@ function AvailableToolsPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {!isLoading && !error && (
+        <PaginationControls
+          currentPage={currentPage}
+          itemLabel="tools"
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          totalItems={total}
+          totalPages={totalPages}
+        />
       )}
     </section>
   );

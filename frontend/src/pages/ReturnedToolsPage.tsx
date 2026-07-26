@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import PaginationControls from '../components/PaginationControls';
+import { DEFAULT_PAGE_SIZE } from '../hooks/useClientPagination';
+
 import { reservationsApi } from '../api/reservations';
 import { toolsApi } from '../api/tools';
 import type { ReservationResponse, ToolResponse } from '../types/api';
@@ -8,7 +12,13 @@ import { formatHstDate } from '../utils/hstDateTime';
 
 function ReturnedToolsPage() {
   const { categoryLabels } = useCategories();
-  const [tools, setTools] = useState<Array<{ tool: ToolResponse; reservation: ReservationResponse }>>([]);
+  const [tools, setTools] = useState<
+    Array<{ tool: ToolResponse; reservation: ReservationResponse }>
+  >([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +29,12 @@ function ReturnedToolsPage() {
       setError('');
       try {
         // Fetch returned reservations where the current user is the borrower
-        const resData = await reservationsApi.list({ role: 'borrower', state: 'RETURNED' });
+        const resData = await reservationsApi.list({
+          role: 'borrower',
+          state: 'RETURNED',
+          page: currentPage,
+          page_size: DEFAULT_PAGE_SIZE,
+        });
         // Fetch tool details for each returned reservation
         const pairs = await Promise.all(
           resData.items.map(async (res) => {
@@ -31,7 +46,15 @@ function ReturnedToolsPage() {
             }
           }),
         );
-        setTools(pairs.filter((p): p is NonNullable<typeof p> => p !== null));
+        setTools(
+          pairs.filter(
+            (pair): pair is NonNullable<typeof pair> =>
+              pair !== null,
+          ),
+        );
+        setTotal(resData.total);
+        setPageSize(resData.page_size);
+        setTotalPages(resData.pages);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load returned tools');
       } finally {
@@ -39,7 +62,7 @@ function ReturnedToolsPage() {
       }
     };
     fetchReturned();
-  }, []);
+  }, [currentPage]);
   const filteredTools = tools.filter(({ tool }) => {
     const matchesCategory = !categoryFilter || tool.category === categoryFilter;
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -66,9 +89,15 @@ function ReturnedToolsPage() {
           type="text"
           placeholder="Search by tool name, description, or owner"
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
+            setCurrentPage(1);
+          }}
         />
-        <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+        <select value={categoryFilter} onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            setCurrentPage(1);
+          }}>
           <option value="">All categories</option>
           {Object.entries(categoryLabels).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
@@ -125,6 +154,17 @@ function ReturnedToolsPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {!isLoading && !error && (
+        <PaginationControls
+          currentPage={currentPage}
+          itemLabel="returned tools"
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          totalItems={total}
+          totalPages={totalPages}
+        />
       )}
     </section>
   );

@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import { authApi } from '../api/auth';
 import { useAuth } from '../context/useAuth';
 import type { InviteResponse } from '../types/api';
@@ -40,6 +43,8 @@ export default function AdminInvitesPage() {
     loadInvites();
   }, [loadInvites]);
 
+  const pagination = useClientPagination(invites);
+
   const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
@@ -59,6 +64,7 @@ export default function AdminInvitesPage() {
       );
       setEmail('');
       await loadInvites();
+      pagination.setCurrentPage(1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create invite.';
       setErrorMessage(msg);
@@ -161,7 +167,7 @@ export default function AdminInvitesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invites.map((invite) => (
+                {pagination.pageItems.map((invite) => (
                   <tr key={invite.id}>
                     <td>{invite.email}</td>
                     <td>
@@ -180,6 +186,15 @@ export default function AdminInvitesPage() {
             </table>
           </div>
         )}
+
+        <PaginationControls
+          currentPage={pagination.currentPage}
+          itemLabel="invites"
+          onPageChange={pagination.setCurrentPage}
+          pageSize={pagination.pageSize}
+          totalItems={invites.length}
+          totalPages={pagination.totalPages}
+        />
       </div>
     </section>
   );

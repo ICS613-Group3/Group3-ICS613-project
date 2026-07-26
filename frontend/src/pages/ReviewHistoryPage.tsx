@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import { reviewsApi } from '../api/reviews';
 import { useAuth } from '../context/useAuth';
 import type { ReviewResponse } from '../types/api';
@@ -56,6 +59,11 @@ function ReviewHistoryPage() {
       );
     });
   }, [reviews, searchTerm]);
+
+  const pagination = useClientPagination(
+    filteredReviews,
+    `${searchTerm}|${reviewTypeFilter}`,
+  );
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -131,7 +139,7 @@ function ReviewHistoryPage() {
         </div>
       ) : (
         <div className="review-history-grid">
-          {filteredReviews.map((review) => (
+          {pagination.pageItems.map((review) => (
             <article className="review-history-card" key={review.id}>
               <div className="tool-card-top">
                 <span className="rating">Rating: {review.rating}/5</span>
@@ -157,6 +165,15 @@ function ReviewHistoryPage() {
           ))}
         </div>
       )}
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        itemLabel="reviews"
+        onPageChange={pagination.setCurrentPage}
+        pageSize={pagination.pageSize}
+        totalItems={filteredReviews.length}
+        totalPages={pagination.totalPages}
+      />
     </section>
   );
 }

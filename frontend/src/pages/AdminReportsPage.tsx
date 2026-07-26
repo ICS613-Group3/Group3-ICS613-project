@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import { Link, Navigate } from 'react-router-dom';
 
 import { authApi } from '../api/auth';
@@ -159,6 +162,11 @@ function AdminReportsPage() {
 
     return reports.filter((report) => report.status === statusFilter);
   }, [reports, statusFilter]);
+
+  const pagination = useClientPagination(
+    filteredReports,
+    statusFilter,
+  );
 
   const pendingCount = reports.filter(
     (report) => report.status === 'PENDING_REVIEW',
@@ -380,7 +388,7 @@ function AdminReportsPage() {
               </thead>
 
               <tbody>
-                {filteredReports.map((report) => {
+                {pagination.pageItems.map((report) => {
                   const isPending =
                     report.status === 'PENDING_REVIEW';
 
@@ -458,6 +466,15 @@ function AdminReportsPage() {
           </div>
         )}
       </section>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        itemLabel="reports"
+        onPageChange={pagination.setCurrentPage}
+        pageSize={pagination.pageSize}
+        totalItems={filteredReports.length}
+        totalPages={pagination.totalPages}
+      />
 
       <aside className="demo-note-card">
         <strong>Frontend-only moderation demonstration</strong>
