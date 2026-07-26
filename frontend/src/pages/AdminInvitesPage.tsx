@@ -4,6 +4,10 @@ import {
   useState,
   type FormEvent,
 } from 'react';
+
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import { authApi } from '../api/auth';
 import type { InviteResponse } from '../types/api';
 import { formatHstDateTime as formatDateTime } from '../utils/hstDateTime';
@@ -106,6 +110,8 @@ export default function AdminInvitesPage() {
     );
   }, [invites]);
 
+  const pagination = useClientPagination(invites);
+
   async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -140,6 +146,7 @@ export default function AdminInvitesPage() {
         ),
       ]);
 
+      pagination.setCurrentPage(1);
       setEmail('');
       setSuccessMessage(`Invite sent to ${normalizedEmail}.`);
     } catch (error) {
@@ -260,7 +267,7 @@ export default function AdminInvitesPage() {
               </thead>
 
               <tbody>
-                {invites.map((invite) => {
+                {pagination.pageItems.map((invite) => {
                   const status = getInviteStatus(invite);
                   const canRevoke = status === 'sent';
 
@@ -309,6 +316,15 @@ export default function AdminInvitesPage() {
             </table>
           </div>
         )}
+
+        <PaginationControls
+          currentPage={pagination.currentPage}
+          itemLabel="invites"
+          onPageChange={pagination.setCurrentPage}
+          pageSize={pagination.pageSize}
+          totalItems={invites.length}
+          totalPages={pagination.totalPages}
+        />
 
         <p className="helper-text">
           Invite listing and creation use the live backend API. Registered

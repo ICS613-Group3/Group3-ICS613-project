@@ -3138,3 +3138,63 @@ select {
   margin-top: 0.75rem;
   margin-bottom: 1rem;
 }
+
+/* =========================================================
+   Issue #139 Shared Pagination Controls
+   ========================================================= */
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #d8dee8);
+  border-radius: 0.75rem;
+  background: var(--surface-color, #ffffff);
+}
+
+.pagination-summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pagination-button-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pagination-button {
+  min-width: 5.5rem;
+}
+
+.pagination-page-status {
+  min-width: 7rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .pagination-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-button-group {
+    justify-content: flex-start;
+  }
+
+  .pagination-button {
+    flex: 1 1 7rem;
+  }
+
+  .pagination-page-status {
+    flex: 1 1 100%;
+    order: -1;
+    text-align: left;
+  }
+}

@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import {
   categoryLabels,
   mockTools,
@@ -67,6 +71,11 @@ function AvailableToolsPage() {
       return matchesSearch && matchesCategory && matchesDateRange;
     });
   }, [categoryFilter, endDate, searchTerm, startDate]);
+
+  const pagination = useClientPagination(
+    filteredTools,
+    `${searchTerm}|${categoryFilter}|${startDate}|${endDate}`,
+  );
 
   /**
    * Reset all filters so all mock tools are visible again.
@@ -155,7 +164,7 @@ function AvailableToolsPage() {
         </div>
       ) : (
         <div className="tool-grid">
-          {filteredTools.map((tool) => (
+          {pagination.pageItems.map((tool) => (
             <article className="tool-card" key={tool.id}>
               <img src={tool.imageUrl} alt={tool.name} className="tool-image" />
 
@@ -200,6 +209,14 @@ function AvailableToolsPage() {
           ))}
         </div>
       )}
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        itemLabel="tools"
+        onPageChange={pagination.setCurrentPage}
+        pageSize={pagination.pageSize}
+        totalItems={filteredTools.length}
+        totalPages={pagination.totalPages}
+      />
     </section>
   );
 }

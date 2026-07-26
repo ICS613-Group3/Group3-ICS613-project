@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import { Link } from 'react-router-dom';
 
 import {
@@ -182,6 +185,11 @@ function AdminListingsPage() {
       return matchesStatus && matchesSearch;
     });
   }, [listingRows, searchText, statusFilter]);
+
+  const pagination = useClientPagination(
+    filteredListingRows,
+    `${searchText}|${statusFilter}`,
+  );
 
   /**
    * Summary counts for admin cards.
@@ -420,7 +428,7 @@ function AdminListingsPage() {
 
       {/* Admin listing cards. */}
       <section className="admin-listings-grid">
-        {filteredListingRows.map((row) => {
+        {pagination.pageItems.map((row) => {
           const reasonValue = reasonByToolId[row.tool.id] ?? '';
           const isDeactivated = row.listingState.status === 'deactivated';
           const isPickedUpBlocked = row.pickedUpReservations.length > 0;
@@ -560,6 +568,15 @@ function AdminListingsPage() {
           );
         })}
       </section>
+
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        itemLabel="listings"
+        onPageChange={pagination.setCurrentPage}
+        pageSize={pagination.pageSize}
+        totalItems={filteredListingRows.length}
+        totalPages={pagination.totalPages}
+      />
 
       {/* Empty state for search/filter. */}
       {filteredListingRows.length === 0 && (

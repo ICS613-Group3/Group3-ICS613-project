@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import PaginationControls from '../components/PaginationControls';
+import { useClientPagination } from '../hooks/useClientPagination';
+
 import {
   categoryLabels,
   mockTools,
@@ -149,6 +153,11 @@ function ReturnedToolsPage() {
     });
   }, [categoryFilter, endDate, returnedTools, searchTerm, startDate]);
 
+  const pagination = useClientPagination(
+    filteredTools,
+    `${searchTerm}|${categoryFilter}|${startDate}|${endDate}`,
+  );
+
   /**
    * Reset all filters so all returned mock tools are visible again.
    */
@@ -236,7 +245,7 @@ function ReturnedToolsPage() {
         </div>
       ) : (
         <div className="tool-grid">
-          {filteredTools.map((tool) => {
+          {pagination.pageItems.map((tool) => {
             const returnedInfo = returnedToolInfoById[tool.id];
 
             return (
@@ -311,6 +320,14 @@ function ReturnedToolsPage() {
           })}
         </div>
       )}
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        itemLabel="returned tools"
+        onPageChange={pagination.setCurrentPage}
+        pageSize={pagination.pageSize}
+        totalItems={filteredTools.length}
+        totalPages={pagination.totalPages}
+      />
     </section>
   );
 }
