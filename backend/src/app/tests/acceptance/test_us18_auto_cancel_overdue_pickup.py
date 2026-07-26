@@ -7,11 +7,12 @@ patched (see `helpers.patch_scheduler_session`) to share the test's DB
 session/transaction instead of opening its own connection.
 """
 
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timezone import utc_to_hst
 from app.models.enums import ReservationState
 from app.services.scheduler import SchedulerService
 from app.tests.acceptance.helpers import (
@@ -28,13 +29,14 @@ async def _make_approved_reservation(client, db_session, *, start_days_ago: int)
     owner = await UserFactory.create_async(db_session)
     borrower = await UserFactory.create_async(db_session)
     tool = await create_tool(client, owner)
+    today_hst = utc_to_hst(datetime.now(UTC)).date()
     reservation = await ReservationFactory.create_async(
         db_session,
         tool_id=tool["id"],
         borrower_id=borrower.id,
         state=ReservationState.APPROVED,
-        start_date=date.today() - timedelta(days=start_days_ago),
-        end_date=date.today() + timedelta(days=5),
+        start_date=today_hst - timedelta(days=start_days_ago),
+        end_date=today_hst + timedelta(days=5),
     )
     return owner, borrower, tool, reservation
 
