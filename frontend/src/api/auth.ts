@@ -64,4 +64,7 @@ export const authApi = {
     apiRequest<InviteResponse>('POST', '/auth/invites', data),
 
   listInvites: () => apiRequest<InviteResponse[]>('GET', '/auth/invites'),
+
+  revokeInvite: (inviteId: string) =>
+    apiRequest<InviteResponse>('POST', `/auth/invites/${inviteId}/revoke`),
 };
