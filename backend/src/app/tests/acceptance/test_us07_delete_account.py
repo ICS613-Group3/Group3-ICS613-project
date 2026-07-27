@@ -120,3 +120,64 @@ class TestScenario4ReRegistrationRequiresConfirmation:
     )
     async def test_reregistration_requires_explicit_confirmation(self) -> None:
         raise NotImplementedError
+
+
+class TestScenario6DeletingOwnerCascadesToTheirListingsAndReservations:
+    """Self-deletion is blocked outright if the member has an active
+    reservation as borrower or a currently-PICKED_UP tool (Scenario 2), but
+    a member who merely *owns* tools with pending REQUESTED/APPROVED
+    reservations from *other* borrowers can still delete — those listings
+    get deactivated and the pending reservations auto-cancelled with the
+    affected borrowers notified.
+    """
+
+    async def test_active_listings_deactivated_pending_reservations_cancelled_borrowers_notified(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        from sqlalchemy import select
+
+        from app.models.enums import NotificationType
+        from app.models.notification import Notification
+
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id, is_active=True)
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool.id,
+            borrower_id=borrower.id,
+            state=ReservationState.REQUESTED,
+        )
+
+        response = await client.delete("/api/v1/auth/me", headers=auth_header(owner.id))
+        assert response.status_code == 204
+
+        await db_session.refresh(tool)
+        assert tool.is_active is False
+
+        await db_session.refresh(reservation)
+        assert reservation.state == ReservationState.CANCELLED
+
+        notifications = (
+            (
+                await db_session.execute(
+                    select(Notification).where(
+                        Notification.user_id == borrower.id,
+                        Notification.type == NotificationType.RESERVATION_CANCELLED.value,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(notifications) >= 1
+
+    async def test_inactive_listings_are_left_alone(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        tool = await ToolFactory.create_async(db_session, owner_id=owner.id, is_active=False)
+
+        response = await client.delete("/api/v1/auth/me", headers=auth_header(owner.id))
+        assert response.status_code == 204
+
+        await db_session.refresh(tool)
+        assert tool.is_active is False

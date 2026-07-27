@@ -138,3 +138,44 @@ class TestScenario5OneDayRentalIsAllowed:
 
         assert response.status_code == 201
         assert response.json()["start_date"] == response.json()["end_date"] == str(one_day)
+
+
+class TestScenario6NonexistentOrUnavailableToolReturns404:
+    async def test_returns_404_for_unknown_tool_id(self, client, db_session: AsyncSession) -> None:
+        import uuid
+
+        borrower = await UserFactory.create_async(db_session)
+
+        response = await client.post(
+            "/api/v1/reservations",
+            json={
+                "tool_id": str(uuid.uuid4()),
+                "start_date": str(date.today() + timedelta(days=1)),
+                "end_date": str(date.today() + timedelta(days=2)),
+            },
+            headers=auth_header(borrower.id),
+        )
+        assert response.status_code == 404
+
+    async def test_returns_404_for_deactivated_tool(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+
+        deactivate_resp = await client.post(
+            f"/api/v1/tools/{tool['id']}/deactivate",
+            json={"reason": "no longer available"},
+            headers=auth_header(owner.id),
+        )
+        assert deactivate_resp.status_code == 200
+
+        response = await client.post(
+            "/api/v1/reservations",
+            json={
+                "tool_id": tool["id"],
+                "start_date": str(date.today() + timedelta(days=1)),
+                "end_date": str(date.today() + timedelta(days=2)),
+            },
+            headers=auth_header(borrower.id),
+        )
+        assert response.status_code == 404

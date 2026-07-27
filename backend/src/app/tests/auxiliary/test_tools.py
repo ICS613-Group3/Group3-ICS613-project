@@ -1,17 +1,26 @@
-"""Tests for tool CRUD endpoints."""
+"""Tool endpoint coverage with no corresponding user story.
+
+Create/update/delete happy paths and their permission checks are already
+exercised by acceptance/test_us08_create_listing.py,
+test_us09_edit_listing_photos.py, and test_us10_delete_deactivate_listing.py.
+What's kept here has no story mapping: /tools/me, GET-single edge cases,
+deactivate/reactivate conflict + audit-log detail, field-validation edge
+cases, photo-upload magic-byte security, and the admin-only /tools/admin/all
+listing.
+"""
 
 import uuid
 from io import BytesIO
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.models.admin_audit_log import AdminAuditLog
-from app.models.enums import ToolCondition
 from app.tests.factories import AdminFactory, ToolFactory, UserFactory
 
-# ── helpers ──────────────────────────────────────────────────────────────
+pytestmark = pytest.mark.auxiliary
 
 
 def _bearer(user) -> dict:
@@ -47,101 +56,8 @@ def _fake_upload_file(filename: str = "test.jpg") -> tuple:
     return (filename, BytesIO(_fake_image_bytes()), "image/jpeg")
 
 
-# ── Create ────────────────────────────────────────────────────────────────
-
-
-class TestCreateTool:
-    """POST /api/v1/tools"""
-
-    async def test_create_tool_happy_path(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """An authenticated user can create a tool via multipart form."""
-        user = await UserFactory.create_async(db_session)
-
-        # NOTE: must include at least one photo because create_tool's
-        # db.refresh(tool) expires lazy relationships; ToolResponse validation
-        # needs photos to be eagerly loaded or at least not expired.
-        response = await client.post(
-            "/api/v1/tools",
-            data={
-                "name": "Cordless Drill",
-                "category": "POWER_TOOLS",
-                "condition": "GOOD",
-                "description": "A reliable cordless drill with two batteries.",
-            },
-            files=[("photos", _fake_upload_file("drill.jpg"))],
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 201
-        tool = response.json()
-        assert tool["name"] == "Cordless Drill"
-        assert tool["category"] == "POWER_TOOLS"
-        assert tool["condition"] == "GOOD"
-        assert tool["description"] == "A reliable cordless drill with two batteries."
-        assert tool["owner_id"] == str(user.id)
-        # OwnerSummary should be embedded in the create response too
-        assert tool["owner"]["id"] == str(user.id)
-        assert tool["owner"]["full_name"] == user.full_name
-        assert "photo_url" in tool["owner"]
-        assert tool["is_active"] is True
-        assert len(tool["photos"]) == 1
-
-    async def test_create_tool_with_photos(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """An authenticated user can create a tool with photos."""
-        user = await UserFactory.create_async(db_session)
-
-        response = await client.post(
-            "/api/v1/tools",
-            data={
-                "name": "Lawn Mower",
-                "category": "GARDEN_TOOLS",
-                "condition": "FAIR",
-                "description": "A gas-powered lawn mower.",
-            },
-            files=[("photos", _fake_upload_file("mower.jpg"))],
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 201
-        tool = response.json()
-        assert tool["name"] == "Lawn Mower"
-        assert len(tool["photos"]) == 1
-        assert tool["photos"][0]["display_order"] == 1
-        # OwnerSummary should be embedded on create-with-photos too
-        assert tool["owner"]["id"] == str(user.id)
-        assert tool["owner"]["full_name"] == user.full_name
-
-    async def test_create_tool_without_auth_returns_401(
-        self,
-        client,
-    ) -> None:
-        """An unauthenticated request must be rejected."""
-        response = await client.post(
-            "/api/v1/tools",
-            data={
-                "name": "Hammer",
-                "category": "HAND_TOOLS",
-                "condition": "GOOD",
-                "description": "A sturdy hammer.",
-            },
-            files=[("photos", _fake_upload_file("hammer.jpg"))],
-        )
-        assert response.status_code == 401
-
-
-# ── List ──────────────────────────────────────────────────────────────────
-
-
 class TestListTools:
-    """GET /api/v1/tools"""
+    """GET /api/v1/tools — behavior not exercised by acceptance/test_us12_browse_search.py."""
 
     async def test_list_tools_paginated(
         self,
@@ -181,84 +97,6 @@ class TestListTools:
         assert first["owner"]["full_name"] == owner.full_name
         assert "name" in first
         assert "photos" in first
-
-    async def test_list_tools_filter_by_category(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Filter tools by category; browsing user's own tools are excluded."""
-        owner = await UserFactory.create_async(db_session)
-        browser = await UserFactory.create_async(db_session)
-        await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Drill",
-            category="POWER_TOOLS",
-            is_active=True,
-        )
-        await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Rake",
-            category="GARDEN_TOOLS",
-            is_active=True,
-        )
-
-        response = await client.get(
-            "/api/v1/tools?category=POWER_TOOLS",
-            headers=_bearer(browser),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["total"] == 1
-        assert data["items"][0]["name"] == "Drill"
-
-    async def test_list_tools_filter_by_search(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Search tools by name or description; browsing user's own tools are excluded."""
-        owner = await UserFactory.create_async(db_session)
-        browser = await UserFactory.create_async(db_session)
-        await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Electric Saw",
-            description="Cuts wood cleanly",
-            category="POWER_TOOLS",
-            is_active=True,
-        )
-        await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Garden Shovel",
-            description="Digs holes easily",
-            category="GARDEN_TOOLS",
-            is_active=True,
-        )
-
-        response = await client.get(
-            "/api/v1/tools?search=saw",
-            headers=_bearer(browser),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["total"] == 1
-        assert data["items"][0]["name"] == "Electric Saw"
-
-        # Search in description
-        response2 = await client.get(
-            "/api/v1/tools?search=digs",
-            headers=_bearer(browser),
-        )
-        assert response2.status_code == 200
-        data2 = response2.json()
-        assert data2["total"] == 1
-        assert data2["items"][0]["name"] == "Garden Shovel"
 
     async def test_list_tools_excludes_inactive(
         self,
@@ -336,11 +174,8 @@ class TestListTools:
         assert response.status_code == 401
 
 
-# ── My tools ──────────────────────────────────────────────────────────────
-
-
 class TestMyTools:
-    """GET /api/v1/tools/me"""
+    """GET /api/v1/tools/me — never exercised as its own scenario anywhere in acceptance/."""
 
     async def test_list_my_tools(
         self,
@@ -395,44 +230,8 @@ class TestMyTools:
         assert data["pages"] == 2
 
 
-# ── Get single ────────────────────────────────────────────────────────────
-
-
 class TestGetTool:
-    """GET /api/v1/tools/{tool_id}"""
-
-    async def test_get_tool(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Get a single active tool by id."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Precision Screwdriver Set",
-            category="HAND_TOOLS",
-            condition=ToolCondition.NEW,
-            is_active=True,
-        )
-
-        response = await client.get(
-            f"/api/v1/tools/{tool.id}",
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == str(tool.id)
-        assert data["name"] == "Precision Screwdriver Set"
-        assert data["category"] == "HAND_TOOLS"
-        assert data["condition"] == "NEW"
-        assert data["owner_id"] == str(user.id)
-        # OwnerSummary should be embedded with id + name (User Story 12)
-        assert data["owner"]["id"] == str(user.id)
-        assert data["owner"]["full_name"] == user.full_name
-        assert "photo_url" in data["owner"]
+    """GET /api/v1/tools/{tool_id} — 404 cases not covered elsewhere."""
 
     async def test_get_nonexistent_tool_returns_404(
         self,
@@ -474,221 +273,9 @@ class TestGetTool:
         assert response.status_code == 404
 
 
-# ── Update ────────────────────────────────────────────────────────────────
-
-
-class TestUpdateTool:
-    """PATCH /api/v1/tools/{tool_id}"""
-
-    async def test_update_tool_owner(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Owner can update their tool via JSON body."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Old Name",
-            description="Old desc",
-            category="HAND_TOOLS",
-            condition=ToolCondition.GOOD,
-        )
-
-        response = await client.patch(
-            f"/api/v1/tools/{tool.id}",
-            json={
-                "name": "Updated Name",
-                "description": "Updated desc",
-                "condition": "LIKE_NEW",
-            },
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Updated Name"
-        assert data["description"] == "Updated desc"
-        assert data["condition"] == "LIKE_NEW"
-        # category not sent → unchanged
-        assert data["category"] == "HAND_TOOLS"
-
-    async def test_update_tool_non_owner_returns_403(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Non-owner cannot update someone else's tool."""
-        owner = await UserFactory.create_async(db_session)
-        other = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Owner's Tool",
-        )
-
-        response = await client.patch(
-            f"/api/v1/tools/{tool.id}",
-            json={"name": "Hijacked"},
-            headers=_bearer(other),
-        )
-
-        assert response.status_code == 403
-
-    async def test_update_tool_partial(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Partial update with only name keeps other fields."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Original",
-            category="CLEANING_TOOLS",
-            condition=ToolCondition.FAIR,
-        )
-
-        response = await client.patch(
-            f"/api/v1/tools/{tool.id}",
-            json={"name": "Renamed Only"},
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Renamed Only"
-        assert data["category"] == "CLEANING_TOOLS"
-        assert data["condition"] == "FAIR"
-
-
-# ── Delete ────────────────────────────────────────────────────────────────
-
-
-class TestDeleteTool:
-    """DELETE /api/v1/tools/{tool_id}"""
-
-    async def test_delete_tool_owner_no_reservations(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Owner can soft-delete a tool with no active reservations."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Disposable Tool",
-        )
-
-        response = await client.delete(
-            f"/api/v1/tools/{tool.id}",
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 204
-
-        # Verify tool is soft-deleted (not returned by GET)
-        get_response = await client.get(
-            f"/api/v1/tools/{tool.id}",
-            headers=_bearer(user),
-        )
-        assert get_response.status_code == 404
-
-    async def test_delete_tool_non_owner_returns_403(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Non-owner cannot delete someone else's tool."""
-        owner = await UserFactory.create_async(db_session)
-        other = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Keep This",
-        )
-
-        response = await client.delete(
-            f"/api/v1/tools/{tool.id}",
-            headers=_bearer(other),
-        )
-
-        assert response.status_code == 403
-
-    async def test_delete_tool_without_auth(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Deleting without auth returns 401."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-        )
-
-        response = await client.delete(f"/api/v1/tools/{tool.id}")
-        assert response.status_code == 401
-
-
-# ── Deactivate ────────────────────────────────────────────────────────────
-
-
 class TestDeactivateTool:
-    """POST /api/v1/tools/{tool_id}/deactivate"""
-
-    async def test_deactivate_tool_owner_with_reason(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Owner can deactivate their tool with a reason."""
-        user = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Take a Break",
-            is_active=True,
-        )
-
-        response = await client.post(
-            f"/api/v1/tools/{tool.id}/deactivate",
-            json={"reason": "Going on vacation for two weeks"},
-            headers=_bearer(user),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["is_active"] is False
-        assert data["deactivation_reason"] == "Going on vacation for two weeks"
-        assert data["deactivated_by"] == "OWNER"
-        assert data["deactivated_at"] is not None
-
-    async def test_deactivate_tool_non_owner_returns_403(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Non-owner cannot deactivate someone else's tool."""
-        owner = await UserFactory.create_async(db_session)
-        other = await UserFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Not Yours",
-            is_active=True,
-        )
-
-        response = await client.post(
-            f"/api/v1/tools/{tool.id}/deactivate",
-            json={"reason": "I want to disable this"},
-            headers=_bearer(other),
-        )
-
-        assert response.status_code == 403
+    """POST /api/v1/tools/{tool_id}/deactivate — conflict case not covered by
+    acceptance/test_us10_delete_deactivate_listing.py or test_us11."""
 
     async def test_deactivate_already_inactive_returns_409(
         self,
@@ -712,67 +299,10 @@ class TestDeactivateTool:
 
         assert response.status_code == 409
 
-    async def test_deactivate_tool_admin_can_deactivate(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """An admin can deactivate any tool (not just their own)."""
-        owner = await UserFactory.create_async(db_session)
-        admin = await AdminFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=owner.id,
-            name="Policy Violation",
-            is_active=True,
-        )
-
-        response = await client.post(
-            f"/api/v1/tools/{tool.id}/deactivate",
-            json={"reason": "Violates community guidelines"},
-            headers=_bearer(admin),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["is_active"] is False
-        assert data["deactivated_by"] == "ADMIN"
-        assert data["deactivation_reason"] == "Violates community guidelines"
-
-
-# ── Reactivate ────────────────────────────────────────────────────────────
-
 
 class TestReactivateTool:
-    """POST /api/v1/tools/{tool_id}/reactivate"""
-
-    async def test_reactivate_tool_admin(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Admin can reactivate a deactivated tool."""
-        user = await UserFactory.create_async(db_session)
-        admin = await AdminFactory.create_async(db_session)
-        tool = await ToolFactory.create_async(
-            db_session,
-            owner_id=user.id,
-            name="Restored Tool",
-            is_active=False,
-            deactivation_reason="Temporary hold",
-        )
-
-        response = await client.post(
-            f"/api/v1/tools/{tool.id}/reactivate",
-            headers=_bearer(admin),
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["is_active"] is True
-        assert data["deactivated_by"] is None
-        assert data["deactivated_at"] is None
-        assert data["deactivation_reason"] is None
+    """POST /api/v1/tools/{tool_id}/reactivate — permission + conflict cases
+    not covered by acceptance/test_us11_admin_deactivate_reactivate.py."""
 
     async def test_reactivate_tool_non_admin_returns_403(
         self,
@@ -818,11 +348,9 @@ class TestReactivateTool:
         assert response.status_code == 409
 
 
-# ── Edge cases ────────────────────────────────────────────────────────────
-
-
 class TestToolEdgeCases:
-    """Additional edge case coverage."""
+    """Field-validation edge cases distinct from acceptance/test_us08's
+    "missing field" checks (these use present-but-invalid values)."""
 
     async def test_create_tool_empty_name_returns_422(
         self,
@@ -916,42 +444,6 @@ class TestToolEdgeCases:
         assert response.status_code == 201
         assert response.json()["description"] == long_desc
 
-    async def test_get_tool_includes_photos(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Tool response includes its photo gallery."""
-        user = await UserFactory.create_async(db_session)
-
-        # Create with photos
-        response = await client.post(
-            "/api/v1/tools",
-            data={
-                "name": "Visual Tool",
-                "category": "CLEANING_TOOLS",
-                "condition": "GOOD",
-                "description": "A tool for visual testing.",
-            },
-            files=[("photos", _fake_upload_file("img1.jpg"))],
-            headers=_bearer(user),
-        )
-        tool = response.json()
-        tool_id = tool["id"]
-
-        # GET the tool
-        get_response = await client.get(
-            f"/api/v1/tools/{tool_id}",
-            headers=_bearer(user),
-        )
-        assert get_response.status_code == 200
-        data = get_response.json()
-        assert len(data["photos"]) == 1
-        photo = data["photos"][0]
-        assert "id" in photo
-        assert "url" in photo
-        assert photo["display_order"] == 1
-
 
 class TestPhotoUploadSecurity:
     """B5 — photo uploads must validate magic bytes, not just the
@@ -961,8 +453,6 @@ class TestPhotoUploadSecurity:
         self, client, db_session: AsyncSession
     ) -> None:
         """An ELF binary with image/jpeg Content-Type is rejected."""
-        from app.tests.factories import UserFactory
-
         user = await UserFactory.create_async(db_session)
 
         # Not a JPEG — starts with ELF magic, declares as image/jpeg.
@@ -989,8 +479,6 @@ class TestPhotoUploadSecurity:
 
     async def test_upload_rejects_non_image_bytes(self, client, db_session: AsyncSession) -> None:
         """Plain text with image/png Content-Type is rejected."""
-        from app.tests.factories import UserFactory
-
         user = await UserFactory.create_async(db_session)
         fake_text = b"this is plain text, not an image"
 
@@ -1008,41 +496,12 @@ class TestPhotoUploadSecurity:
         assert response.status_code == 422
 
 
-class TestAddPhotosResponseShape:
-    """M8 regression coverage: ``POST /tools/{id}/photos`` returns the new photos.
-
-    The route calls ``db.refresh(tool, ["photos"])`` after upload so the
-    response includes the newly-added photos. If a future refactor breaks
-    that refresh (or removes the relationship from the response model),
-    the test below catches it.
-    """
-
-    async def test_added_photos_appear_in_response(self, client, db_session: AsyncSession) -> None:
-        owner = await UserFactory.create_async(db_session)
-        owner_token = create_access_token(owner.id)
-        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
-
-        response = await client.post(
-            f"/api/v1/tools/{tool.id}/photos",
-            files=[("photos", _fake_upload_file("a.jpg"))],
-            headers={"Authorization": f"Bearer {owner_token}"},
-        )
-        assert response.status_code == 200, response.text
-        body = response.json()
-        assert body["id"] == str(tool.id)
-        assert "photos" in body, f"Response missing 'photos' key: {body}"
-        assert len(body["photos"]) == 1, f"Expected 1 photo in response, got {body['photos']!r}"
-        assert body["photos"][0]["url"].startswith("/uploads/")
-        assert body["photos"][0]["url"].endswith(".jpg")
-
-
 class TestToolModerationAuditLog:
     """R1.C: every owner/admin tool deactivate + admin reactivate is
     recorded in ``admin_audit_log`` with the right actor_role metadata.
 
-    These tests protect the R1.C verification checklist item
-    "Audit-log rows are inserted on every admin/owner deactivate
-    and reactivate".
+    acceptance/test_us11 checks the admin-actor case's reason/target_id but
+    not the owner-actor case or the actor_role metadata field.
     """
 
     async def test_owner_deactivate_writes_audit_entry(
@@ -1143,7 +602,10 @@ class TestToolModerationAuditLog:
 
 
 class TestAdminListAllTools:
-    """GET /api/v1/tools/admin/all — admin-only listing of all tools."""
+    """GET /api/v1/tools/admin/all — admin-only listing of all tools.
+
+    No user story or acceptance test touches this endpoint at all.
+    """
 
     async def test_admin_can_list_all_tools(
         self,

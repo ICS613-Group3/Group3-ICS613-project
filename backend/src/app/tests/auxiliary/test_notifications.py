@@ -1,14 +1,24 @@
-"""Tests for notification endpoints."""
+"""Notification endpoint-contract coverage with no corresponding user story.
+
+acceptance/test_us23_notifications.py exercises notifications as a
+side-effect of real reservation-lifecycle actions. It never tests the
+endpoint's own contract in isolation: the unread_only filter, the
+paginated-response shape, the payload/type round-trip, or ownership/
+existence checks on mark-as-read. Those live here instead.
+"""
 
 import uuid
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.models.enums import NotificationType
 from app.services.notification import NotificationService
 from app.tests.factories import UserFactory
+
+pytestmark = pytest.mark.auxiliary
 
 
 class TestListNotifications:
@@ -133,44 +143,12 @@ class TestCreateAndList:
         assert item["created_at"] is not None
 
 
-class TestMarkRead:
-    """Tests for POST /api/v1/notifications/{id}/read."""
+class TestMarkReadEdgeCases:
+    """Tests for POST /api/v1/notifications/{id}/read edge cases.
 
-    async def test_mark_notification_as_read(
-        self,
-        client,
-        db_session: AsyncSession,
-    ) -> None:
-        """Marking a notification sets read_at and reduces unread_count."""
-        user = await UserFactory.create_async(db_session)
-        token = create_access_token(user.id)
-
-        notif = await NotificationService().create(
-            db_session,
-            user_id=user.id,
-            type_=NotificationType.TOOL_DEACTIVATED,
-            title="Tool removed",
-            body="A tool has been deactivated.",
-        )
-
-        response = await client.post(
-            f"/api/v1/notifications/{notif.id}/read",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == str(notif.id)
-        assert data["read_at"] is not None
-
-        # Verify unread count is now 0.
-        list_resp = await client.get(
-            "/api/v1/notifications",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        list_data = list_resp.json()
-        assert list_data["unread_count"] == 0
-        assert list_data["items"][0]["read_at"] is not None
+    The happy path (mark read, unread_count decrements) is already covered
+    by acceptance/test_us23_notifications.py's unread-badge scenario.
+    """
 
     async def test_mark_nonexistent_notification_returns_404(
         self,

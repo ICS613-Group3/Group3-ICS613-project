@@ -3,9 +3,12 @@
 `GET /api/v1/admin/audit-log` (app/api/v1/admin.py) already covers the core
 of this story: every suspend/reactivate/delete/tool-deactivate/reactivate/
 force-return action is recorded via `AdminService._audit` with actor_id,
-action_type, target_type, target_id, reason, and created_at. What's missing
-is the doc's filter set.
+action_type, target_type, target_id, reason, and created_at. It supports
+filtering by action_type, target_type, target_id, and a date range; the
+one filter still missing is by the acting admin (actor_id).
 """
+
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,16 +60,12 @@ class TestScenario1AdminViewsModerationHistory:
 
 
 class TestScenario2AdminFiltersModerationHistory:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: GET /admin/audit-log (app/api/v1/admin.py) only "
-        "accepts action_type/target_type filters -- no filter by member "
-        "(actor_id or target_id), listing, or date range, all of which the "
-        "doc requires.",
-    )
     async def test_filterable_by_member_and_date_range(
         self, client, db_session: AsyncSession
     ) -> None:
+        """Filtering by the member (target_id) and by date range both work;
+        filtering by the acting admin is still missing (see
+        test_filterable_by_acting_admin below)."""
         admin = await make_admin(db_session)
         member_a = await UserFactory.create_async(db_session)
         member_b = await UserFactory.create_async(db_session)
@@ -83,15 +82,55 @@ class TestScenario2AdminFiltersModerationHistory:
 
         response = await client.get(
             "/api/v1/admin/audit-log",
-            params={"member_id": str(member_a.id)},
+            params={"target_id": str(member_a.id)},
             headers=auth_header(admin.id),
         )
         assert response.status_code == 200
         items = response.json()["items"]
-        # An unfiltered/ignored `member_id` param would return both members'
-        # entries; a real filter would return only member_a's.
         assert all(i["target_id"] == str(member_a.id) for i in items)
         assert not any(i["target_id"] == str(member_b.id) for i in items)
+
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        by_date = await client.get(
+            "/api/v1/admin/audit-log",
+            params={"date_from": future},
+            headers=auth_header(admin.id),
+        )
+        assert by_date.status_code == 200
+        assert by_date.json()["items"] == []
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="known gap: GET /admin/audit-log (app/api/v1/admin.py) has no "
+        "actor_id/admin query param -- target_id (member/listing) and "
+        "date-range filters exist, but filtering by which admin performed "
+        "the action is still missing.",
+    )
+    async def test_filterable_by_acting_admin(self, client, db_session: AsyncSession) -> None:
+        admin_one = await make_admin(db_session)
+        admin_two = await make_admin(db_session)
+        member_a = await UserFactory.create_async(db_session)
+        member_b = await UserFactory.create_async(db_session)
+        await client.post(
+            f"/api/v1/admin/users/{member_a.id}/deactivate",
+            json={"reason": "x"},
+            headers=auth_header(admin_one.id),
+        )
+        await client.post(
+            f"/api/v1/admin/users/{member_b.id}/deactivate",
+            json={"reason": "y"},
+            headers=auth_header(admin_two.id),
+        )
+
+        response = await client.get(
+            "/api/v1/admin/audit-log",
+            params={"actor_id": str(admin_one.id)},
+            headers=auth_header(admin_one.id),
+        )
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert len(items) == 1
+        assert items[0]["actor_id"] == str(admin_one.id)
 
 
 class TestScenario3NoRecordsMatchFilter:
