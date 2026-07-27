@@ -129,7 +129,7 @@ function EditToolPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toolId, user?.id]);
+  }, [toolId, user]);
 
   useEffect(() => {
     loadTool();
