@@ -45,6 +45,44 @@ export async function apiGet<T = unknown>(page: Page, path: string): Promise<T> 
   return response.json();
 }
 
+/** Authenticated DELETE against the real backend, using the current page's logged-in access token. */
+export async function apiDelete(page: Page, path: string): Promise<void> {
+  const token = await page.evaluate(() => window.localStorage.getItem('access_token'));
+  const response = await page.request.delete(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok() && response.status() !== 404) {
+    throw new Error(`DELETE ${path} failed: ${response.status()} ${await response.text()}`);
+  }
+}
+
+interface ReviewSummary {
+  id: string;
+  reviewer_id: string;
+}
+
+/**
+ * Delete the logged-in user's own review of a reservation, if one exists.
+ *
+ * Tests that submit a fresh review share one backend with no per-test reset
+ * (see the file header above), so a Playwright retry of the SAME test can
+ * find its own prior attempt's review already sitting there -- the "Submit
+ * Review" button it waits for has become "Update Review" and the test hangs
+ * until timeout. Call this before submitting so the test is retry-safe
+ * regardless of what an earlier attempt left behind.
+ */
+export async function clearOwnReview(page: Page, reservationId: string): Promise<void> {
+  const me = await apiGet<{ id: string }>(page, '/api/v1/auth/me');
+  const reviews = await apiGet<ReviewSummary[]>(
+    page,
+    `/api/v1/reservations/${reservationId}/review`,
+  );
+  const mine = reviews.find((review) => review.reviewer_id === me.id);
+  if (mine) {
+    await apiDelete(page, `/api/v1/reviews/${mine.id}`);
+  }
+}
+
 /**
  * Look up a seeded reservation by its tool's name.
  *

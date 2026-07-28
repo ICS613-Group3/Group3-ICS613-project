@@ -1,5 +1,5 @@
 import { test, expect, loginAsMockUser } from '../fixtures';
-import { findReservationByToolName } from '../api-helpers';
+import { findReservationByToolName, clearOwnReview } from '../api-helpers';
 
 // Covers ReviewPage / US24 (leave a rating and review after RETURNED).
 //
@@ -44,6 +44,9 @@ test.describe('ReviewPage', () => {
   test('submits a valid rating and optional comment successfully', async ({ page }) => {
     await loginAsMockUser(page);
     const reservation = await findReservationByToolName(page, 'Wrench');
+    // Retry-safe: a prior attempt of this same test may have already
+    // submitted this review against the shared backend.
+    await clearOwnReview(page, reservation.id);
 
     await page.goto(`/reservations/${reservation.id}/review`);
     await page.getByRole('combobox').selectOption('5');
@@ -58,6 +61,9 @@ test.describe('ReviewPage', () => {
   test('submits successfully with a rating and no comment', async ({ page }) => {
     await loginAsMockUser(page);
     const reservation = await findReservationByToolName(page, 'Circular Saw');
+    // Retry-safe: a prior attempt of this same test may have already
+    // submitted this review against the shared backend.
+    await clearOwnReview(page, reservation.id);
 
     await page.goto(`/reservations/${reservation.id}/review`);
     await page.getByRole('combobox').selectOption('3');
