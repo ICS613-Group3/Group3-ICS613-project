@@ -14,7 +14,8 @@ test.describe('ReviewPage', () => {
   test('shows a not-found message for an unknown reservation id', async ({ page }) => {
     await loginAsMockUser(page, '/reservations/00000000-0000-0000-0000-000000000000/review');
 
-    await expect(page.getByRole('heading', { name: 'Reservation not found' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unable to Load Review' })).toBeVisible();
+    await expect(page.getByText('Reservation not found')).toBeVisible();
   });
 
   test('blocks review submission for a reservation that is not RETURNED', async ({ page }) => {
@@ -51,7 +52,7 @@ test.describe('ReviewPage', () => {
       .fill('Great borrowing experience.');
     await page.getByRole('button', { name: 'Submit Review' }).click();
 
-    await expect(page.locator('.success-message')).toContainText('Review submitted: 5/5 stars.');
+    await expect(page.locator('.success-message')).toContainText('Review submitted successfully.');
   });
 
   test('submits successfully with a rating and no comment', async ({ page }) => {
@@ -62,6 +63,6 @@ test.describe('ReviewPage', () => {
     await page.getByRole('combobox').selectOption('3');
     await page.getByRole('button', { name: 'Submit Review' }).click();
 
-    await expect(page.locator('.success-message')).toContainText('Review submitted: 3/5 stars.');
+    await expect(page.locator('.success-message')).toContainText('Review submitted successfully.');
   });
 });

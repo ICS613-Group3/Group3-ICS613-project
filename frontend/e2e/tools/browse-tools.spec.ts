@@ -15,7 +15,7 @@ test.describe('AvailableToolsPage', () => {
 
     await page.goto('/tools');
 
-    await expect(page.getByText(`Showing ${data.total} of ${data.total} tools.`)).toBeVisible();
+    await expect(page.getByText(`Showing ${data.total} of ${data.total} matching tools.`)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Cordless Drill' })).toBeVisible();
   });
 
@@ -23,21 +23,21 @@ test.describe('AvailableToolsPage', () => {
     await loginAsMockUser(page, '/tools');
     // Let the initial unfiltered load settle before filtering -- see the
     // BUG test below for what happens when requests race instead.
-    await expect(page.getByText(/Showing \d+ of \d+ tools\./)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of \d+ matching tools\./)).toBeVisible();
 
     await page.getByPlaceholder('Search by tool name or keyword').fill('Ladder');
 
-    await expect(page.getByText('Showing 1 of 1 tools.')).toBeVisible();
+    await expect(page.getByText('Showing 1 of 1 matching tools.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Ladder' })).toBeVisible();
   });
 
   test('filters by category', async ({ page }) => {
     await loginAsMockUser(page, '/tools');
-    await expect(page.getByText(/Showing \d+ of \d+ tools\./)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of \d+ matching tools\./)).toBeVisible();
 
     await page.getByRole('combobox').first().selectOption('GARDEN_TOOLS');
 
-    await expect(page.getByText('Showing 1 of 1 tools.')).toBeVisible();
+    await expect(page.getByText('Showing 1 of 1 matching tools.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Rake' })).toBeVisible();
   });
 
@@ -46,7 +46,7 @@ test.describe('AvailableToolsPage', () => {
     const data = await apiGet<{ total: number }>(page, '/api/v1/tools?page_size=1');
 
     await page.goto('/tools');
-    await expect(page.getByText(/Showing \d+ of \d+ tools\./)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of \d+ matching tools\./)).toBeVisible();
     // React.StrictMode double-invokes the mount effect in dev, firing a second
     // unfiltered fetchTools() alongside the first. Combined with the same
     // missing request-cancellation/sequencing guard the "BUG" test below
@@ -65,7 +65,7 @@ test.describe('AvailableToolsPage', () => {
     // the filter panel and one in the empty-state card itself.
     await page.getByRole('button', { name: 'Clear Filters' }).first().click();
 
-    await expect(page.getByText(`Showing ${data.total} of ${data.total} tools.`)).toBeVisible();
+    await expect(page.getByText(`Showing ${data.total} of ${data.total} matching tools.`)).toBeVisible();
   });
 
   test('links to the tool detail page', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('AvailableToolsPage', () => {
     test.fail(true, 'known bug: fetchTools has no request-cancellation/sequencing guard');
 
     await loginAsMockUser(page, '/tools');
-    await expect(page.getByText(/Showing \d+ of \d+ tools\./)).toBeVisible();
+    await expect(page.getByText(/Showing \d+ of \d+ matching tools\./)).toBeVisible();
 
     let delayedFirstMatch = false;
     await page.route('**/api/v1/tools?search=*', async (route) => {
@@ -126,7 +126,7 @@ test.describe('AvailableToolsPage', () => {
     // Correct behavior: the box says "Ladder" and the result should match
     // that. The delayed "no such tool exists" response arrives later and
     // overwrites it with an empty result instead.
-    await expect(page.getByText('Showing 1 of 1 tools.')).toBeVisible();
+    await expect(page.getByText('Showing 1 of 1 matching tools.')).toBeVisible();
   });
 });
 

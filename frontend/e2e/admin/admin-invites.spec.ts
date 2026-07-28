@@ -40,7 +40,7 @@ test.describe('AdminInvitesPage', () => {
     await page.getByRole('button', { name: 'Send Invite' }).click();
 
     await expect(page.locator('.form-error')).toHaveText(
-      'An account with this email already exists',
+      'An account with this email already exists.',
     );
   });
 
