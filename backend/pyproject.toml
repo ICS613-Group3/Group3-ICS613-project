@@ -55,6 +55,12 @@ disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
 
+[tool.coverage.run]
+# --cov=app sweeps up src/app/tests/* as "source" too. Without this, every
+# test file reports 0% self-coverage and drags the real app-code number
+# down to noise (34% instead of the true ~72%).
+omit = ["*/tests/*"]
+
 [tool.bandit]
 # Exclude test files and certain false-positive checks.
 exclude_dirs = ["tests"]
