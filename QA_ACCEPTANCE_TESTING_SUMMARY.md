@@ -1,6 +1,6 @@
 # QA Acceptance Testing — Progress Summary
 
-**Owner:** Nick (QA lead) | **Last updated:** 2026-07-27
+**Owner:** Nick (QA lead) | **Last updated:** 2026-07-28
 
 > This file was deleted from the repo on 2026-07-09 (commit `74b3595`,
 > "remove outdated QA acceptance testing summary files") and is being
@@ -73,27 +73,45 @@ seeing the same lines under-report both times despite the tests that
 exercise them passing. Don't cite that one file's percentage without
 this context.
 
-**Two failures are currently live on `main`** (both from the PR #262
-merge a few hours before this was written) — worth flagging to whoever
-drives the demo so it isn't a surprise if they open the Actions tab:
+**Update (2026-07-28):** the `backend-lint` (missing `bandit` dependency,
+silently dropped by an unrelated merge months ago and only now a hard
+gate) and `secrets-scan` failures below were CI/test-infra bugs, not app
+bugs, and have been fixed on `qa/ci-pipeline-and-coverage-review` (PR
+#264): restored the `bandit` pin, reworded/pragma-allowlisted every
+false-positive "secret" (mock-mode localStorage key names, dummy test
+fixture passwords like `"Password123!"`), and regenerated the drifted
+`.secrets.baseline`. Both jobs are green on that branch as of this
+writing. Two Playwright specs (`admin-invites.spec.ts`, `browse-tools.spec.ts`
+x4, plus `review.spec.ts`'s not-found assertion) were also fixed there —
+they were asserting against copy that shifted when PR #262 merged after
+these specs were written, not real bugs.
+
+**Two Playwright issues remain open, still live on `main`:**
 
 1. **Playwright regression** — `frontend/e2e/account/profile-setup.spec.ts:18`
    (issue #95) expects a `.form-success` element containing "Profile
    setup complete" after saving the profile; times out, element never
-   appears. The `<p className="form-success">` block exists in
-   `ProfileSetupPage.tsx` but `successMessage` isn't getting set the way
-   the spec expects. 35 of 36 Playwright specs still pass.
-2. **Secrets-scan false positive** — `detect-secrets` flags the mock-mode
-   `localStorage` key constant declared in both `ProfileSetupPage.tsx:30`
-   and `EditProfilePage.tsx:31` as a "Secret Keyword" hit, because its
-   identifier name ends in "Key" and it's assigned a string literal.
-   It's a storage key name, not a credential — a false positive from the
-   variable-name heuristic, not an actual leak. Needs either a rename or
-   a `pragma: allowlist secret` comment to clear.
+   appears — confirmed via a later retry that the actual text is
+   "Profile saved successfully. Redirecting to dashboard..." with a
+   copy mismatch on top of it being slow to render. The
+   `<p className="form-success">` block exists in `ProfileSetupPage.tsx`
+   but doesn't match either the timing or the copy the spec expects.
+   This is app-code copy/timing, out of QA scope to patch directly —
+   flagging for whoever owns that page.
+2. **`notifications.spec.ts` flake, newly discovered** — the first test
+   in its `describe.serial` block expects member02's seeded notification
+   counts (3 total / 2 unread / 1 read) but sees 0 across multiple
+   retries. Confirmed this is unrelated to the review-submission fixes
+   above (review create/delete has no notification side effects, and
+   this file runs alphabetically before `reservations/`), so something
+   earlier in the run is already zeroing out member02's notifications
+   before this file's own assumptions hold. Needs its own investigation
+   into cross-file shared-state ordering in the e2e suite; not chased
+   down in this pass.
 
-Per QA scope, neither of these gets a code fix from this pass — flagging
-both here so they're accounted for rather than silently caught live
-on-stage.
+Per QA scope, neither of these two remaining items gets a code fix —
+flagging both here so they're accounted for rather than silently caught
+live on-stage.
 
 ---
 
