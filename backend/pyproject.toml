@@ -58,8 +58,19 @@ check_untyped_defs = false
 [tool.coverage.run]
 # --cov=app sweeps up src/app/tests/* as "source" too. Without this, every
 # test file reports 0% self-coverage and drags the real app-code number
-# down to noise (34% instead of the true ~72%).
+# down to noise (34% instead of the true ~92%).
 omit = ["*/tests/*"]
+
+# SQLAlchemy's async ORM bridges its sync-style Core/ORM execution engine
+# to asyncpg via greenlet (see greenlet_spawn in sqlalchemy.util._concurrency_py3k).
+# coverage's default tracer doesn't follow execution across a greenlet
+# switch, so without this setting every line that runs *after* the first
+# `await db.execute(...)` in a coroutine is invisible to coverage and
+# reported as "missed" even though it demonstrably ran (the tests that
+# exercise it pass). Verified locally: adding this took the reported
+# TOTAL from 72% to 92% with the exact same 345 passing tests -- no new
+# tests were added. See https://coverage.readthedocs.io/en/latest/config.html#run-concurrency
+concurrency = ["greenlet"]
 
 [tool.bandit]
 # Exclude test files and certain false-positive checks.
