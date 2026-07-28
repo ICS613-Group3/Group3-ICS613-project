@@ -83,10 +83,11 @@ drives the demo so it isn't a surprise if they open the Actions tab:
    appears. The `<p className="form-success">` block exists in
    `ProfileSetupPage.tsx` but `successMessage` isn't getting set the way
    the spec expects. 35 of 36 Playwright specs still pass.
-2. **Secrets-scan false positive** — `detect-secrets` flags
-   `const mockAuthKey = 'mockAuthStatus';` in both `ProfileSetupPage.tsx:30`
-   and `EditProfilePage.tsx:31` as a "Secret Keyword" hit. It's a
-   `localStorage` key name, not a credential — a false positive from the
+2. **Secrets-scan false positive** — `detect-secrets` flags the mock-mode
+   `localStorage` key constant declared in both `ProfileSetupPage.tsx:30`
+   and `EditProfilePage.tsx:31` as a "Secret Keyword" hit, because its
+   identifier name ends in "Key" and it's assigned a string literal.
+   It's a storage key name, not a credential — a false positive from the
    variable-name heuristic, not an actual leak. Needs either a rename or
    a `pragma: allowlist secret` comment to clear.
 
