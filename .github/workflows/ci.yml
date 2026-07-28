@@ -344,6 +344,46 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 14
 
+  frontend-e2e-issue141:
+    name: Frontend E2E — Issue #141/#197 TC-102 (Playwright)
+    runs-on: ubuntu-latest
+
+    # No backend/Postgres service needed here: the spec intercepts every
+    # /api/v1/** call via page.route (see the spec's own header comment),
+    # unlike frontend-e2e above which needs a real backend for LoginPage.
+    # Runs under playwright.issue141.config.ts (single worker, no retries,
+    # fixed viewport, video-on-failure) so this test case's artifacts stay
+    # isolated from the general E2E report.
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run TC-102 pickup visibility test
+        run: npm run test:e2e:issue141
+
+      - name: Upload TC-102 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-issue141-tc102
+          path: frontend/playwright-report/issue-141-tc102/
+          retention-days: 14
+
   secrets-scan:
     name: Secrets scan (detect-secrets)
     runs-on: ubuntu-latest

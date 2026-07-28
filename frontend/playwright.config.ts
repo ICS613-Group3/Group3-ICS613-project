@@ -9,6 +9,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // Issue #141/#197 TC-102 has its own dedicated config (isolated
+  // artifacts, fixed viewport, zero retries) run via `test:e2e:issue141` —
+  // excluded here so it isn't silently re-run under these settings too.
+  testIgnore: '**/issue-141/**',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
