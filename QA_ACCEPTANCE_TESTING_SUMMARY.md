@@ -81,12 +81,12 @@ bugs, and have been fixed on `qa/ci-pipeline-and-coverage-review` (PR
 false-positive "secret" (mock-mode localStorage key names, dummy test
 fixture passwords like `"Password123!"`), and regenerated the drifted
 `.secrets.baseline`. Both jobs are green on that branch as of this
-writing. Two Playwright specs (`admin-invites.spec.ts`, `browse-tools.spec.ts`
-x4, plus `review.spec.ts`'s not-found assertion) were also fixed there —
-they were asserting against copy that shifted when PR #262 merged after
-these specs were written, not real bugs.
+writing. Three Playwright specs (`admin-invites.spec.ts`,
+`browse-tools.spec.ts` x4, plus `review.spec.ts`'s not-found assertion)
+were also fixed there — they were asserting against copy that shifted
+when PR #262 merged after these specs were written, not real bugs.
 
-**Two Playwright issues remain open, still live on `main`:**
+**Three Playwright issues remain open, still live on `main`:**
 
 1. **Playwright regression** — `frontend/e2e/account/profile-setup.spec.ts:18`
    (issue #95) expects a `.form-success` element containing "Profile
@@ -98,20 +98,34 @@ these specs were written, not real bugs.
    but doesn't match either the timing or the copy the spec expects.
    This is app-code copy/timing, out of QA scope to patch directly —
    flagging for whoever owns that page.
-2. **`notifications.spec.ts` flake, newly discovered** — the first test
+2. **`review.spec.ts`'s two submission tests, unresolved despite two
+   attempted fixes.** First suspected a retry carrying over a leftover
+   review from a prior attempt (added `clearOwnReview()` cleanup); still
+   failed. Then suspected the 5s assertion timeout was too tight under
+   CI's real latency (bumped to 15s); still failed. Pulled the CI run's
+   own `backend-e2e.log`: every retry's `POST .../review` returned `201
+   Created` immediately, with no errors or slow responses anywhere in
+   the chain — so the review genuinely is created correctly and fast
+   every time, yet Playwright still can't find `.success-message` within
+   15 real seconds. Root cause not yet identified; flagging as an open
+   test-infra mystery rather than claiming a fix that isn't confirmed.
+   Worth a live headed/traced repro (needs Docker, unavailable in the
+   environment this was investigated from) rather than more guessing
+   from CI artifacts.
+3. **`notifications.spec.ts` flake, newly discovered** — the first test
    in its `describe.serial` block expects member02's seeded notification
-   counts (3 total / 2 unread / 1 read) but sees 0 across multiple
-   retries. Confirmed this is unrelated to the review-submission fixes
-   above (review create/delete has no notification side effects, and
-   this file runs alphabetically before `reservations/`), so something
+   counts (3 total / 2 unread / 1 read) but sees 0. Confirmed unrelated
+   to the review-submission work above (review create/delete has no
+   notification side effects, and this file runs alphabetically before
+   `reservations/`, so it can't be downstream of it), so something
    earlier in the run is already zeroing out member02's notifications
    before this file's own assumptions hold. Needs its own investigation
    into cross-file shared-state ordering in the e2e suite; not chased
    down in this pass.
 
-Per QA scope, neither of these two remaining items gets a code fix —
-flagging both here so they're accounted for rather than silently caught
-live on-stage.
+Per QA scope, none of these three remaining items gets a code fix from
+this pass — flagging all three here so they're accounted for rather
+than silently caught live on-stage.
 
 ---
 
