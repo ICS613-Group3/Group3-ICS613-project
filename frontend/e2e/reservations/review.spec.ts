@@ -55,7 +55,15 @@ test.describe('ReviewPage', () => {
       .fill('Great borrowing experience.');
     await page.getByRole('button', { name: 'Submit Review' }).click();
 
-    await expect(page.locator('.success-message')).toContainText('Review submitted successfully.');
+    // The create request round-trips through review + rating-recalculation
+    // service calls; under CI's real (non-parallel) latency this can take
+    // longer than the default 5s assertion timeout even though it always
+    // succeeds -- confirmed via the CI run's own final page snapshot
+    // showing the correct submitted state moments after the timeout fired.
+    await expect(page.locator('.success-message')).toContainText(
+      'Review submitted successfully.',
+      { timeout: 15_000 },
+    );
   });
 
   test('submits successfully with a rating and no comment', async ({ page }) => {
@@ -69,6 +77,14 @@ test.describe('ReviewPage', () => {
     await page.getByRole('combobox').selectOption('3');
     await page.getByRole('button', { name: 'Submit Review' }).click();
 
-    await expect(page.locator('.success-message')).toContainText('Review submitted successfully.');
+    // The create request round-trips through review + rating-recalculation
+    // service calls; under CI's real (non-parallel) latency this can take
+    // longer than the default 5s assertion timeout even though it always
+    // succeeds -- confirmed via the CI run's own final page snapshot
+    // showing the correct submitted state moments after the timeout fired.
+    await expect(page.locator('.success-message')).toContainText(
+      'Review submitted successfully.',
+      { timeout: 15_000 },
+    );
   });
 });
