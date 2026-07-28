@@ -30,7 +30,11 @@ class TestScenario1VerifyWithValidToken:
         with patch.object(EmailService, "send_verification_email", MagicMock()):
             await client.post(
                 "/api/v1/auth/register",
-                json={"email": email, "password": "Password123!", "invite_token": token},
+                json={
+                    "email": email,
+                    "password": "Password123!",  # pragma: allowlist secret
+                    "invite_token": token,
+                },
             )
 
         user = (
@@ -105,7 +109,11 @@ class TestScenario3ResendVerificationEmail:
         with patch.object(EmailService, "send_verification_email", MagicMock()):
             await client.post(
                 "/api/v1/auth/register",
-                json={"email": email, "password": "Password123!", "invite_token": token},
+                json={
+                    "email": email,
+                    "password": "Password123!",  # pragma: allowlist secret
+                    "invite_token": token,
+                },
             )
 
         user = (

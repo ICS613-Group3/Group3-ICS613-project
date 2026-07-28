@@ -99,7 +99,10 @@ class TestScenario3SuspendedMemberCanStillLogIn:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "suspended-us30@example.com", "password": "Password123!"},
+            json={
+                "email": "suspended-us30@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 200
 

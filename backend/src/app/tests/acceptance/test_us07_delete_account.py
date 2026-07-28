@@ -105,7 +105,10 @@ class TestScenario4DeletedAccountCannotLogIn:
 
         login_response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "us7-scenario4@example.com", "password": "Password123!"},
+            json={
+                "email": "us7-scenario4@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
         assert login_response.status_code == 401
 

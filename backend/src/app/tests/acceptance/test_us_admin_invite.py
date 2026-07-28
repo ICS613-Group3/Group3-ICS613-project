@@ -76,7 +76,7 @@ class TestScenario3AdminRevokesUnusedInvite:
             "/api/v1/auth/register",
             json={
                 "email": email,
-                "password": "Password123!",
+                "password": "Password123!",  # pragma: allowlist secret
                 "full_name": "Too Late",
                 "invite_token": invite.token,
             },

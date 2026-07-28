@@ -174,7 +174,10 @@ class TestLoginDoesNotLeakAccountState:
     ) -> None:
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "ghost-nobody-here@example.com", "password": "whatever1!"},
+            json={
+                "email": "ghost-nobody-here@example.com",
+                "password": "whatever1!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid email or password"
@@ -185,7 +188,10 @@ class TestLoginDoesNotLeakAccountState:
         await UserFactory.create_async(db_session, email="known@example.com")
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "known@example.com", "password": "WrongPassword1!"},
+            json={
+                "email": "known@example.com",
+                "password": "WrongPassword1!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid email or password"
@@ -196,7 +202,10 @@ class TestLoginDoesNotLeakAccountState:
         await PendingUserFactory.create_async(db_session, email="pending@example.com")
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "pending@example.com", "password": "Password123!"},
+            json={
+                "email": "pending@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid email or password"
@@ -213,7 +222,10 @@ class TestLoginDoesNotLeakAccountState:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "suspended@example.com", "password": "Password123!"},
+            json={
+                "email": "suspended@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
         # Suspended users can now log in (per the spec) to see a suspension notice.
         assert response.status_code == 200
