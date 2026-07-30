@@ -187,6 +187,9 @@ The application handles authentication (JWT), background scheduling (APScheduler
 
 # 6. Getting Started
 
+> **For detailed setup instructions (Windows, macOS, Linux), see [`SETUP_AND_TEST_GUIDE.md`](SETUP_AND_TEST_GUIDE.md).**
+> **For production deployment (GCE/Docker), see [`Deployment_Guide.md`](Deployment_Guide.md).**
+
 ### Prerequisites
 | Program | Minimum Version | Check With |
 |---------|----------------|------------|

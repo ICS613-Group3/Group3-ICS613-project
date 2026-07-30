@@ -9,6 +9,8 @@ This guide gets the entire project running on a fresh machine on
 backend, and the React frontend. It also covers the test suites and a
 step-by-step manual UI walkthrough.
 
+> **For deployment (production/GCE), see [Deployment_Guide.md](Deployment_Guide.md).**
+
 > **Conventions used below**
 > - `bash` code blocks run on macOS, Linux, and **Git Bash on Windows**.
 > - `cmd` blocks run in `cmd.exe` (the default Windows terminal).
@@ -675,4 +677,4 @@ npm run dev
 
 ---
 
-*Last updated: 2026-07-25. Updated repo URL to ICS613-Group3, fixed test counts (392: 241 acceptance + 151 unit/integration), updated test ownership table.*
+*Last updated: 2026-07-30. Updated repo URL to ICS613-Group3, fixed test counts (392: 241 acceptance + 151 unit/integration), added Deployment Guide reference, updated test ownership table.*
