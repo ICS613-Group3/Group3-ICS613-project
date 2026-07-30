@@ -28,8 +28,8 @@ const allowedPhotoTypes = [
   'image/webp',
 ];
 
-const mockAuthKey = 'mockAuthStatus';
-const mockProfileKey = 'mockUserProfile';
+const mockAuthKey = 'mockAuthStatus'; // pragma: allowlist secret
+const mockProfileKey = 'mockUserProfile'; // pragma: allowlist secret
 
 const isMockMode =
   import.meta.env.VITE_USE_MOCKS === 'true';
