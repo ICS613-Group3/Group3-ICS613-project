@@ -1,5 +1,4 @@
 // Fetch wrapper with Bearer auth, token refresh, and error handling.
-// When VITE_USE_MOCKS=true, short-circuits to mock handlers.
 
 import type {
   RefreshRequest,
@@ -7,7 +6,6 @@ import type {
 } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 const TOKEN_STORAGE_KEY = 'access_token';
 const REFRESH_STORAGE_KEY = 'refresh_token';
@@ -53,27 +51,9 @@ export function hasTokens(): boolean {
 // ── URL builder ────────────────────────────────────────────────────────
 
 function buildUrl(path: string): string {
-  // If using mocks, return path as-is (handlers match on exact path).
-  if (USE_MOCKS) return path;
   // Ensure path starts with / so we don't lose it.
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE}${normalizedPath}`;
-}
-
-// ── Mock dispatch ──────────────────────────────────────────────────────
-
-async function handleMock(
-  method: string,
-  path: string,
-  body: unknown,
-  headers: Record<string, string>,
-): Promise<Response> {
-  const { matchMock } = await import('../mocks/handlers');
-  const result = await matchMock(method, path, body, headers);
-  return new Response(JSON.stringify(result[0]), {
-    status: result[1],
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 // ── Core request ───────────────────────────────────────────────────────
@@ -110,24 +90,6 @@ export async function apiRequest<T = unknown>(
   body?: unknown,
   options?: { isFormData?: boolean },
 ): Promise<T> {
-  // Mock mode: short-circuit.
-  if (USE_MOCKS) {
-    const headers: Record<string, string> = {};
-    const accessToken = getAccessToken();
-    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-    const res = await handleMock(method, path, body, headers);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Mock error' }));
-      throw new ApiRequestError(
-        res.status,
-        err.error_code || 'MockError',
-        err.detail || 'Mock error',
-      );
-    }
-    if (res.status === 204) return undefined as T;
-    return res.json();
-  }
-
   const url = buildUrl(path);
   let accessToken = getAccessToken();
 
