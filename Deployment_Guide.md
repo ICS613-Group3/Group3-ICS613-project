@@ -136,7 +136,7 @@ SEED_PASSWORD=devpass123 python scripts/seed_dev.py
 # Expected: Seed data created.
 ```
 
-**Seed Users (all password: `devpass123`):**
+**Seed Users (all password: `devpass123`):**  <!-- pragma: allowlist secret -->
 
 | Email | Role |
 |-------|------|
@@ -259,7 +259,7 @@ volumes:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing` |  <!-- pragma: allowlist secret -->
 | `ENVIRONMENT` | `development` or `production` | `development` |
 | `SECRET_KEY` | JWT signing key | Placeholder (dev only) |
 | `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
