@@ -15,7 +15,7 @@ test.describe('ProfileSetupPage', () => {
     await page.getByLabel('Short Bio').fill('Neighborhood tool sharer.');
     await page.getByRole('button', { name: 'Save Profile' }).click();
 
-    await expect(page.locator('.form-success')).toContainText('Profile setup complete');
+    await expect(page.locator('.form-success')).toContainText('Profile saved successfully');
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 3000 });
   });
 
