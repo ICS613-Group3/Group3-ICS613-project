@@ -214,7 +214,8 @@ function AdminReport() {
   const filteredBorrowingActivities = reportType === "borrowingActivities" ? getFilteredData(borrowingActivities) : borrowingActivities;
 
   const exportCSV = () => {
-    const blob = new Blob([Papa.unparse(getAppropriateData())], {type: "text/csv"});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blob = new Blob([Papa.unparse(getAppropriateData() as any[])], {type: "text/csv"});
     const url = URL.createObjectURL(blob);
 
     Object.assign(document.createElement("a"), {
