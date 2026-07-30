@@ -15,6 +15,7 @@ import AdminReportedListingsPage from '../pages/AdminReportedListingsPage';
 import AdminReportsPage from '../pages/AdminReportsPage';
 import AdminReservationPage from '../pages/AdminReservationPage';
 import ModerationHistoryPage from '../pages/ModerationHistoryPage';
+import AdminReport from '../pages/AdminReport';
 
 // Import authentication and account pages.
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
@@ -155,6 +156,7 @@ function AppRoutes() {
         <Route path="/admin/categories" element={<RequireAdmin><AdminCategoriesPage /></RequireAdmin>} />
         <Route path="/admin/reservations" element={<RequireAdmin><AdminReservationPage /></RequireAdmin>} />
         <Route path="/admin/moderation" element={<RequireAdmin><AdminModerationProfiles /></RequireAdmin>} />
+        <Route path="/admin/report" element={<RequireAdmin><AdminReport /></RequireAdmin>} />
         <Route path="/admin/moderation/history" element={<RequireAdmin><ModerationHistoryPage /></RequireAdmin>} />
         <Route path="/admin/moderation/reports" element={<RequireAdmin><AdminModerationReportsPage /></RequireAdmin>} />
         <Route path="/admin/moderation/:memberId" element={<RequireAdmin><AdminModerationIndividualProfile /></RequireAdmin>} />
