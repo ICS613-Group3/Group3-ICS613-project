@@ -90,7 +90,10 @@ async def list_tools(
         end = date.fromisoformat(available_end) if available_end else None
     except ValueError:
         from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail="Invalid date format. Use YYYY-MM-DD.") from None
+
+        raise HTTPException(
+            status_code=422, detail="Invalid date format. Use YYYY-MM-DD."
+        ) from None
 
     service = ToolService()
     tools, total = await service.list_tools(

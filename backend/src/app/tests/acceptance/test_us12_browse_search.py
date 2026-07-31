@@ -209,9 +209,7 @@ class TestScenario7CategoryFilterYieldsNoMatchingResults:
         self, client, db_session: AsyncSession
     ) -> None:
         owner = await UserFactory.create_async(db_session)
-        await create_tool(
-            client, owner, name="Drill", category="POWER_TOOLS"
-        )
+        await create_tool(client, owner, name="Drill", category="POWER_TOOLS")
 
         viewer = await UserFactory.create_async(db_session)
         response = await client.get(
