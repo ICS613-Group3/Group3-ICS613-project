@@ -1,8 +1,8 @@
-import { test, expect, loginAsMockUser } from '../fixtures';
+import { test, expect, loginAsAdmin, logoutMockUser } from '../fixtures';
 
 test.describe('AdminCategoriesPage', () => {
   test('admin can list, create, edit, and remove categories', async ({ page }) => {
-    await loginAsMockUser(page, '/admin/categories');
+    await loginAsAdmin(page, '/admin/categories');
 
     // Page loads
     await expect(page.locator('.page-section h1')).toContainText('Tool Categories');
@@ -54,9 +54,15 @@ test.describe('AdminCategoriesPage', () => {
   });
 
   test('non-admin cannot access categories page', async ({ page }) => {
-    await loginAsMockUser(page, '/admin/categories', 'member01@example.com');
+    // Login as non-admin and try to access admin page
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('member01@example.com');
+    await page.getByLabel('Password').fill('devpass123');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await page.waitForURL(/\/dashboard$/);
 
-    // Should see access denied
-    await expect(page.locator('.page-section h1')).toContainText('Access Denied');
+    // Navigate to admin page — RequireAdmin redirects non-admins to /dashboard
+    await page.goto('/admin/categories');
+    await expect(page).toHaveURL(/\/dashboard$/);
   });
 });
