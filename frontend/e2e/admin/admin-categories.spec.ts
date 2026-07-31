@@ -5,7 +5,7 @@ test.describe('AdminCategoriesPage', () => {
     await loginAsMockUser(page, '/admin/categories');
 
     // Page loads
-    await expect(page.locator('h1')).toContainText('Tool Categories');
+    await expect(page.locator('.page-section h1')).toContainText('Tool Categories');
 
     // Create a new category
     const catName = `Test Category ${Date.now()}`;
@@ -57,6 +57,6 @@ test.describe('AdminCategoriesPage', () => {
     await loginAsMockUser(page, '/admin/categories', 'member01@example.com');
 
     // Should see access denied
-    await expect(page.locator('h1')).toContainText('Access Denied');
+    await expect(page.locator('.page-section h1')).toContainText('Access Denied');
   });
 });
