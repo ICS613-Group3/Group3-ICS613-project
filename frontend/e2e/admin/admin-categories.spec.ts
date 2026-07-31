@@ -1,4 +1,4 @@
-import { test, expect, loginAsAdmin, logoutMockUser } from '../fixtures';
+import { test, expect, loginAsAdmin } from '../fixtures';
 
 test.describe('AdminCategoriesPage', () => {
   test('admin can list, create, edit, and remove categories', async ({ page }) => {
