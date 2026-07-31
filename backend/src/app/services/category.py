@@ -94,6 +94,46 @@ class CategoryService:
         await db.flush()
         return category
 
+    async def update_category(
+        self,
+        db: AsyncSession,
+        *,
+        category_id: uuid.UUID,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Category:
+        """Update a category's name and/or description.
+
+        Raises:
+          NotFoundError: the category does not exist.
+          ConflictError: a category with the same name already exists.
+        """
+        category = await db.get(Category, category_id)
+        if category is None:
+            raise NotFoundError("Category not found")
+
+        if name is not None:
+            name_stripped = name.strip()
+            if not name_stripped:
+                raise ValidationError("Category name cannot be empty")
+
+            # Check for duplicates (case-insensitive) if renaming
+            if name_stripped.lower() != category.name.lower():
+                existing = await db.execute(
+                    select(Category).where(func.lower(Category.name) == func.lower(name_stripped))
+                )
+                if existing.scalar_one_or_none() is not None:
+                    raise ConflictError(f"Category '{name_stripped}' already exists")
+            category.name = name_stripped
+
+        if description is not None:
+            category.description = description
+
+        db.add(category)
+        await db.flush()
+        await db.refresh(category)
+        return category
+
     async def validate_category_name(
         self,
         db: AsyncSession,
