@@ -133,17 +133,10 @@ flagged. Both are real, isolated, verified fixes — not guesses.
    genuinely visible before redirecting. Un-skipped the test (was
    `test.fixme`); confirmed green on repeated local runs, plus `npm run
    lint` and `npx tsc -b` both pass clean on the changed file.
-3. **`notifications.spec.ts`'s hardcoded-count flake — did not reproduce.**
-   Ran the full suite twice against a freshly seeded local backend
-   (matching CI's per-run setup); the first test's 3/2/1 assertions
-   passed cleanly both times. The shared-account cross-file-ordering
-   theory below is plausible in principle (`account/` sorts before
-   `misc/`, so anything else `member02` does earlier in the run could
-   shift these numbers) but nothing observed locally actually did that.
-   Leaving the test as-is rather than guessing at a fix for something
-   that isn't currently reproducing; worth revisiting if it recurs in CI
-   with a fresh set of clues (which spec ran immediately before it that
-   run).
+3. **`notifications.spec.ts`'s hardcoded-count flake — did not reproduce,
+   not chasing further.** Passed cleanly on every local run against a
+   freshly seeded backend. Leaving the test as-is; revisit only if it
+   recurs in CI.
 4. **`dashboard.spec.ts`'s "My Reservations"/quick-access-card click —
    root-caused and FIXED in app code.** The 30s
    `locator.click` timeout isn't the click target being obscured or slow
