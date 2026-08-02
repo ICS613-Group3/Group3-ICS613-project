@@ -22,6 +22,7 @@ import os
 import secrets
 import shutil
 import sys
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -36,12 +37,17 @@ from app.config import get_settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models.enums import (  # noqa: E402
     InviteStatus,
+    NotificationType,
+    ReservationState,
     ToolCondition,
     UserStatus,
 )
 from app.models.invite import InviteToken  # noqa: E402
 from app.models.category import Category  # noqa: E402
+from app.models.notification import Notification  # noqa: E402
 from app.models.photo import Photo  # noqa: E402
+from app.models.reservation import Reservation  # noqa: E402
+from app.models.review import Review  # noqa: E402
 from app.models.tool import Tool  # noqa: E402
 from app.models.user import User  # noqa: E402
 
@@ -158,13 +164,18 @@ async def _seed(db: AsyncSession, password_hash: str) -> None:
     db.add_all([admin, member01, member02])
     await db.flush()
 
-    # ── Invite ──
+    # ── Invites ──
     invite = InviteToken(
         email="newmember@example.com",
         created_by=admin.id,
         status=InviteStatus.SENT,
     )
-    db.add(invite)
+    used_invite = InviteToken(
+        email="used.member@example.com",
+        created_by=admin.id,
+        status=InviteStatus.USED,
+    )
+    db.add_all([invite, used_invite])
 
     # ── Categories (admin-managed, US28) ──
     categories_data = [
@@ -196,6 +207,7 @@ async def _seed(db: AsyncSession, password_hash: str) -> None:
 
     # Split tools across both non-admin users (odd → owner, even → borrower)
     tools = []
+    tool_by_name: dict[str, Tool] = {}
     for i, td in enumerate(tools_data):
         owner = member01 if i % 2 == 0 else member02
         tool = Tool(
@@ -219,6 +231,145 @@ async def _seed(db: AsyncSession, password_hash: str) -> None:
         )
         db.add(photo)
         tools.append(tool)
+        tool_by_name[tool.name] = tool
+
+    await db.flush()
+
+    # ── Reservations ──
+    # A fixed set of reservations covering each workflow state, used by the
+    # frontend Playwright e2e suite (e2e/reservations/*, e2e/misc/*). All
+    # borrow member01's tools with member02 as borrower except res_b, which
+    # is reversed (member02 owns the tool) so member02 can also exercise the
+    # owner-side approve/deny actions while logged in as the seeded e2e test
+    # account (see e2e/fixtures.ts loginAsMockUser -> member02@example.com).
+    today = date.today()
+
+    res_a = Reservation(
+        tool_id=tool_by_name["Cordless Drill"].id,
+        borrower_id=member02.id,
+        state=ReservationState.REQUESTED,
+        start_date=today + timedelta(days=5),
+        end_date=today + timedelta(days=7),
+    )
+    res_b = Reservation(
+        tool_id=tool_by_name["Hammer"].id,
+        borrower_id=member01.id,
+        state=ReservationState.REQUESTED,
+        start_date=today + timedelta(days=5),
+        end_date=today + timedelta(days=7),
+    )
+    res_c = Reservation(
+        tool_id=tool_by_name["Ladder"].id,
+        borrower_id=member02.id,
+        state=ReservationState.PICKED_UP,
+        start_date=today - timedelta(days=3),
+        end_date=today + timedelta(days=3),
+        picked_up_at=datetime.now(UTC) - timedelta(days=2),
+    )
+    res_d = Reservation(
+        tool_id=tool_by_name["Circular Saw"].id,
+        borrower_id=member02.id,
+        state=ReservationState.RETURNED,
+        start_date=today - timedelta(days=10),
+        end_date=today - timedelta(days=5),
+        picked_up_at=datetime.now(UTC) - timedelta(days=9),
+        returned_at=datetime.now(UTC) - timedelta(days=4),
+    )
+    res_e = Reservation(
+        tool_id=tool_by_name["Tape Measure"].id,
+        borrower_id=member02.id,
+        state=ReservationState.RETURNED,
+        start_date=today - timedelta(days=10),
+        end_date=today - timedelta(days=5),
+        picked_up_at=datetime.now(UTC) - timedelta(days=9),
+        returned_at=datetime.now(UTC) - timedelta(days=4),
+    )
+    res_f = Reservation(
+        tool_id=tool_by_name["Rake"].id,
+        borrower_id=member02.id,
+        state=ReservationState.RETURNED,
+        start_date=today - timedelta(days=10),
+        end_date=today - timedelta(days=5),
+        picked_up_at=datetime.now(UTC) - timedelta(days=9),
+        returned_at=datetime.now(UTC) - timedelta(days=4),
+    )
+    res_g = Reservation(
+        tool_id=tool_by_name["Wrench"].id,
+        borrower_id=member02.id,
+        state=ReservationState.RETURNED,
+        start_date=today - timedelta(days=10),
+        end_date=today - timedelta(days=5),
+        picked_up_at=datetime.now(UTC) - timedelta(days=9),
+        returned_at=datetime.now(UTC) - timedelta(days=4),
+    )
+    db.add_all([res_a, res_b, res_c, res_d, res_e, res_f, res_g])
+    await db.flush()
+
+    # ── Reviews (US24/US25) ──
+    # res_e and res_f are reviewed by both parties, giving member02 both
+    # "given" and "received" reviews for the review-history page.
+    db.add_all(
+        [
+            Review(
+                reservation_id=res_e.id,
+                reviewer_id=member02.id,
+                reviewee_id=member01.id,
+                rating=5,
+                comment="Tape measure worked perfectly, exactly as described.",
+            ),
+            Review(
+                reservation_id=res_e.id,
+                reviewer_id=member01.id,
+                reviewee_id=member02.id,
+                rating=5,
+                comment="Returned on time and in great condition. Would lend again.",
+            ),
+            Review(
+                reservation_id=res_f.id,
+                reviewer_id=member02.id,
+                reviewee_id=member01.id,
+                rating=3,
+                comment="Rake handle was a little loose but still usable.",
+            ),
+            Review(
+                reservation_id=res_f.id,
+                reviewer_id=member01.id,
+                reviewee_id=member02.id,
+                rating=4,
+                comment="No issues borrowing to this member.",
+            ),
+        ]
+    )
+
+    # ── Notifications ──
+    # 3 notifications for member02 (2 unread, 1 read), matching the
+    # frontend e2e notifications.spec.ts fixture expectations.
+    db.add_all(
+        [
+            Notification(
+                user_id=member02.id,
+                type=NotificationType.RESERVATION_RETURNED.value,
+                title="Tool returned",
+                body="Circular Saw was returned. You can now leave a review.",
+                payload={"reservation_id": str(res_d.id)},
+            ),
+            Notification(
+                user_id=member02.id,
+                type=NotificationType.RESERVATION_REQUESTED.value,
+                title="New reservation request",
+                body="member01 requested to borrow your Hammer.",
+                payload={"reservation_id": str(res_b.id)},
+            ),
+            Notification(
+                user_id=member02.id,
+                type=NotificationType.RESERVATION_REQUESTED.value,
+                title="Reservation request submitted",
+                body="Your reservation request for Cordless Drill was submitted.",
+                payload={"reservation_id": str(res_a.id)},
+                read_at=datetime.now(UTC) - timedelta(hours=1),
+            ),
+        ]
+    )
 
 
 if __name__ == "__main__":

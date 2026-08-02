@@ -27,7 +27,7 @@ const allowedPhotoTypes = [
   'image/webp',
 ];
 
-const mockAuthKey = 'mockAuthStatus';
+const mockAuthKey = 'mockAuthStatus'; // pragma: allowlist secret -- localStorage key name, not a credential
 const mockProfileKey = 'mockUserProfile';
 
 const isMockMode =
@@ -402,12 +402,17 @@ function ProfileSetupPage() {
       }
 
       setSuccessMessage(
-        'Profile saved successfully. Redirecting to dashboard...',
+        'Profile setup complete. Redirecting to dashboard...',
       );
 
-      navigate('/dashboard', {
-        replace: true,
-      });
+      // Give the success message a moment to actually paint before leaving
+      // the page -- navigating in the same tick as the state update meant
+      // the message was set but never visibly rendered.
+      window.setTimeout(() => {
+        navigate('/dashboard', {
+          replace: true,
+        });
+      }, 800);
     } catch (error) {
       if (
         error instanceof ApiRequestError &&

@@ -110,3 +110,63 @@ class TestScenario4NonAdminCannotManage:
             headers=auth_header(user.id),
         )
         assert resp.status_code == 403
+
+
+class TestScenario5DuplicateCategoryNameRejected:
+    async def test_create_duplicate_name_returns_409(self, client, db_session) -> None:
+        admin = await make_admin(db_session)
+
+        resp = await client.post(
+            "/api/v1/categories",
+            json={"name": "Specialty Tools"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 201
+
+        dup = await client.post(
+            "/api/v1/categories",
+            json={"name": "Specialty Tools"},
+            headers=auth_header(admin.id),
+        )
+        assert dup.status_code == 409
+        assert "already exists" in dup.json()["detail"].lower()
+
+    async def test_create_duplicate_name_is_case_insensitive(self, client, db_session) -> None:
+        admin = await make_admin(db_session)
+
+        resp = await client.post(
+            "/api/v1/categories",
+            json={"name": "Rental Gear"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 201
+
+        dup = await client.post(
+            "/api/v1/categories",
+            json={"name": "rental gear"},
+            headers=auth_header(admin.id),
+        )
+        assert dup.status_code == 409
+
+
+class TestScenario6BlankCategoryNameRejected:
+    async def test_blank_name_returns_422(self, client, db_session) -> None:
+        admin = await make_admin(db_session)
+
+        resp = await client.post(
+            "/api/v1/categories",
+            json={"name": "   "},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 422
+
+
+class TestScenario7RemoveNonexistentCategoryReturns404:
+    async def test_remove_nonexistent_category_returns_404(self, client, db_session) -> None:
+        admin = await make_admin(db_session)
+
+        resp = await client.delete(
+            f"/api/v1/categories/{uuid.uuid4()}",
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 404

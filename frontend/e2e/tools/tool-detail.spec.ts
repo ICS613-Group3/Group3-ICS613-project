@@ -1,87 +1,94 @@
-import { test, expect } from '../fixtures';
-// All tests in this file depend on hardcoded tool IDs (e.g. 'tool-1')
-// and mock reservation data.
+import { test, expect, loginAsMockUser } from '../fixtures';
+import { getToolId } from '../api-helpers';
 
-// Covers ToolDetailPage (US12 detail view, US13 mock reservation request
-// with frontend-only conflict detection).
+// Covers ToolDetailPage (US12 detail view, US13 reservation request).
 //
-// Fixture reference (src/data/mockData.ts):
-// - tool-1 "Cordless Drill": available 2026-07-01 to 2026-07-10, with an
-//   active REQUESTED reservation for 2026-07-01 to 2026-07-03 (reservation-1).
+// Fixture (scripts/seed_dev.py): Cordless Drill and Hammer are both member01/
+// member02-owned seeded tools. There's no tool "availability window" concept
+// on the backend (see the fixme below), so date-range tests just exercise
+// the client-side start/end validation and the real overlap-conflict error.
 test.describe('ToolDetailPage', () => {
-  test.fixme('shows a not-found message for an unknown tool id', async ({ page }) => {
-    await page.goto('/tools/does-not-exist');
+  test('shows a not-found message for an unknown tool id', async ({ page }) => {
+    await loginAsMockUser(page, '/tools/00000000-0000-0000-0000-000000000000');
 
     await expect(page.getByRole('heading', { name: 'We could not find this tool.' })).toBeVisible();
   });
 
-  test.fixme('shows full tool details', async ({ page }) => {
-    await page.goto('/tools/tool-1');
+  test('shows full tool details', async ({ page }) => {
+    await loginAsMockUser(page);
+    const toolId = await getToolId(page, 'Cordless Drill');
 
-    await expect(
-      page.getByRole('heading', { name: 'Cordless Drill', level: 1 }),
-    ).toBeVisible();
-    await expect(page.getByText('Rion Sawabe')).toBeVisible();
-    await expect(page.getByText('Please return with the battery charged.')).toBeVisible();
+    await page.goto(`/tools/${toolId}`);
+
+    await expect(page.getByRole('heading', { name: 'Cordless Drill', level: 1 })).toBeVisible();
+    await expect(page.getByText('Demo Owner')).toBeVisible();
+    await expect(page.getByText('A power_tools available for sharing.')).toBeVisible();
   });
 
-  test.fixme('submits a mock reservation request for available dates', async ({ page }) => {
-    await page.goto('/tools/tool-1');
+  test('submits a reservation request for available dates', async ({ page }) => {
+    await loginAsMockUser(page);
+    const toolId = await getToolId(page, 'Circular Saw');
 
-    await page.getByLabel('Start Date (HST)').fill('2026-07-05');
-    await page.getByLabel('End Date (HST)').fill('2026-07-06');
+    await page.goto(`/tools/${toolId}`);
+    await page.getByLabel('Start Date (HST)').fill('2026-09-01');
+    await page.getByLabel('End Date (HST)').fill('2026-09-03');
     await page.getByRole('button', { name: 'Submit Reservation Request' }).click();
 
     await expect(page.locator('.success-message')).toContainText(
-      'Mock request submitted for Cordless Drill',
+      'Reservation request submitted for Circular Saw',
     );
   });
 
-  test.fixme('rejects an end date before the start date', async ({ page }) => {
-    await page.goto('/tools/tool-1');
+  test('rejects an end date before the start date', async ({ page }) => {
+    await loginAsMockUser(page);
+    const toolId = await getToolId(page, 'Cordless Drill');
 
+    await page.goto(`/tools/${toolId}`);
     await page.getByLabel('Start Date (HST)').fill('2026-07-06');
     await page.getByLabel('End Date (HST)').fill('2026-07-05');
     await page.getByRole('button', { name: 'Submit Reservation Request' }).click();
 
-    await expect(page.locator('.form-error')).toHaveText(
-      'End date cannot be before start date.',
-    );
+    await expect(page.locator('.form-error')).toHaveText('End date cannot be before start date.');
   });
 
-  test.fixme('rejects dates outside the tool availability window', async ({ page }) => {
-    await page.goto('/tools/tool-1');
+  test('rejects a date range that conflicts with an active reservation', async ({ page }) => {
+    await loginAsMockUser(page);
+    const toolId = await getToolId(page, 'Rake');
 
-    await page.getByLabel('Start Date (HST)').fill('2026-06-01');
-    await page.getByLabel('End Date (HST)').fill('2026-06-05');
+    await page.goto(`/tools/${toolId}`);
+    await page.getByLabel('Start Date (HST)').fill('2026-09-10');
+    await page.getByLabel('End Date (HST)').fill('2026-09-15');
+    await page.getByRole('button', { name: 'Submit Reservation Request' }).click();
+    await expect(page.locator('.success-message')).toBeVisible();
+
+    // A second, overlapping request for the same tool is rejected.
+    await page.getByLabel('Start Date (HST)').fill('2026-09-12');
+    await page.getByLabel('End Date (HST)').fill('2026-09-17');
     await page.getByRole('button', { name: 'Submit Reservation Request' }).click();
 
     await expect(page.locator('.form-error')).toContainText(
-      'must be within the tool availability window',
+      'This tool is already reserved for the requested dates.',
     );
   });
 
-  test.fixme('rejects a date range that conflicts with an active reservation and mentions 409 Conflict', async ({
-    page,
-  }) => {
-    await page.goto('/tools/tool-1');
+  test('links to the edit tool listing page', async ({ page }) => {
+    await loginAsMockUser(page);
+    const toolId = await getToolId(page, 'Hammer');
 
-    // reservation-1 already covers 2026-07-01 to 2026-07-03 for tool-1.
-    await page.getByLabel('Start Date (HST)').fill('2026-07-02');
-    await page.getByLabel('End Date (HST)').fill('2026-07-04');
-    await page.getByRole('button', { name: 'Submit Reservation Request' }).click();
-
-    await expect(page.locator('.form-error')).toContainText(
-      'Tool is not available for those dates',
-    );
-    await expect(page.locator('.form-error')).toContainText('409 Conflict');
-  });
-
-  test.fixme('links to the edit tool listing page', async ({ page }) => {
-    await page.goto('/tools/tool-1');
-
+    await page.goto(`/tools/${toolId}`);
     await page.getByRole('link', { name: 'Edit Tool Listing' }).click();
 
-    await expect(page).toHaveURL(/\/tools\/tool-1\/edit$/);
+    await expect(page).toHaveURL(new RegExp(`/tools/${toolId}/edit$`));
   });
+
+  test.fixme(
+    'rejects dates outside the tool availability window',
+    async () => {
+      // Not implemented: Tool has no availability-window fields
+      // (available_start/available_end) on the backend at all -- the
+      // reservation form only validates start <= end and lets the
+      // backend's overlap check catch conflicts. See US8's lending-field
+      // gaps in the backend acceptance suite for the broader scope of this.
+    },
+  );
 });

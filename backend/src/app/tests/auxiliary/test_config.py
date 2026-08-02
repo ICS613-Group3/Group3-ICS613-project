@@ -19,12 +19,17 @@ fixed here.)
 The second test would have caught the regression in the second review
 where the check was tied to ``debug`` and rejected the user's ``.env``
 even though they had set ``ENVIRONMENT=development``.
+
+No user story covers Settings/startup validation directly, so this
+module lives under auxiliary/ rather than acceptance/.
 """
 
 import pytest
 from pydantic import ValidationError
 
 from app.config import Settings
+
+pytestmark = pytest.mark.auxiliary
 
 PLACEHOLDER_KEY = "change-me-in-production-please-use-a-long-random-string"
 # Length >= 32 so the length check is satisfied; contains "change-me"

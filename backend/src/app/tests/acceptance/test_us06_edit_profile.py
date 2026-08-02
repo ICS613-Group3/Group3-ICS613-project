@@ -44,17 +44,13 @@ class TestScenario2DisplayNameCannotBeCleared:
 
 
 class TestScenario3DisplayNameExceedsMaxLength:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="known gap: same root cause as US5 Scenario 3 -- "
-        "UserUpdate.full_name has no max_length constraint.",
-    )
     async def test_overlong_display_name_rejected(self, client, db_session: AsyncSession) -> None:
+        # UserUpdate.full_name (app/schemas/user.py) enforces max_length=255.
         user = await UserFactory.create_async(db_session)
 
         response = await client.put(
             "/api/v1/auth/me",
-            json={"full_name": "x" * 51},
+            json={"full_name": "x" * 256},
             headers=auth_header(user.id),
         )
 

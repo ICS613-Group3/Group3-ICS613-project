@@ -99,7 +99,10 @@ class TestScenario3SuspendedMemberCanStillLogIn:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "suspended-us30@example.com", "password": "Password123!"},
+            json={
+                "email": "suspended-us30@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 200
 
@@ -175,3 +178,39 @@ class TestScenario8BorrowersWithReservationsOnSuspendedMembersToolsAreNotified:
     )
     async def test_borrower_on_suspended_owners_tool_is_notified_and_freed(self) -> None:
         raise NotImplementedError
+
+
+class TestScenario9SuspendingNonexistentMemberReturns404:
+    async def test_returns_404(self, client, db_session: AsyncSession) -> None:
+        import uuid
+
+        admin = await make_admin(db_session)
+
+        response = await client.post(
+            f"/api/v1/admin/users/{uuid.uuid4()}/deactivate",
+            json={"reason": "no such user"},
+            headers=auth_header(admin.id),
+        )
+        assert response.status_code == 404
+
+
+class TestScenario10CannotSuspendAnAlreadyDeletedAccount:
+    async def test_returns_409(self, client, db_session: AsyncSession) -> None:
+        admin = await make_admin(db_session)
+        member = await UserFactory.create_async(db_session)
+
+        delete_response = await client.request(
+            "DELETE",
+            f"/api/v1/admin/users/{member.id}",
+            json={"reason": "test setup"},
+            headers=auth_header(admin.id),
+        )
+        assert delete_response.status_code == 200
+
+        response = await client.post(
+            f"/api/v1/admin/users/{member.id}/deactivate",
+            json={"reason": "trying to suspend a deleted account"},
+            headers=auth_header(admin.id),
+        )
+        assert response.status_code == 409
+        assert "deleted" in response.json()["detail"].lower()
