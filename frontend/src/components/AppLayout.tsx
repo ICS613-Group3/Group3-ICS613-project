@@ -129,11 +129,11 @@ function AppLayout() {
                   <NavLink className={getNavLinkClass} to="/admin/reservations">
                     Admin Reservations
                   </NavLink>
-                  <NavLink className={getNavLinkClass} to="/admin/report">
-                    Admin Reports
-                  </NavLink>
                   <NavLink className={getNavLinkClass} to="/admin/moderation">
                     Moderation
+                  </NavLink>
+                  <NavLink className={getNavLinkClass} to="/admin/moderation/analytics">
+                    Moderation Analytics
                   </NavLink>
                 </>
               )}
