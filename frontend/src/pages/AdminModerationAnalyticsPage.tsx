@@ -1,4 +1,4 @@
-{/* Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/ */}
+// Reference: https://www.geeksforgeeks.org/typescript/how-can-i-define-an-array-of-objects-in-typescript/
 import {useState} from "react";
 import Papa from "papaparse";
 
@@ -176,8 +176,8 @@ const borrowingActivities: {
 
 type ReportType = "listings" | "violations" | "suspensions" | "borrowingActivities"
   
-{/* User Story 33: Admin Report */}
-function AdminReport() {
+// User Story 33 / Issue #60: Admin Moderation Analytics Report.
+function AdminModerationAnalyticsPage() {
   const [reportType, setReportType] = useState<ReportType>("listings");
   const [date, setDate] = useState("");
 
@@ -214,12 +214,12 @@ function AdminReport() {
   const filteredBorrowingActivities = reportType === "borrowingActivities" ? getFilteredData(borrowingActivities) : borrowingActivities;
 
   const exportCSV = () => {
-    const blob = new Blob([Papa.unparse(getAppropriateData())], {type: "text/csv"});
+    const blob = new Blob([Papa.unparse<Record<string, string | number>>(getAppropriateData())], {type: "text/csv"});
     const url = URL.createObjectURL(blob);
 
     Object.assign(document.createElement("a"), {
         href: url,
-        download: "AdminReport.csv"
+        download: "ModerationAnalytics.csv"
     }).click();
     
     URL.revokeObjectURL(url);
@@ -231,7 +231,7 @@ function AdminReport() {
         <div className="page-header">
           <div>
             <p className="eyebrow">User Story 33</p>
-            <h1>Admin Report</h1>
+            <h1>Moderation Analytics</h1>
             <p className="page-description">Admin can generate community moderation reports and export it as CSV</p>
           </div>
         </div>
@@ -274,7 +274,7 @@ function AdminReport() {
                ))}
                {filteredListings.length === 0 && (
                  <tr>
-                   <td>There is no matches...</td>
+                   <td colSpan={6}>There are no matches.</td>
                  </tr>
                )}
             </tbody>
@@ -316,7 +316,7 @@ function AdminReport() {
                ))}
                {filteredViolations.length === 0 && (
                  <tr>
-                   <td>There is no matches...</td>
+                   <td colSpan={9}>There are no matches.</td>
                  </tr>
                )}
             </tbody>
@@ -331,26 +331,28 @@ function AdminReport() {
           <table className="invite-table">
             <thead>
               <tr>
-                <th>Member ID</th>
-                <th>Member Name</th>
+                <th>Listing ID</th>
+                <th>Listing Name</th>
+                <th>Owner ID</th>
+                <th>Owner Name</th>
                 <th>Status</th>
-                <th>Suspension Count</th>
                 <th>Recent Suspended Date</th>
               </tr>
             </thead>
             <tbody>
               {filteredSuspensions.map((s) =>(
                  <tr key={s.listing_id}>
+                  <td>{s.listing_id}</td>
                   <td>{s.listingName}</td>
                   <td>{s.owner_id}</td>
                   <td>{s.ownerName}</td>
                   <td>{s.status}</td>
                   <td>{s.recent_suspended_date}</td>
-                 </tr> 
+                 </tr>
                ))}
                {filteredSuspensions.length === 0 && (
                  <tr>
-                   <td>There is no matches...</td>
+                   <td colSpan={6}>There are no matches.</td>
                  </tr>
                )}
             </tbody>
@@ -390,7 +392,7 @@ function AdminReport() {
                ))}
                {filteredBorrowingActivities.length === 0 && (
                  <tr>
-                   <td>There is no matches...</td>
+                   <td colSpan={8}>There are no matches.</td>
                  </tr>
                )}
             </tbody>
@@ -405,4 +407,4 @@ function AdminReport() {
   )
 }
 
-export default AdminReport
+export default AdminModerationAnalyticsPage
