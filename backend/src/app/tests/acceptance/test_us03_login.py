@@ -17,7 +17,10 @@ class TestScenario1LoginWithValidCredentials:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "us3-scenario1@example.com", "password": "Password123!"},
+            json={
+                "email": "us3-scenario1@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
 
         assert response.status_code == 200
@@ -32,7 +35,10 @@ class TestScenario2CannotLoginUntilVerified:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "us3-scenario2@example.com", "password": "Password123!"},
+            json={
+                "email": "us3-scenario2@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
         )
 
         assert response.status_code == 401
@@ -46,7 +52,10 @@ class TestScenario3LoginWithInvalidCredentials:
     async def test_unknown_email_returns_generic_error(self, client) -> None:
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "nobody-us3@example.com", "password": "whatever1!"},
+            json={
+                "email": "nobody-us3@example.com",
+                "password": "whatever1!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid email or password"
@@ -58,7 +67,10 @@ class TestScenario3LoginWithInvalidCredentials:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"email": "us3-scenario3@example.com", "password": "WrongPassword1!"},
+            json={
+                "email": "us3-scenario3@example.com",
+                "password": "WrongPassword1!",  # pragma: allowlist secret
+            },
         )
         assert response.status_code == 401
         assert response.json()["detail"] == "Invalid email or password"

@@ -28,7 +28,7 @@ class TestScenario1RegisterWithValidInviteToken:
                 "/api/v1/auth/register",
                 json={
                     "email": email,
-                    "password": "Password123!",
+                    "password": "Password123!",  # pragma: allowlist secret  # pragma: allowlist secret
                     "full_name": "New Member",
                     "invite_token": token,
                 },
@@ -57,7 +57,7 @@ class TestScenario2RegisterWithInvalidOrUsedToken:
             "/api/v1/auth/register",
             json={
                 "email": unique_email(),
-                "password": "Password123!",
+                "password": "Password123!",  # pragma: allowlist secret
                 "invite_token": "not-a-real-token",
             },
         )
@@ -71,7 +71,11 @@ class TestScenario2RegisterWithInvalidOrUsedToken:
         with patch.object(EmailService, "send_verification_email", MagicMock()):
             first = await client.post(
                 "/api/v1/auth/register",
-                json={"email": email, "password": "Password123!", "invite_token": token},
+                json={
+                    "email": email,
+                    "password": "Password123!",  # pragma: allowlist secret
+                    "invite_token": token,
+                },
             )
         assert first.status_code == 201
 
@@ -79,7 +83,7 @@ class TestScenario2RegisterWithInvalidOrUsedToken:
             "/api/v1/auth/register",
             json={
                 "email": unique_email(),
-                "password": "Password123!",
+                "password": "Password123!",  # pragma: allowlist secret
                 "invite_token": token,
             },
         )
@@ -100,7 +104,7 @@ class TestScenario3RegisterWithEmailAlreadyInUse:
             "/api/v1/auth/register",
             json={
                 "email": existing.email,
-                "password": "Password123!",
+                "password": "Password123!",  # pragma: allowlist secret
                 "invite_token": token,
             },
         )

@@ -1,25 +1,30 @@
 """User Story 19 — Timezone and Date Normalization for Reservations.
 
-Structural finding up front: `grep -rniE "hst|hawaii|honolulu|UTC-10"` over
-`backend/src/app` (excluding this test suite) returns zero matches. There is
-no HST-aware date/time handling anywhere in the backend:
+Update: `app/core/timezone.py` now provides real HST conversion helpers
+(`utc_to_hst`, `hst_to_utc`, `normalize_hst`, `format_hst`), and
+`app/services/scheduler.py` uses `utc_to_hst` to compute the grace-period and
+escalation cutoffs (see User Story 18 Scenario 5, which now verifies this).
+That closes the scheduler's half of this story.
+
+The *request path* is still not HST-aware, though:
 
 - Reservation `start_date`/`end_date` are plain `Date` columns (no time
-  component at all) compared with plain `date.today()` calls
-  (`app/services/reservation.py`, `app/services/scheduler.py`) -- the
-  server's local date, not an HST-anchored one.
+  component at all) submitted and compared as-is
+  (`app/services/reservation.py`) -- there is no HST conversion step when a
+  member submits or reads reservation dates.
 - `picked_up_at`/`returned_at`/etc. are stored as `datetime.now(UTC)` with no
-  HST conversion applied anywhere, including on the way back out to the API
-  response (`ReservationResponse` just serializes the raw UTC datetime).
+  HST conversion applied on the way back out to the API response
+  (`ReservationResponse` just serializes the raw UTC datetime).
 
 Because overlap/date-range checks are day-granular (`Date` columns, not
 `DateTime`), most of the *day-boundary* scenarios below happen to produce the
 right answer regardless of server timezone, purely because there's no
 time-of-day to get wrong -- but the doc's explicit requirement (store in UTC,
 display in HST, evaluate "today" in HST) is not implemented as a deliberate
-behavior anywhere; it's an accident of using date-only columns. The scenarios
-that depend on real HST time-of-day handling (grace-period "midnight HST",
-timestamp display) are gaps.
+behavior in the request path; it's an accident of using date-only columns.
+The two scenarios below that depend on real HST time-of-day handling in that
+path (request-time conversion, locale-independent date display) are still
+gaps.
 """
 
 from datetime import date, timedelta

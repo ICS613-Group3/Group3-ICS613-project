@@ -1,18 +1,16 @@
-"""Tests for review endpoints and lifecycle.
+"""Review endpoint coverage with no corresponding user story.
 
-Covers:
-  1. Create review (happy path — requires RETURNED reservation)
-  2. Create review on non-RETURNED reservation (409)
-  3. Create duplicate review (409 — unique constraint)
-  4. Create review by non-party (403)
-  5. Get reviews for a reservation
-  6. Edit review within the 24-hour window
-  7. Delete review within the 24-hour window
+acceptance/test_us24_leave_review.py and test_us25_review_history.py cover
+the create/edit/delete-within-window happy paths, validation, and the
+public-profile review-history view. Neither one tests non-party/non-author
+403s, the raw GET-reviews-for-a-reservation list endpoint, or the
+GET /users/me/reviews?role= endpoint at all.
 """
 
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,10 +18,9 @@ from sqlalchemy.orm import selectinload
 from app.core.security import create_access_token
 from app.models.enums import ReservationState
 from app.models.reservation import Reservation
-from app.models.review import Review
 from app.tests.factories import ReservationFactory, ToolFactory, UserFactory
 
-# ── helpers ────────────────────────────────────────────────────────────────
+pytestmark = pytest.mark.auxiliary
 
 
 async def _create_returned_reservation(
@@ -71,138 +68,8 @@ async def _create_returned_reservation(
     return owner, borrower, tool, reservation
 
 
-# ══════════════════════════════════════════════════════════════════════════
-# Create
-# ══════════════════════════════════════════════════════════════════════════
-
-
-class TestCreateReview:
-    """POST /api/v1/reservations/{reservation_id}/review"""
-
-    async def test_create_review_happy_path(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """Borrower submits a review on a RETURNED reservation."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        token = create_access_token(borrower.id)
-
-        response = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 5, "comment": "Excellent tool, very helpful!"},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert response.status_code == 201, response.text
-        data = response.json()
-        assert data["rating"] == 5
-        assert data["comment"] == "Excellent tool, very helpful!"
-        assert data["reservation_id"] == str(reservation.id)
-        assert data["reviewer_id"] == str(borrower.id)
-        assert data["reviewee_id"] == str(owner.id)
-        assert "id" in data
-        assert "created_at" in data
-        assert "updated_at" in data
-
-    async def test_owner_can_also_review(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """Tool owner submits a review on a RETURNED reservation."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        token = create_access_token(owner.id)
-
-        response = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 4, "comment": "Borrower returned it on time."},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert response.status_code == 201, response.text
-        data = response.json()
-        assert data["rating"] == 4
-        assert data["reviewer_id"] == str(owner.id)
-        assert data["reviewee_id"] == str(borrower.id)
-
-    async def test_create_review_non_returned_reservation(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """409 when trying to review a reservation that is not RETURNED."""
-        owner = await UserFactory.create_async(db_session, email=unique_email)
-        borrower = await UserFactory.create_async(
-            db_session, email=f"b+{uuid.uuid4().hex[:12]}@example.com"
-        )
-        tool = await ToolFactory.create_async(db_session, owner_id=owner.id)
-
-        reservation = await ReservationFactory.create_async(
-            db_session,
-            tool_id=tool.id,
-            borrower_id=borrower.id,
-            state=ReservationState.REQUESTED,  # NOT returned
-            start_date=date.today(),
-            end_date=date.today() + timedelta(days=1),
-        )
-
-        token = create_access_token(borrower.id)
-
-        response = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 3},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert response.status_code == 409, response.text
-        detail = response.json()["detail"]
-        assert "RETURNED" in detail.upper() or "completed" in detail.lower()
-
-    async def test_create_duplicate_review(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """409 when the same reviewer tries to review the same reservation twice."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        token = create_access_token(borrower.id)
-
-        # First review — ok
-        resp1 = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 5},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert resp1.status_code == 201, resp1.text
-
-        # Second review — conflict
-        resp2 = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 3},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert resp2.status_code == 409, resp2.text
-        assert "already reviewed" in resp2.json()["detail"].lower()
+class TestReviewAuthorizationEdgeCases:
+    """403 checks for create/edit/delete that no acceptance scenario covers."""
 
     async def test_create_review_by_non_party(
         self,
@@ -233,14 +100,91 @@ class TestCreateReview:
         detail = response.json()["detail"]
         assert "only the borrower" in detail.lower() or "owner" in detail.lower()
 
+    async def test_edit_review_by_non_author(
+        self,
+        client,
+        db_session: AsyncSession,
+        unique_email: str,
+    ) -> None:
+        """403 when someone other than the reviewer tries to edit."""
+        owner, borrower, tool, reservation = await _create_returned_reservation(
+            db_session,
+            owner_email=unique_email,
+            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
+        )
 
-# ══════════════════════════════════════════════════════════════════════════
-# Read
-# ══════════════════════════════════════════════════════════════════════════
+        # Borrower creates a review
+        b_token = create_access_token(borrower.id)
+        create_resp = await client.post(
+            f"/api/v1/reservations/{reservation.id}/review",
+            json={"rating": 4},
+            headers={"Authorization": f"Bearer {b_token}"},
+        )
+        assert create_resp.status_code == 201, create_resp.text
+        review_id = create_resp.json()["id"]
+
+        # Pre-load for the service call
+        from app.models.review import Review
+
+        await db_session.execute(
+            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+        )
+
+        # Owner tries to edit the borrower's review
+        o_token = create_access_token(owner.id)
+        patch_resp = await client.patch(
+            f"/api/v1/reviews/{review_id}",
+            json={"rating": 2},
+            headers={"Authorization": f"Bearer {o_token}"},
+        )
+
+        assert patch_resp.status_code == 403, patch_resp.text
+        assert "only edit your own" in patch_resp.json()["detail"].lower()
+
+    async def test_delete_review_by_non_author(
+        self,
+        client,
+        db_session: AsyncSession,
+        unique_email: str,
+    ) -> None:
+        """403 when someone other than the reviewer tries to delete."""
+        owner, borrower, tool, reservation = await _create_returned_reservation(
+            db_session,
+            owner_email=unique_email,
+            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
+        )
+
+        # Borrower creates a review
+        b_token = create_access_token(borrower.id)
+        create_resp = await client.post(
+            f"/api/v1/reservations/{reservation.id}/review",
+            json={"rating": 3},
+            headers={"Authorization": f"Bearer {b_token}"},
+        )
+        assert create_resp.status_code == 201, create_resp.text
+        review_id = create_resp.json()["id"]
+
+        # Pre-load for the service call
+        from app.models.review import Review
+
+        await db_session.execute(
+            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
+        )
+
+        # Owner tries to delete the borrower's review
+        o_token = create_access_token(owner.id)
+        delete_resp = await client.delete(
+            f"/api/v1/reviews/{review_id}",
+            headers={"Authorization": f"Bearer {o_token}"},
+        )
+
+        assert delete_resp.status_code == 403, delete_resp.text
+        assert "only delete your own" in delete_resp.json()["detail"].lower()
 
 
 class TestGetReviews:
-    """GET /api/v1/reservations/{reservation_id}/review"""
+    """GET /api/v1/reservations/{reservation_id}/review — the raw list
+    endpoint, only ever hit incidentally elsewhere, never as its own scenario."""
 
     async def test_get_reviews_for_reservation(
         self,
@@ -310,197 +254,13 @@ class TestGetReviews:
         assert data == []
 
 
-# ══════════════════════════════════════════════════════════════════════════
-# Update
-# ══════════════════════════════════════════════════════════════════════════
-
-
-class TestUpdateReview:
-    """PATCH /api/v1/reviews/{review_id}"""
-
-    async def test_edit_review_within_24h(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """Reviewer can edit their own review within the 24-hour window."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        token = create_access_token(borrower.id)
-
-        # Create a review
-        create_resp = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 3, "comment": "It was ok."},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert create_resp.status_code == 201, create_resp.text
-        review_id = create_resp.json()["id"]
-
-        # Pre-load the review with its reservation relationship so that
-        # the update service can access ``review.reservation.tool_id``
-        # without an async lazy-load error.
-        await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
-        )
-
-        # Edit the review
-        patch_resp = await client.patch(
-            f"/api/v1/reviews/{review_id}",
-            json={"rating": 5, "comment": "Actually, it was great!"},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-
-        assert patch_resp.status_code == 200, patch_resp.text
-        data = patch_resp.json()
-        assert data["rating"] == 5
-        assert data["comment"] == "Actually, it was great!"
-        assert data["id"] == review_id
-
-    async def test_edit_review_by_non_author(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """403 when someone other than the reviewer tries to edit."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        # Borrower creates a review
-        b_token = create_access_token(borrower.id)
-        create_resp = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 4},
-            headers={"Authorization": f"Bearer {b_token}"},
-        )
-        assert create_resp.status_code == 201, create_resp.text
-        review_id = create_resp.json()["id"]
-
-        # Pre-load for the service call
-        await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
-        )
-
-        # Owner tries to edit the borrower's review
-        o_token = create_access_token(owner.id)
-        patch_resp = await client.patch(
-            f"/api/v1/reviews/{review_id}",
-            json={"rating": 2},
-            headers={"Authorization": f"Bearer {o_token}"},
-        )
-
-        assert patch_resp.status_code == 403, patch_resp.text
-        assert "only edit your own" in patch_resp.json()["detail"].lower()
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# Delete
-# ══════════════════════════════════════════════════════════════════════════
-
-
-class TestDeleteReview:
-    """DELETE /api/v1/reviews/{review_id}"""
-
-    async def test_delete_review_within_24h(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """Reviewer can delete their own review within the 24-hour window."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        token = create_access_token(borrower.id)
-
-        # Create a review
-        create_resp = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 4, "comment": "Decent tool."},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert create_resp.status_code == 201, create_resp.text
-        review_id = create_resp.json()["id"]
-
-        # Pre-load the review with its reservation relationship for the
-        # service's ``review.reservation.tool_id`` access.
-        await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
-        )
-
-        # Delete
-        delete_resp = await client.delete(
-            f"/api/v1/reviews/{review_id}",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert delete_resp.status_code == 204, delete_resp.text
-
-        # Verify it's gone
-        get_resp = await client.get(
-            f"/api/v1/reservations/{reservation.id}/review",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert get_resp.status_code == 200
-        assert get_resp.json() == []
-
-    async def test_delete_review_by_non_author(
-        self,
-        client,
-        db_session: AsyncSession,
-        unique_email: str,
-    ) -> None:
-        """403 when someone other than the reviewer tries to delete."""
-        owner, borrower, tool, reservation = await _create_returned_reservation(
-            db_session,
-            owner_email=unique_email,
-            borrower_email=f"b+{uuid.uuid4().hex[:12]}@example.com",
-        )
-
-        # Borrower creates a review
-        b_token = create_access_token(borrower.id)
-        create_resp = await client.post(
-            f"/api/v1/reservations/{reservation.id}/review",
-            json={"rating": 3},
-            headers={"Authorization": f"Bearer {b_token}"},
-        )
-        assert create_resp.status_code == 201, create_resp.text
-        review_id = create_resp.json()["id"]
-
-        # Pre-load for the service call
-        await db_session.execute(
-            select(Review).where(Review.id == review_id).options(selectinload(Review.reservation))
-        )
-
-        # Owner tries to delete the borrower's review
-        o_token = create_access_token(owner.id)
-        delete_resp = await client.delete(
-            f"/api/v1/reviews/{review_id}",
-            headers={"Authorization": f"Bearer {o_token}"},
-        )
-
-        assert delete_resp.status_code == 403, delete_resp.text
-        assert "only delete your own" in delete_resp.json()["detail"].lower()
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# My review history (R1.B US25)
-# ══════════════════════════════════════════════════════════════════════════
-
-
 class TestListMyReviews:
-    """GET /api/v1/users/me/reviews?role=received|given"""
+    """GET /api/v1/users/me/reviews?role=received|given
+
+    Distinct from the public-profile review view tested by
+    acceptance/test_us25_review_history.py — this endpoint has no story
+    mapping or acceptance coverage at all.
+    """
 
     async def test_received_default(
         self, client, db_session: AsyncSession, unique_email: str

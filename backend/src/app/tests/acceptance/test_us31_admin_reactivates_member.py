@@ -130,3 +130,17 @@ class TestScenario4NonAdminCannotReactivateMember:
         assert response.status_code == 403
         await db_session.refresh(member)
         assert member.status == UserStatus.SUSPENDED
+
+
+class TestScenario5ReactivatingNonexistentMemberReturns404:
+    async def test_returns_404(self, client, db_session: AsyncSession) -> None:
+        import uuid
+
+        admin = await make_admin(db_session)
+
+        response = await client.post(
+            f"/api/v1/admin/users/{uuid.uuid4()}/reactivate",
+            json={"reason": "no such user"},
+            headers=auth_header(admin.id),
+        )
+        assert response.status_code == 404
