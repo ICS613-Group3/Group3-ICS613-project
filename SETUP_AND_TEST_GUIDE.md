@@ -9,7 +9,7 @@ This guide gets the entire project running on a fresh machine on
 backend, and the React frontend. It also covers the test suites and a
 step-by-step manual UI walkthrough.
 
-> **For deployment (production/GCE), see [Deployment_Guide.md](Deployment_Guide.md).**
+> **For deployment, see [Deployment_Guide.md](Deployment_Guide.md).**
 
 > **Conventions used below**
 > - `bash` code blocks run on macOS, Linux, and **Git Bash on Windows**.

@@ -118,12 +118,11 @@ jobs:
 
     # Neither backend-tests (conftest.py) nor frontend-e2e (scripts/init_db.py)
     # actually runs Alembic -- both build the schema straight from
-    # Base.metadata.create_all(), bypassing the migration chain entirely. But
-    # the real deploy path (backend/Dockerfile CMD, DEPLOY_DOCKER_GCE.md) runs
-    # `alembic upgrade head` before starting the server. This job is the only
-    # place in CI that exercises that exact command, so a broken or
-    # out-of-order revision under backend/alembic/versions/ fails here
-    # instead of at deploy time.
+    # Base.metadata.create_all(), bypassing the migration chain entirely. The
+    # backend Dockerfile CMD runs `alembic upgrade head` before starting the
+    # server. This job is the only place in CI that exercises that exact
+    # command, so a broken or out-of-order revision under
+    # backend/alembic/versions/ fails here instead of at deploy time.
     services:
       postgres:
         image: postgres:15
