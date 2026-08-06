@@ -169,3 +169,40 @@ class TestScenario4UnreadNotificationBadgeCount:
 
         after = await client.get("/api/v1/notifications", headers=auth_header(owner.id))
         assert after.json()["unread_count"] == data["unread_count"] - 1
+
+
+class TestScenario5MarkAllNotificationsRead:
+    async def test_read_all_zeroes_unread_count(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        # Two separate tools owned by the same person -> two independent
+        # reservation requests -> two independent unread notifications.
+        tool_a = await create_tool(client, owner, name="Tool A")
+        tool_b = await create_tool(client, owner, name="Tool B")
+
+        for tool in (tool_a, tool_b):
+            await client.post(
+                "/api/v1/reservations",
+                json={
+                    "tool_id": tool["id"],
+                    "start_date": str(date.today() + timedelta(days=1)),
+                    "end_date": str(date.today() + timedelta(days=2)),
+                },
+                headers=auth_header(borrower.id),
+            )
+
+        before = await client.get("/api/v1/notifications", headers=auth_header(owner.id))
+        assert before.json()["unread_count"] >= 2
+
+        response = await client.post(
+            "/api/v1/notifications/read-all", headers=auth_header(owner.id)
+        )
+        assert response.status_code == 200
+
+        after = await client.get("/api/v1/notifications", headers=auth_header(owner.id))
+        assert after.json()["unread_count"] == 0
+        assert all(item["read_at"] is not None for item in after.json()["items"])
+
+    async def test_read_all_requires_auth(self, client) -> None:
+        response = await client.post("/api/v1/notifications/read-all")
+        assert response.status_code == 401

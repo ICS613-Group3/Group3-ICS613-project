@@ -1,6 +1,7 @@
 """User Story 11 — Deactivate and Reactivate Listings with Admin Controls."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -211,12 +212,80 @@ class TestScenario5DeactivationLoggedWithAdminIdTimestampReason:
         assert entry.target_id == uuid.UUID(tool["id"])
         assert entry.created_at is not None
 
-    @pytest.mark.skip(
-        reason="not implemented: GET /api/v1/admin/audit-log (app/api/v1/admin.py) only "
-        "exposes action_type/target_type filters -- there is no filter by admin "
-        "(actor_id), date range, or specific listing (target_id), so the doc's "
-        "'filterable by admin, date range in HST, and by listing' is only partially "
-        "true today."
+    async def test_audit_log_is_filterable_by_date_and_listing(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """GET /admin/audit-log supports target_id (listing) and date-range
+        filters; filtering by the acting admin is still missing (see
+        test_audit_log_filterable_by_acting_admin below)."""
+        owner = await UserFactory.create_async(db_session)
+        admin = await make_admin(db_session)
+        tool_a = await create_tool(client, owner, name="Tool A")
+        tool_b = await create_tool(client, owner, name="Tool B")
+
+        await client.post(
+            f"/api/v1/tools/{tool_a['id']}/deactivate",
+            json={"reason": "reason A"},
+            headers=auth_header(admin.id),
+        )
+        await client.post(
+            f"/api/v1/tools/{tool_b['id']}/deactivate",
+            json={"reason": "reason B"},
+            headers=auth_header(admin.id),
+        )
+
+        by_listing = await client.get(
+            "/api/v1/admin/audit-log",
+            params={"target_id": tool_a["id"]},
+            headers=auth_header(admin.id),
+        )
+        assert by_listing.status_code == 200
+        listing_items = by_listing.json()["items"]
+        assert len(listing_items) == 1
+        assert listing_items[0]["target_id"] == tool_a["id"]
+
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        by_date = await client.get(
+            "/api/v1/admin/audit-log",
+            params={"date_from": future},
+            headers=auth_header(admin.id),
+        )
+        assert by_date.status_code == 200
+        assert by_date.json()["items"] == []
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="known gap: GET /api/v1/admin/audit-log (app/api/v1/admin.py) has "
+        "no actor_id/admin query param -- target_id (listing) and date-range "
+        "filters exist, but filtering by which admin performed the action is "
+        "still missing.",
     )
-    async def test_audit_log_is_filterable_by_admin_date_and_listing(self) -> None:
-        raise NotImplementedError
+    async def test_audit_log_filterable_by_acting_admin(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        admin_one = await make_admin(db_session)
+        admin_two = await make_admin(db_session)
+        tool_a = await create_tool(client, owner, name="Tool A")
+        tool_b = await create_tool(client, owner, name="Tool B")
+
+        await client.post(
+            f"/api/v1/tools/{tool_a['id']}/deactivate",
+            json={"reason": "reason A"},
+            headers=auth_header(admin_one.id),
+        )
+        await client.post(
+            f"/api/v1/tools/{tool_b['id']}/deactivate",
+            json={"reason": "reason B"},
+            headers=auth_header(admin_two.id),
+        )
+
+        response = await client.get(
+            "/api/v1/admin/audit-log",
+            params={"actor_id": str(admin_one.id)},
+            headers=auth_header(admin_one.id),
+        )
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert len(items) == 1
+        assert items[0]["actor_id"] == str(admin_one.id)

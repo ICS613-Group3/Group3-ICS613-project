@@ -8,11 +8,13 @@ Thread is read-only once the reservation is RETURNED, DENIED, or CANCELLED.
 Only the borrower, tool owner, or an admin can send/read.
 """
 
+import uuid
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import ReservationState
-from app.tests.acceptance.helpers import auth_header, create_tool
+from app.tests.acceptance.helpers import auth_header, create_tool, make_admin
 from app.tests.factories import ReservationFactory, UserFactory
 
 pytestmark = pytest.mark.acceptance
@@ -161,3 +163,99 @@ class TestScenario4NonPartyCannotSendMessage:
             headers=auth_header(outsider.id),
         )
         assert read_resp.status_code == 403
+
+
+class TestScenario5NonexistentReservationReturns404:
+    async def test_send_to_nonexistent_reservation_returns_404(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        user = await UserFactory.create_async(db_session)
+
+        response = await client.post(
+            f"/api/v1/reservations/{uuid.uuid4()}/messages",
+            json={"body": "hello?"},
+            headers=auth_header(user.id),
+        )
+        assert response.status_code == 404
+
+    async def test_list_for_nonexistent_reservation_returns_404(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        user = await UserFactory.create_async(db_session)
+
+        response = await client.get(
+            f"/api/v1/reservations/{uuid.uuid4()}/messages",
+            headers=auth_header(user.id),
+        )
+        assert response.status_code == 404
+
+
+class TestScenario6AdminCanPostAndReadWithoutBeingAParty:
+    """An admin may post/read in any thread for moderation/dispute purposes,
+    even though they're neither the borrower nor the tool owner."""
+
+    async def test_admin_send_and_read_succeed(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        admin = await make_admin(db_session)
+        tool = await create_tool(client, owner)
+
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.APPROVED,
+        )
+
+        send_resp = await client.post(
+            f"/api/v1/reservations/{reservation.id}/messages",
+            json={"body": "Admin checking in on this dispute."},
+            headers=auth_header(admin.id),
+        )
+        assert send_resp.status_code == 201
+        assert send_resp.json()["sender_id"] == str(admin.id)
+
+        read_resp = await client.get(
+            f"/api/v1/reservations/{reservation.id}/messages",
+            headers=auth_header(admin.id),
+        )
+        assert read_resp.status_code == 200
+        assert len(read_resp.json()["items"]) == 1
+
+
+class TestScenario7MessagesPagination:
+    async def test_pagination_params_are_respected(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.APPROVED,
+        )
+
+        for i in range(3):
+            await client.post(
+                f"/api/v1/reservations/{reservation.id}/messages",
+                json={"body": f"message {i}"},
+                headers=auth_header(borrower.id),
+            )
+
+        response = await client.get(
+            f"/api/v1/reservations/{reservation.id}/messages?page=1&page_size=2",
+            headers=auth_header(borrower.id),
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 3
+        assert len(data["items"]) == 2
+        assert data["items"][0]["body"] == "message 0"
+
+        page2 = await client.get(
+            f"/api/v1/reservations/{reservation.id}/messages?page=2&page_size=2",
+            headers=auth_header(borrower.id),
+        )
+        assert len(page2.json()["items"]) == 1
+        assert page2.json()["items"][0]["body"] == "message 2"

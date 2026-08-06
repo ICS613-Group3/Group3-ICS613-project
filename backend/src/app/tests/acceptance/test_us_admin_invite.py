@@ -57,14 +57,33 @@ class TestScenario2AdminViewsAllInvites:
 class TestScenario3AdminRevokesUnusedInvite:
     """Admin revokes an unused invite."""
 
-    @pytest.mark.skip(
-        reason="not implemented: no revoke-invite endpoint or AuthService.revoke_invite "
-        "exists yet (auth.py only exposes GET/POST /invites)."
-    )
     async def test_revoked_invite_can_no_longer_be_used(
         self, client, db_session: AsyncSession
     ) -> None:
-        raise NotImplementedError
+        admin = await make_admin(db_session)
+        email = unique_email()
+        invite = await InviteFactory.create_async(db_session, email=email, created_by=admin.id)
+
+        revoke_response = await client.post(
+            f"/api/v1/auth/invites/{invite.id}/revoke",
+            headers=auth_header(admin.id),
+        )
+
+        assert revoke_response.status_code == 200
+        assert revoke_response.json()["status"] == "revoked"
+
+        register_response = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": email,
+                "password": "Password123!",  # pragma: allowlist secret
+                "full_name": "Too Late",
+                "invite_token": invite.token,
+            },
+        )
+
+        assert register_response.status_code == 422
+        assert "invalid or expired" in register_response.json()["detail"].lower()
 
 
 class TestScenario4CannotInviteExistingMember:

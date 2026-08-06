@@ -10,7 +10,7 @@ Blocks: self-report, duplicate report, deactivated/non-existent listing.
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.tests.acceptance.helpers import auth_header, create_tool
+from app.tests.acceptance.helpers import auth_header, create_tool, make_admin
 from app.tests.factories import UserFactory
 
 pytestmark = pytest.mark.acceptance
@@ -117,3 +117,84 @@ class TestScenario5ReportOnNonExistentOrDeactivatedListingRejected:
             headers=auth_header(reporter.id),
         )
         assert response.status_code == 409
+
+
+class TestScenario6CannotReportOwnListing:
+    async def test_owner_reporting_own_listing_returns_409(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """The tool owner cannot report their own listing."""
+        owner = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+
+        response = await client.post(
+            f"/api/v1/tools/{tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 409
+        assert "own listing" in response.json()["detail"].lower()
+
+
+class TestScenario7MemberViewsOwnSubmittedReports:
+    """GET /api/v1/reports/me — a member's own report history."""
+
+    async def test_lists_only_current_users_reports(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        reporter = await UserFactory.create_async(db_session)
+        other_reporter = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner, name="Reported Tool")
+        other_tool = await create_tool(client, owner, name="Other Reported Tool")
+
+        await client.post(
+            f"/api/v1/tools/{tool['id']}/report",
+            json={"reason": "SCAM_OR_FRAUD"},
+            headers=auth_header(reporter.id),
+        )
+        await client.post(
+            f"/api/v1/tools/{other_tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(other_reporter.id),
+        )
+
+        response = await client.get("/api/v1/reports/me", headers=auth_header(reporter.id))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["reason"] == "SCAM_OR_FRAUD"
+        assert data["items"][0]["reporter_id"] == str(reporter.id)
+
+    async def test_filterable_by_status(self, client, db_session: AsyncSession) -> None:
+        admin = await make_admin(db_session)
+        owner = await UserFactory.create_async(db_session)
+        reporter = await UserFactory.create_async(db_session)
+        resolved_tool = await create_tool(client, owner, name="Resolved Tool")
+        pending_tool = await create_tool(client, owner, name="Still Pending Tool")
+
+        resolved_report = await client.post(
+            f"/api/v1/tools/{resolved_tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(reporter.id),
+        )
+        await client.post(
+            f"/api/v1/tools/{pending_tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(reporter.id),
+        )
+        await client.post(
+            f"/api/v1/reports/{resolved_report.json()['id']}/resolve",
+            json={"valid": False, "note": "investigated, no issue found"},
+            headers=auth_header(admin.id),
+        )
+
+        response = await client.get(
+            "/api/v1/reports/me?status=PENDING", headers=auth_header(reporter.id)
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["tool_id"] == pending_tool["id"]
+
+    async def test_requires_auth(self, client) -> None:
+        response = await client.get("/api/v1/reports/me")
+        assert response.status_code == 401

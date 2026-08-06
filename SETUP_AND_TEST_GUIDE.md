@@ -529,7 +529,7 @@ cd backend
 pytest src/app/tests -q
 ```
 
-Expected: all tests pass (currently 392 tests: 241 acceptance + 151 unit/integration).
+Expected: all tests pass (currently 376 tests: 279 acceptance + 97 auxiliary).
 
 ### 8.2 Frontend checks
 
@@ -677,4 +677,4 @@ npm run dev
 
 ---
 
-*Last updated: 2026-07-30. Updated repo URL to ICS613-Group3, fixed test counts (392: 241 acceptance + 151 unit/integration), added Deployment Guide reference, updated test ownership table.*
+*Last updated: 2026-08-06. Merged main (acceptance/ + auxiliary/ restructure) with Integrated_frontend_backend; test counts verified after merge.*

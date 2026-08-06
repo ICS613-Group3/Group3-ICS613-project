@@ -9,10 +9,12 @@ owner's violation_count incremented, both parties notified.
 When resolved as INVALID: listing stays active.
 """
 
+import uuid
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.tests.acceptance.helpers import auth_header, create_tool
+from app.tests.acceptance.helpers import auth_header, create_tool, make_admin
 from app.tests.factories import ReservationFactory, UserFactory
 
 pytestmark = pytest.mark.acceptance
@@ -175,3 +177,79 @@ class TestScenario4NonAdminCannotAccessReportedListingReview:
             headers=auth_header(user.id),
         )
         assert resolve_resp.status_code == 403
+
+
+class TestScenario5CannotResolveAReportTwice:
+    async def test_second_resolution_returns_409(self, client, db_session: AsyncSession) -> None:
+        admin = await make_admin(db_session)
+        owner = await UserFactory.create_async(db_session)
+        reporter = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+
+        report_resp = await client.post(
+            f"/api/v1/tools/{tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(reporter.id),
+        )
+        report_id = report_resp.json()["id"]
+
+        first = await client.post(
+            f"/api/v1/reports/{report_id}/resolve",
+            json={"valid": False, "note": "checked out fine"},
+            headers=auth_header(admin.id),
+        )
+        assert first.status_code == 200
+
+        second = await client.post(
+            f"/api/v1/reports/{report_id}/resolve",
+            json={"valid": True, "note": "changed my mind"},
+            headers=auth_header(admin.id),
+        )
+        assert second.status_code == 409
+        assert "already" in second.json()["detail"].lower()
+
+
+class TestScenario6ResolvingNonexistentReportReturns404:
+    async def test_returns_404(self, client, db_session: AsyncSession) -> None:
+        admin = await make_admin(db_session)
+
+        response = await client.post(
+            f"/api/v1/reports/{uuid.uuid4()}/resolve",
+            json={"valid": True},
+            headers=auth_header(admin.id),
+        )
+        assert response.status_code == 404
+
+
+class TestScenario7AdminFiltersReportsByStatus:
+    async def test_status_filter_narrows_results(self, client, db_session: AsyncSession) -> None:
+        admin = await make_admin(db_session)
+        owner = await UserFactory.create_async(db_session)
+        reporter = await UserFactory.create_async(db_session)
+        resolved_tool = await create_tool(client, owner, name="Already Resolved Tool")
+        pending_tool = await create_tool(client, owner, name="Still Pending Tool")
+
+        resolved_report = await client.post(
+            f"/api/v1/tools/{resolved_tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(reporter.id),
+        )
+        await client.post(
+            f"/api/v1/tools/{pending_tool['id']}/report",
+            json={"reason": "OTHER"},
+            headers=auth_header(reporter.id),
+        )
+        await client.post(
+            f"/api/v1/reports/{resolved_report.json()['id']}/resolve",
+            json={"valid": False, "note": "fine"},
+            headers=auth_header(admin.id),
+        )
+
+        response = await client.get(
+            "/api/v1/reports", params={"status": "PENDING"}, headers=auth_header(admin.id)
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert all(r["status"] == "PENDING" for r in data["items"])
+        assert any(r["tool_id"] == pending_tool["id"] for r in data["items"])
+        assert not any(r["tool_id"] == resolved_tool["id"] for r in data["items"])

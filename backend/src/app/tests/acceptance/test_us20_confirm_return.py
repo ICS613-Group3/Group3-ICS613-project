@@ -267,6 +267,28 @@ class TestScenario6OwnerFilesDamageReport:
         assert second.status_code == 409
 
 
+class TestScenario6bDamageReportWindowClosesAfterSevenDays:
+    async def test_report_rejected_after_seven_days(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.RETURNED,
+            returned_at=datetime.now(UTC) - timedelta(days=8),
+        )
+
+        response = await client.post(
+            f"/api/v1/reservations/{reservation.id}/mark-damaged",
+            json={"description": "Found this later"},
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 422
+        assert "window has closed" in response.json()["detail"].lower()
+
+
 class TestScenario7ToolNeverReturnedEscalationAfterSevenDays:
     @pytest.mark.xfail(
         strict=True,

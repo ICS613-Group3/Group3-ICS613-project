@@ -7,7 +7,7 @@ patched (see `helpers.patch_scheduler_session`) to share the test's DB
 session/transaction instead of opening its own connection.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -174,14 +174,49 @@ class TestScenario4AutoCancelledReservationFreesDateRange:
 
 
 class TestScenario5GracePeriodTimerEvaluatedInHST:
-    @pytest.mark.skip(
-        reason="not implemented: the codebase has zero HST-specific date/time "
-        "handling anywhere (confirmed by grepping for 'HST'/'Hawaii'/'Honolulu' -- "
-        "no matches outside this test suite). auto_cancel_overdue_pickups "
-        "(app/services/scheduler.py) uses plain `date.today()`, which is the "
-        "server's local date, not an HST-anchored calendar date. On a server not "
-        "running in Hawaii time, the grace-period cutoff would be computed against "
-        "the wrong 'today'. See User Story 19 for the full scope of this gap."
-    )
-    async def test_grace_period_uses_hst_not_server_local_time(self) -> None:
-        raise NotImplementedError
+    async def test_grace_period_uses_hst_not_server_local_time(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """05:00 UTC is 19:00 the *previous* day in HST (UTC-10) -- so at this
+        instant, UTC's and HST's calendar "today" are one day apart. A
+        reservation whose start_date is exactly `scheduler_grace_period_days`
+        before HST's today sits right at the job's documented strict-less-
+        than boundary (see Scenario 1's note): it must NOT be cancelled yet.
+        If the job used the server's UTC date instead of converting through
+        `app.core.timezone.utc_to_hst`, this same reservation would look one
+        day older than it is and get cancelled a day early.
+        """
+        from unittest.mock import patch
+
+        from app.config import get_settings
+
+        fixed_now_utc = datetime(2026, 3, 15, 5, 0, 0, tzinfo=UTC)
+        hst_today = utc_to_hst(fixed_now_utc).date()
+        assert hst_today == date(2026, 3, 14)
+        grace_days = get_settings().scheduler_grace_period_days
+
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.APPROVED,
+            start_date=hst_today - timedelta(days=grace_days),
+            end_date=hst_today + timedelta(days=5),
+        )
+
+        class _FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now_utc.astimezone(tz) if tz else fixed_now_utc
+
+        with (
+            patch_scheduler_session(db_session),
+            patch("app.services.scheduler.datetime", _FrozenDateTime),
+        ):
+            await SchedulerService().auto_cancel_overdue_pickups()
+
+        await db_session.refresh(reservation)
+        assert reservation.state == ReservationState.APPROVED

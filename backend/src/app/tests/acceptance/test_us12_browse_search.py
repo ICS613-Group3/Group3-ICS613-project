@@ -1,5 +1,6 @@
 """User Story 12 — Browse and Search for Available Tools."""
 
+import uuid
 from datetime import date, timedelta
 
 import pytest
@@ -237,3 +238,62 @@ class TestScenario8BrowseWhenNoActiveListingsExist:
         data = response.json()
         assert data["items"] == []
         assert data["total"] == 0
+
+
+class TestScenario9AdvancedFilterByCondition:
+    """R2.B advanced search: filter by tool condition."""
+
+    async def test_condition_filter_excludes_other_conditions(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        await create_tool(client, owner, name="Like New Drill", condition="LIKE_NEW")
+        await create_tool(client, owner, name="Worn Rake", condition="FAIR")
+
+        viewer = await UserFactory.create_async(db_session)
+        response = await client.get(
+            "/api/v1/tools",
+            params={"condition": "LIKE_NEW"},
+            headers=auth_header(viewer.id),
+        )
+
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert all(i["condition"] == "LIKE_NEW" for i in items)
+        assert any(i["name"] == "Like New Drill" for i in items)
+        assert not any(i["name"] == "Worn Rake" for i in items)
+
+
+class TestScenario10AdvancedFilterByMinimumRating:
+    """R2.B advanced search: filter by minimum average rating."""
+
+    async def test_min_rating_filter_excludes_lower_rated_tools(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        from sqlalchemy import update
+
+        from app.models.tool import Tool
+
+        owner = await UserFactory.create_async(db_session)
+        high_rated = await create_tool(client, owner, name="Highly Rated Saw")
+        low_rated = await create_tool(client, owner, name="Poorly Rated Hammer")
+
+        await db_session.execute(
+            update(Tool).where(Tool.id == uuid.UUID(high_rated["id"])).values(avg_rating=4.5)
+        )
+        await db_session.execute(
+            update(Tool).where(Tool.id == uuid.UUID(low_rated["id"])).values(avg_rating=2.0)
+        )
+        await db_session.flush()
+
+        viewer = await UserFactory.create_async(db_session)
+        response = await client.get(
+            "/api/v1/tools",
+            params={"min_rating": 4.0},
+            headers=auth_header(viewer.id),
+        )
+
+        assert response.status_code == 200
+        names = {i["name"] for i in response.json()["items"]}
+        assert "Highly Rated Saw" in names
+        assert "Poorly Rated Hammer" not in names

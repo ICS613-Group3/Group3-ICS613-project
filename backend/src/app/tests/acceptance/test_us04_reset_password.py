@@ -59,7 +59,10 @@ class TestScenario2CompletePasswordReset:
         # New password works.
         login = await client.post(
             "/api/v1/auth/login",
-            json={"email": user.email, "password": "NewPassword456!"},
+            json={
+                "email": user.email,
+                "password": "NewPassword456!",  # pragma: allowlist secret
+            },
         )
         assert login.status_code == 200
 

@@ -228,9 +228,78 @@ class TestScenario10EditWithInvalidLatestReturnTimeRejected:
 
 
 class TestScenario11MessageThreadsAccessibleAfterDeactivation:
-    @pytest.mark.skip(
-        reason="not implemented: Section 5 (Messaging, User Story 22) has no backend "
-        "implementation at all -- no message/thread model, endpoints, or schema exist."
-    )
-    async def test_thread_readable_after_listing_deactivated(self) -> None:
-        raise NotImplementedError
+    async def test_thread_readable_after_listing_deactivated(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+        reservation = await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.REQUESTED,
+        )
+
+        send_response = await client.post(
+            f"/api/v1/reservations/{reservation.id}/messages",
+            json={"body": "Can I pick this up tomorrow morning?"},
+            headers=auth_header(borrower.id),
+        )
+        assert send_response.status_code == 201
+
+        # Deactivating auto-cancels the still-pending (REQUESTED) reservation.
+        deactivate_response = await client.post(
+            f"/api/v1/tools/{tool['id']}/deactivate",
+            json={"reason": "No longer available"},
+            headers=auth_header(owner.id),
+        )
+        assert deactivate_response.status_code == 200
+
+        messages_response = await client.get(
+            f"/api/v1/reservations/{reservation.id}/messages",
+            headers=auth_header(borrower.id),
+        )
+        assert messages_response.status_code == 200
+        bodies = [item["body"] for item in messages_response.json()["items"]]
+        assert "Can I pick this up tomorrow morning?" in bodies
+
+
+class TestScenario12NonOwnerCannotRemovePhoto:
+    async def test_returns_403(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        other = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner, num_photos=2)
+        photo_id = tool["photos"][0]["id"]
+
+        response = await client.delete(
+            f"/api/v1/tools/{tool['id']}/photos/{photo_id}",
+            headers=auth_header(other.id),
+        )
+        assert response.status_code == 403
+
+
+class TestScenario13RemoveNonexistentPhotoReturns404:
+    async def test_returns_404_for_unknown_photo_id(self, client, db_session: AsyncSession) -> None:
+        owner = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner, num_photos=2)
+
+        response = await client.delete(
+            f"/api/v1/tools/{tool['id']}/photos/{uuid.uuid4()}",
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 404
+
+    async def test_returns_404_for_photo_belonging_to_another_tool(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        owner = await UserFactory.create_async(db_session)
+        tool_a = await create_tool(client, owner, name="Tool A", num_photos=2)
+        tool_b = await create_tool(client, owner, name="Tool B", num_photos=2)
+        photo_from_b = tool_b["photos"][0]["id"]
+
+        response = await client.delete(
+            f"/api/v1/tools/{tool_a['id']}/photos/{photo_from_b}",
+            headers=auth_header(owner.id),
+        )
+        assert response.status_code == 404
