@@ -529,7 +529,7 @@ cd backend
 pytest src/app/tests -q
 ```
 
-Expected: all tests pass (currently 376 tests: 279 acceptance + 97 auxiliary).
+Expected: all tests pass (currently 380 tests: 283 acceptance + 97 auxiliary).
 
 ### 8.2 Frontend checks
 

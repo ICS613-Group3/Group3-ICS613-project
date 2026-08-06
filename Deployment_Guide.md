@@ -312,9 +312,14 @@ The seed script creates:
 
 - **3 demo users** — `admin@example.com` (Admin), `member01@example.com` (Owner),
   `member02@example.com` (Borrower) — all password `devpass123`
+- **2 invite tokens** — one pending (`newmember@example.com`), one used
 - **5 tool categories** — Hand Tools, Power Tools, Garden Tools, Cleaning Tools,
   Outdoor Gear
 - **12 tool listings** with photos
+- **7 reservations** — covering REQUESTED, PICKED_UP, and RETURNED states (used by
+  the Playwright e2e suite and manual testing)
+- **4 reviews** — on RETURNED reservations (US24/US25 demo data)
+- **3 notifications** for member02 — 2 unread, 1 read
 
 **Usage:**
 
