@@ -13,15 +13,20 @@ import { ApiRequestError } from '../api/client';
 function AdminModerationProfiles() {
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadMembers = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const data = await adminApi.listUsers({ page_size: 100 });
+      const data = await adminApi.listUsers({ page_size: 50, page: 1 });
       setMembers(data.items);
+      setPage(data.page);
+      setTotalPages(data.pages);
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setErrorMessage(err.detail);
@@ -32,6 +37,26 @@ function AdminModerationProfiles() {
       setIsLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    setErrorMessage('');
+    try {
+      const data = await adminApi.listUsers({ page_size: 50, page: page + 1 });
+      setMembers((prev) => [...prev, ...data.items]);
+      setPage(data.page);
+      setTotalPages(data.pages);
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setErrorMessage(err.detail);
+      } else {
+        setErrorMessage('Failed to load more members.');
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [page, isLoadingMore]);
 
   useEffect(() => {
     loadMembers();
@@ -56,6 +81,12 @@ function AdminModerationProfiles() {
             View all members and their violation history.
           </p>
         </div>
+        <Link className="secondary-link header-action-link" to="/admin/moderation/history">
+          Moderation History
+        </Link>
+        <Link className="secondary-link header-action-link" to="/admin/moderation/reports">
+          Reports &amp; CSV Export
+        </Link>
       </div>
 
       <div className="filter-panel">
@@ -115,6 +146,19 @@ function AdminModerationProfiles() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!isLoading && !errorMessage && page < totalPages && (
+        <div className="filter-panel" style={{ justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? 'Loading...' : 'Load More Members'}
+          </button>
         </div>
       )}
     </section>

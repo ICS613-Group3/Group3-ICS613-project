@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/admin';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import type { UserProfile } from '../types/api';
+import { formatHstDate } from '../utils/hstDateTime';
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Active',
@@ -29,7 +30,11 @@ function AdminMembersPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
 
+  // Monotonic request counter: responses from older fetches are discarded.
+  const fetchSeq = useRef(0);
+
   const fetchMembers = useCallback(async () => {
+    const seq = ++fetchSeq.current;
     setIsLoading(true);
     setError('');
     try {
@@ -37,17 +42,27 @@ function AdminMembersPage() {
       if (statusFilter) params.status = statusFilter;
       if (search.trim()) params.search = search.trim();
       const data = await adminApi.listUsers(params);
+      if (seq !== fetchSeq.current) return; // stale response, ignore
       setMembers(data.items);
       setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load members');
+      if (seq === fetchSeq.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load members');
+      }
     } finally {
-      setIsLoading(false);
+      if (seq === fetchSeq.current) {
+        setIsLoading(false);
+      }
     }
   }, [statusFilter, search]);
 
+  // Debounce search input: only fetch once typing stops (300ms), and never
+  // let an out-of-order response overwrite newer results.
   useEffect(() => {
-    fetchMembers();
+    const handler = setTimeout(() => {
+      fetchMembers();
+    }, 300);
+    return () => clearTimeout(handler);
   }, [fetchMembers]);
 
   const handleSuspend = async (userId: string) => {
@@ -179,7 +194,7 @@ function AdminMembersPage() {
                     </span>
                   </td>
                   <td>{m.is_admin ? 'Yes' : 'No'}</td>
-                  <td>{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
+                  <td>{m.created_at ? formatHstDate(m.created_at) : '—'}</td>
                   <td>
                     {m.id === user?.id ? (
                       <span className="muted-text">Yourself</span>

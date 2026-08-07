@@ -107,6 +107,18 @@ class TestScenario2AdminMarksReportValidAndHidesListing:
         await db_session.refresh(owner)
         assert owner.violation_count >= 1
 
+        # Owner should be notified that their listing was deactivated
+        from app.models.enums import NotificationType
+        from app.models.notification import Notification
+
+        owner_notif = await db_session.execute(
+            select(Notification).where(
+                Notification.user_id == owner.id,
+                Notification.type == NotificationType.TOOL_DEACTIVATED.value,
+            )
+        )
+        assert owner_notif.scalar_one_or_none() is not None
+
 
 class TestScenario3AdminMarksReportInvalidListingStaysActive:
     async def test_report_resolved_invalid_listing_unaffected(

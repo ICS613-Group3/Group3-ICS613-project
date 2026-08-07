@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,9 +27,6 @@ from app.models.password_reset import PasswordResetToken
 from app.models.user import User
 from app.services.email import EmailService
 from app.services.user import UserService
-
-if TYPE_CHECKING:
-    pass
 
 DEFAULT_TOKEN_TTL_HOURS = 24
 INVITE_TTL_DAYS = 7

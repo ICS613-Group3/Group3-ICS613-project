@@ -111,8 +111,97 @@ class TestScenario4NonAdminCannotManage:
         )
         assert resp.status_code == 403
 
+        # PUT -> 403 (use a random UUID)
+        resp = await client.put(
+            f"/api/v1/categories/{uuid.uuid4()}",
+            json={"name": "Should Fail"},
+            headers=auth_header(user.id),
+        )
+        assert resp.status_code == 403
 
-class TestScenario5DuplicateCategoryNameRejected:
+
+class TestScenario5AdminUpdatesCategory:
+    async def test_admin_updates_category_name(self, client, db_session) -> None:
+        """S5a: Admin updates category name -> name changed."""
+        admin = await make_admin(db_session)
+
+        # Create a category
+        resp = await client.post(
+            "/api/v1/categories",
+            json={"name": "Old Name", "description": "Old description"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 201
+        cat_id = resp.json()["id"]
+
+        # Update name
+        resp = await client.put(
+            f"/api/v1/categories/{cat_id}",
+            json={"name": "New Name"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["name"] == "New Name"
+        assert resp.json()["description"] == "Old description"  # unchanged
+
+    async def test_admin_updates_category_description(self, client, db_session) -> None:
+        """S5b: Admin updates category description -> description changed."""
+        admin = await make_admin(db_session)
+
+        resp = await client.post(
+            "/api/v1/categories",
+            json={"name": "Tools", "description": "Old desc"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 201
+        cat_id = resp.json()["id"]
+
+        resp = await client.put(
+            f"/api/v1/categories/{cat_id}",
+            json={"description": "New description"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Tools"  # unchanged
+        assert resp.json()["description"] == "New description"
+
+    async def test_update_duplicate_name_returns_409(self, client, db_session) -> None:
+        """S5c: Update to duplicate name -> 409 Conflict."""
+        admin = await make_admin(db_session)
+
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Category A"},
+            headers=auth_header(admin.id),
+        )
+        resp2 = await client.post(
+            "/api/v1/categories",
+            json={"name": "Category B"},
+            headers=auth_header(admin.id),
+        )
+        cat_b_id = resp2.json()["id"]
+
+        # Try to rename B to A
+        resp = await client.put(
+            f"/api/v1/categories/{cat_b_id}",
+            json={"name": "Category A"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 409
+
+    async def test_update_nonexistent_returns_404(self, client, db_session) -> None:
+        """S5d: Update nonexistent category -> 404."""
+        admin = await make_admin(db_session)
+
+        resp = await client.put(
+            f"/api/v1/categories/{uuid.uuid4()}",
+            json={"name": "Does Not Exist"},
+            headers=auth_header(admin.id),
+        )
+        assert resp.status_code == 404
+
+
+class TestScenario6DuplicateCategoryNameRejected:
     async def test_create_duplicate_name_returns_409(self, client, db_session) -> None:
         admin = await make_admin(db_session)
 
@@ -149,7 +238,7 @@ class TestScenario5DuplicateCategoryNameRejected:
         assert dup.status_code == 409
 
 
-class TestScenario6BlankCategoryNameRejected:
+class TestScenario7BlankCategoryNameRejected:
     async def test_blank_name_returns_422(self, client, db_session) -> None:
         admin = await make_admin(db_session)
 
@@ -161,7 +250,7 @@ class TestScenario6BlankCategoryNameRejected:
         assert resp.status_code == 422
 
 
-class TestScenario7RemoveNonexistentCategoryReturns404:
+class TestScenario8RemoveNonexistentCategoryReturns404:
     async def test_remove_nonexistent_category_returns_404(self, client, db_session) -> None:
         admin = await make_admin(db_session)
 

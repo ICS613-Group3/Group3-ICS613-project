@@ -254,11 +254,18 @@ function AvailableToolsPage() {
           <div className="empty-state-card">
             <p className="eyebrow">No Results</p>
             <h2>
-              No tools match the current filters.
+              {searchTerm
+                ? 'No tools found matching your search.'
+                : categoryFilter
+                  ? 'No tools in this category yet.'
+                  : 'No tools available right now.'}
             </h2>
             <p>
-              Try clearing one or more filters or searching
-              for a different keyword.
+              {searchTerm
+                ? 'Try a different keyword or browse all tools.'
+                : categoryFilter
+                  ? 'Browse all categories.'
+                  : 'Be the first to list a tool!'}
             </p>
 
             <button

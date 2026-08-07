@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { adminApi } from '../api/admin';
 import type { ReservationResponse } from '../types/api';
 import { ApiRequestError } from '../api/client';
+import { formatHstDate } from '../utils/hstDateTime';
 
 /**
  * AdminReservationPage
@@ -116,8 +117,8 @@ function AdminReservationPage() {
             <thead>
               <tr>
                 <th>Reservation ID</th>
-                <th>Tool ID</th>
-                <th>Borrower ID</th>
+                <th>Tool</th>
+                <th>Borrower</th>
                 <th>Dates</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -127,15 +128,15 @@ function AdminReservationPage() {
               {reservations.map((r) => (
                 <tr key={r.id}>
                   <td><code>{r.id.slice(0, 8)}</code></td>
-                  <td><code>{r.tool_id.slice(0, 8)}</code></td>
-                  <td><code>{r.borrower_id.slice(0, 8)}</code></td>
+                  <td>{r.tool_name ?? <code>{r.tool_id.slice(0, 8)}</code>}</td>
+                  <td>{r.borrower_name ?? <code>{r.borrower_id.slice(0, 8)}</code>}</td>
                   <td>{r.start_date} to {r.end_date}</td>
                   <td>
                     <span className={`workflow-status status-${r.state.toLowerCase()}`}>
                       {formatStatus(r.state)}
                     </span>
                   </td>
-                  <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td>{formatHstDate(r.created_at)}</td>
                 </tr>
               ))}
             </tbody>

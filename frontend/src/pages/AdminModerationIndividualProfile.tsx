@@ -4,6 +4,7 @@ import { adminApi } from '../api/admin';
 import type { ModerationProfile } from '../api/admin';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDate } from '../utils/hstDateTime';
 
 /**
  * AdminModerationIndividualProfile
@@ -232,7 +233,7 @@ function AdminModerationIndividualProfile() {
                     <td><code>{v.report_id.slice(0, 8)}</code></td>
                     <td>{v.tool_name || '—'}</td>
                     <td>{v.reason}</td>
-                    <td>{v.resolved_at ? new Date(v.resolved_at).toLocaleDateString() : '—'}</td>
+                    <td>{v.resolved_at ? formatHstDate(v.resolved_at) : '—'}</td>
                     <td>{v.resolution_note || '—'}</td>
                   </tr>
                 ))}

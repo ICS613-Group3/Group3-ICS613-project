@@ -13,8 +13,8 @@ Note on env var names: this project does NOT set ``env_prefix`` on
 ``SettingsConfigDict``, so pydantic-settings reads the raw field names
 (``SECRET_KEY``, ``ENVIRONMENT``, etc.) — NOT the ``TOOLSHARING_*``
 prefix that the description strings in config.py claim. The tests below
-use the actual names. (The descriptions are a separate doc bug — not
-fixed here.)
+use the actual names. (The rate-limit field descriptions were corrected
+in D07; other descriptions may still claim the prefix.)
 
 The second test would have caught the regression in the second review
 where the check was tied to ``debug`` and rejected the user's ``.env``

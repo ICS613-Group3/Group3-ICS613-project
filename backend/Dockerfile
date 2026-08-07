@@ -34,11 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy application code.
+# Application code.
 COPY src/app ./app
-COPY alembic ./alembic
-COPY alembic.ini .
 
-# Run migrations and start the application.
-# In production, run migrations separately in an init container or job.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Run the application. The schema is created by scripts/init_db.py
+# (SQLAlchemy create_all); no Alembic migration chain is shipped.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000"]

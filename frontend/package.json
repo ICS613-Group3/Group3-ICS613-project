@@ -13,7 +13,6 @@
     "test:e2e:issue141": "playwright test --config=playwright.issue141.config.ts"
   },
   "dependencies": {
-    "papaparse": "^5.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.0"

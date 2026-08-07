@@ -9,6 +9,8 @@ This guide gets the entire project running on a fresh machine on
 backend, and the React frontend. It also covers the test suites and a
 step-by-step manual UI walkthrough.
 
+> **For deployment, see [Deployment_Guide.md](Deployment_Guide.md).**
+
 > **Conventions used below**
 > - `bash` code blocks run on macOS, Linux, and **Git Bash on Windows**.
 > - `cmd` blocks run in `cmd.exe` (the default Windows terminal).
@@ -527,7 +529,7 @@ cd backend
 pytest src/app/tests -q
 ```
 
-Expected: all tests pass (currently 376 tests: 279 acceptance + 97 auxiliary).
+Expected: all tests pass (currently 380 tests: 283 acceptance + 97 auxiliary).
 
 ### 8.2 Frontend checks
 
@@ -675,4 +677,4 @@ npm run dev
 
 ---
 
-*Last updated: 2026-07-27. Backend test suite restructured into `acceptance/` + `auxiliary/` (legacy top-level unit/integration files removed); fixed test counts (376: 279 acceptance + 97 auxiliary).*
+*Last updated: 2026-08-06. Merged main (acceptance/ + auxiliary/ restructure) with Integrated_frontend_backend; test counts verified after merge.*

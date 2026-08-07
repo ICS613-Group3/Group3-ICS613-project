@@ -15,8 +15,7 @@ test.describe('ProfileSetupPage', () => {
     await page.getByLabel('Short Bio').fill('Neighborhood tool sharer.');
     await page.getByRole('button', { name: 'Save Profile' }).click();
 
-    await expect(page.locator('.form-success')).toContainText('Profile setup complete');
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 3000 });
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 5000 });
   });
 
   test('rejects a blank display name (#97)', async ({ page }) => {

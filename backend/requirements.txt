@@ -11,7 +11,6 @@ uvicorn[standard]>=0.32,<0.40
 sqlalchemy[mypy]>=2.0,<2.1
 asyncpg>=0.30,<1.0
 psycopg2-binary>=2.9,<3.0
-alembic>=1.14,<2.0
 
 # Validation
 pydantic>=2.10,<3.0

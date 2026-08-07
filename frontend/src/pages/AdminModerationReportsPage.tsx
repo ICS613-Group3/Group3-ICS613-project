@@ -3,6 +3,7 @@ import { adminApi } from '../api/admin';
 import type { ModerationReport } from '../api/admin';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 function AdminModerationReportsPage() {
   const { user } = useAuth();
@@ -168,7 +169,7 @@ function AdminModerationReportsPage() {
                       <td>{rec.target_type}</td>
                       <td><code>{String(rec.target_id).slice(0, 8)}</code></td>
                       <td>{rec.reason || '—'}</td>
-                      <td>{new Date(rec.created_at).toLocaleString()}</td>
+                      <td>{formatHstDateTime(rec.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>

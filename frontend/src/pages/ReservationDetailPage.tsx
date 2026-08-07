@@ -5,6 +5,7 @@ import { toolsApi } from '../api/tools';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import MessageThread from '../components/MessageThread';
+import { formatHstDateTime } from '../utils/hstDateTime';
 import type { ReservationResponse, ReservationState, ToolResponse } from '../types/api';
 
 function formatStatus(status: ReservationState): string {
@@ -22,6 +23,7 @@ function ReservationDetailPage() {
   const [isActing, setIsActing] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [denyReason, setDenyReason] = useState('');
+  const [damageDescription, setDamageDescription] = useState('');
 
   const loadReservation = useCallback(async () => {
     if (!reservationId) return;
@@ -146,13 +148,13 @@ function ReservationDetailPage() {
             {reservation.picked_up_at && (
               <div>
                 <dt>Picked Up</dt>
-                <dd>{new Date(reservation.picked_up_at).toLocaleString()}</dd>
+                <dd>{formatHstDateTime(reservation.picked_up_at)}</dd>
               </div>
             )}
             {reservation.returned_at && (
               <div>
                 <dt>Returned</dt>
-                <dd>{new Date(reservation.returned_at).toLocaleString()}</dd>
+                <dd>{formatHstDateTime(reservation.returned_at)}</dd>
               </div>
             )}
             {reservation.denied_reason && (
@@ -362,6 +364,44 @@ function ReservationDetailPage() {
               >
                 Leave Review
               </Link>
+            )}
+
+            {/* RETURNED: owner reports damage (US20, 7-day window) */}
+            {state === 'RETURNED' && isToolOwner && !reservation.damage_reported && (
+              <div className="damage-report-block">
+                <p className="eyebrow">Report Damage</p>
+                <label htmlFor="damage-description" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  Damage description:
+                  <input
+                    id="damage-description"
+                    type="text"
+                    value={damageDescription}
+                    onChange={(e) => setDamageDescription(e.target.value)}
+                    placeholder="Describe the damage"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="action-button danger-button"
+                  disabled={isActing || !damageDescription.trim()}
+                  onClick={() =>
+                    handleAction(
+                      () =>
+                        reservationsApi.reportDamage(reservation.id, {
+                          description: damageDescription.trim(),
+                        }),
+                      'Damage reported. Tool deactivated and pending reservations cancelled.',
+                    )
+                  }
+                >
+                  Report Damage
+                </button>
+              </div>
+            )}
+            {state === 'RETURNED' && isToolOwner && reservation.damage_reported && (
+              <p className="closed-workflow-message">
+                Damage was reported for this reservation.
+              </p>
             )}
 
             {/* Closed states */}

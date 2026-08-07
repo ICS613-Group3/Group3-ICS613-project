@@ -55,7 +55,10 @@ function CreateToolPage() {
 
   function handleRemovePhoto(index: number) {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
-    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

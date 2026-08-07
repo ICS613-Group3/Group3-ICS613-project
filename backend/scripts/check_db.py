@@ -51,17 +51,16 @@ def check(ok: bool, message: str, detail: str = "") -> None:
 def check_docker() -> None:
     """Check that Docker is available."""
     try:
-        result = subprocess.run(
-            ["docker", "--version"],
-            capture_output=True, text=True, timeout=10
-        )
+        result = subprocess.run(["docker", "--version"], capture_output=True, text=True, timeout=10)
         check(
             result.returncode == 0,
             "Docker is available",
-            result.stdout.strip() if result.stdout else ""
+            result.stdout.strip() if result.stdout else "",
         )
     except FileNotFoundError:
-        check(False, "Docker is available", "Docker not found. Install Docker Desktop (docker.com).")
+        check(
+            False, "Docker is available", "Docker not found. Install Docker Desktop (docker.com)."
+        )
     except subprocess.TimeoutExpired:
         check(False, "Docker is available", "Docker command timed out.")
 
@@ -70,15 +69,20 @@ def check_container() -> None:
     """Check that a PostgreSQL container is running."""
     try:
         result = subprocess.run(
-            ["docker", "ps", "--filter", "name=db", "--format", "{{.Names}} {{.Status}}"],
-            capture_output=True, text=True, timeout=10
+            ["docker", "ps", "--filter", "name=tool-db", "--format", "{{.Names}} {{.Status}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0 and result.stdout.strip():
             check(True, "PostgreSQL container is running", result.stdout.strip())
         else:
-            check(False, "PostgreSQL container is running",
-                  "No container named 'db' found.\n"
-                  "Run: docker compose up -d   (from the project root)")
+            check(
+                False,
+                "PostgreSQL container is running",
+                "No container named 'tool-db' found.\n"
+                "Run: docker compose up -d   (from the backend/ directory)",
+            )
     except subprocess.TimeoutExpired:
         check(False, "PostgreSQL container is running", "Docker ps timed out.")
 
@@ -95,12 +99,15 @@ def check_env() -> None:
                 masked = f"{user}:***@{rest}"
         check(True, "DATABASE_URL is set", f"DATABASE_URL={masked}")
     else:
-        check(False, "DATABASE_URL is set",
-              "DATABASE_URL environment variable is not set.\n"
-              "1. Copy .env.example to .env:\n"
-              "     cp .env.example .env\n"
-              "2. Edit .env and set DATABASE_URL to:\n"
-              f"     DATABASE_URL={DATABASE_URL_FALLBACK}")
+        check(
+            False,
+            "DATABASE_URL is set",
+            "DATABASE_URL environment variable is not set.\n"
+            "1. Copy .env.example to .env:\n"
+            "     cp .env.example .env\n"
+            "2. Edit .env and set DATABASE_URL to:\n"
+            f"     DATABASE_URL={DATABASE_URL_FALLBACK}",
+        )
 
 
 async def check_connection() -> None:
@@ -113,11 +120,14 @@ async def check_connection() -> None:
             version = result.scalar_one()
         check(True, "Connected to PostgreSQL", version)
     except Exception as exc:
-        check(False, "Connected to PostgreSQL",
-              f"Connection failed: {exc}\n"
-              "  • Is docker compose up -d running?\n"
-              "  • Is DATABASE_URL in .env correct?\n"
-              "  • Try: docker compose logs db")
+        check(
+            False,
+            "Connected to PostgreSQL",
+            f"Connection failed: {exc}\n"
+            "  • Is docker compose up -d running?\n"
+            "  • Is DATABASE_URL in .env correct?\n"
+            "  • Try: docker compose logs db",
+        )
     finally:
         await engine.dispose()
 
@@ -134,9 +144,7 @@ async def check_read_write() -> None:
             await conn.exec_driver_sql(
                 "INSERT INTO _db_check_temp (note) VALUES ('Database connection verified')"
             )
-            result = await conn.exec_driver_sql(
-                "SELECT note FROM _db_check_temp WHERE id = 1"
-            )
+            result = await conn.exec_driver_sql("SELECT note FROM _db_check_temp WHERE id = 1")
             note = result.scalar_one()
             await conn.exec_driver_sql("DROP TABLE _db_check_temp")
         check(True, "Can create and drop tables (read/write OK)", f'Wrote + read back: "{note}"')

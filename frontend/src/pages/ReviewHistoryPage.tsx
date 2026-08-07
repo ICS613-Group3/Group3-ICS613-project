@@ -7,6 +7,7 @@ import { useClientPagination } from '../hooks/useClientPagination';
 import { reviewsApi } from '../api/reviews';
 import { useAuth } from '../context/useAuth';
 import type { ReviewResponse } from '../types/api';
+import { formatHstDate } from '../utils/hstDateTime';
 
 function ReviewHistoryPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -154,7 +155,7 @@ function ReviewHistoryPage() {
                 </div>
                 <div>
                   <dt>Submitted</dt>
-                  <dd>{new Date(review.created_at).toLocaleDateString()}</dd>
+                  <dd>{formatHstDate(review.created_at)}</dd>
                 </div>
               </dl>
 

@@ -23,6 +23,13 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://ics613user:ics613password@localhost:5432/toolsharing_test",
 )
+# Pin rate limits to the production-tight defaults (10) so the 429
+# rate-limit tests are deterministic and fast regardless of any local
+# .env overrides (dev .env raises these for manual/e2e testing).
+os.environ.setdefault("RATE_LIMIT_LOGIN_PER_MINUTE", "10")
+os.environ.setdefault("RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE", "10")
+os.environ.setdefault("RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE", "10")
+os.environ.setdefault("RATE_LIMIT_REGISTER_PER_HOUR", "10")
 
 import uuid  # noqa: E402
 from collections.abc import AsyncGenerator, Generator  # noqa: E402
