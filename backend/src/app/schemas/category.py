@@ -13,6 +13,13 @@ class CategoryCreate(BaseModel):
     description: str | None = Field(None, max_length=2000)
 
 
+class CategoryUpdate(BaseModel):
+    """Admin updates an existing tool category."""
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=2000)
+
+
 class CategoryResponse(BaseModel):
     """A single tool category."""
 

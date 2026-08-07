@@ -4,13 +4,14 @@ import csv
 import io
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_db
 from app.core.exceptions import ValidationError
+from app.core.timezone import hst_to_utc
 from app.models.user import User
 from app.schemas.admin import (
     AdminUserDeactivate,
@@ -24,6 +25,30 @@ from app.schemas.user import UserProfile
 from app.services.admin import AdminService
 
 router = APIRouter()
+
+
+def _parse_iso_datetime(value: str | None, *, end_of_day: bool = False) -> datetime | None:
+    """Parse an ISO datetime query param.
+
+    A date-only value (``YYYY-MM-DD``) is interpreted as an HST calendar day
+    (the UI shows HST timestamps): midnight HST for ``date_from``, or
+    23:59:59.999999 HST when ``end_of_day=True`` for ``date_to``, then
+    converted to UTC so the entire selected HST day is included in
+    ``created_at <= date_to`` filters.
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        raise ValidationError(
+            f"Invalid date format: '{value}'. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"
+        ) from None
+    if len(value) == 10:  # date-only -> HST day, convert to UTC
+        if end_of_day:
+            parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return cast(datetime, hst_to_utc(parsed))
+    return parsed
 
 
 # ── User listing ────────────────────────────────────────────────────────
@@ -180,18 +205,8 @@ async def list_audit_log(
     Supports filtering by action_type, target_type, target_id, and a
     date range. Paginated 50/page default.
     """
-    parsed_from = None
-    try:
-        if date_from:
-            parsed_from = datetime.fromisoformat(date_from)
-    except ValueError:
-        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
-    parsed_to = None
-    try:
-        if date_to:
-            parsed_to = datetime.fromisoformat(date_to)
-    except ValueError:
-        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
+    parsed_from = _parse_iso_datetime(date_from)
+    parsed_to = _parse_iso_datetime(date_to, end_of_day=True)
 
     entries, total = await AdminService().list_audit_log(
         db,
@@ -283,18 +298,8 @@ async def generate_moderation_report(
     """
     from app.services.admin_report import ModerationReportService
 
-    parsed_from = None
-    try:
-        if date_from:
-            parsed_from = datetime.fromisoformat(date_from)
-    except ValueError:
-        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
-    parsed_to = None
-    try:
-        if date_to:
-            parsed_to = datetime.fromisoformat(date_to)
-    except ValueError:
-        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
+    parsed_from = _parse_iso_datetime(date_from)
+    parsed_to = _parse_iso_datetime(date_to, end_of_day=True)
 
     service = ModerationReportService()
     report = await service.generate_report(
@@ -345,18 +350,8 @@ async def export_moderation_report_csv(
     """
     from app.services.admin_report import ModerationReportService
 
-    parsed_from = None
-    try:
-        if date_from:
-            parsed_from = datetime.fromisoformat(date_from)
-    except ValueError:
-        raise ValidationError(f"Invalid date_from format: '{date_from}'. Use ISO format") from None
-    parsed_to = None
-    try:
-        if date_to:
-            parsed_to = datetime.fromisoformat(date_to)
-    except ValueError:
-        raise ValidationError(f"Invalid date_to format: '{date_to}'. Use ISO format") from None
+    parsed_from = _parse_iso_datetime(date_from)
+    parsed_to = _parse_iso_datetime(date_to, end_of_day=True)
 
     service = ModerationReportService()
     report = await service.generate_report(

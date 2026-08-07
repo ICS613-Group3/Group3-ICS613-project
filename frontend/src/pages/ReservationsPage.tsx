@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reservationsApi } from '../api/reservations';
 import { toolsApi } from '../api/tools';
@@ -17,8 +17,12 @@ function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  // Monotonic request counter: responses from older fetches are discarded.
+  const fetchSeq = useRef(0);
+
   useEffect(() => {
     const fetchReservations = async () => {
+      const seq = ++fetchSeq.current;
       setIsLoading(true);
       setError('');
       try {
@@ -27,6 +31,7 @@ function ReservationsPage() {
         if (statusFilter) params.state = statusFilter;
 
         const data = await reservationsApi.list(params);
+        if (seq !== fetchSeq.current) return; // stale response, ignore
         setReservations(data.items);
         setTotal(data.total);
 
@@ -35,6 +40,7 @@ function ReservationsPage() {
         const tools = await Promise.allSettled(
           toolIds.map((id) => toolsApi.get(id)),
         );
+        if (seq !== fetchSeq.current) return; // stale response, ignore
         const map: Record<string, ToolResponse> = {};
         tools.forEach((result, i) => {
           if (result.status === 'fulfilled') {
@@ -43,9 +49,13 @@ function ReservationsPage() {
         });
         setToolMap(map);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load reservations');
+        if (seq === fetchSeq.current) {
+          setError(err instanceof Error ? err.message : 'Failed to load reservations');
+        }
       } finally {
-        setIsLoading(false);
+        if (seq === fetchSeq.current) {
+          setIsLoading(false);
+        }
       }
     };
 

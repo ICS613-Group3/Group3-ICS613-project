@@ -59,7 +59,7 @@ test.describe('AvailableToolsPage', () => {
 
     await page.getByPlaceholder('Search by tool name or keyword').fill('no such tool exists');
 
-    await expect(page.getByText('No tools match the current filters.')).toBeVisible();
+    await expect(page.getByText('No tools found matching your search.')).toBeVisible();
 
     // Two "Clear Filters" buttons exist once the empty state renders: one in
     // the filter panel and one in the empty-state card itself.

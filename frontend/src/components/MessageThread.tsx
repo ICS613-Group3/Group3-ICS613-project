@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { messagesApi, type MessageItem } from '../api/messages';
 import { ApiRequestError } from '../api/client';
 import type { ReservationState } from '../types/api';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 // States where the thread accepts new messages (matches backend ACTIVE_STATES).
 const OPEN_STATES: ReservationState[] = ['REQUESTED', 'APPROVED', 'PICKED_UP'];
@@ -70,7 +71,7 @@ function MessageThread({ reservationId, state, canSend }: MessageThreadProps) {
             <div className="message-item-header">
               <span className="message-sender">{message.sender_name ?? 'Unknown'}</span>
               <span className="message-timestamp">
-                {new Date(message.created_at).toLocaleString()}
+                {formatHstDateTime(message.created_at)}
               </span>
             </div>
             <p className="message-body">{message.body}</p>

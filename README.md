@@ -113,7 +113,7 @@ The application handles authentication (JWT), background scheduling (APScheduler
 | **Database** | PostgreSQL 15 |
 |  | Docker Container (for PostgreSQL) |
 | **Environment / Secrets** | `.env` file (for DB passwords, API keys) | python-dotenv (loads `.env` into the app) |
-| **Testing** | pytest | `src/app/tests/` (394 tests) |
+| **Testing** | pytest | `src/app/tests/` (380 tests: 283 acceptance + 97 auxiliary) |
 | | pytest-asyncio | Async test support |
 | | httpx | ASGI test client |
 | **Code Quality** | ruff | Linting and import sorting |
@@ -160,7 +160,6 @@ The application handles authentication (JWT), background scheduling (APScheduler
 │   │   ├── assets/               # Images, fonts, and other static files
 │   │   ├── components/           # Reusable UI components
 │   │   ├── types/                # TypeScript type definitions
-│   │   ├── mocks/                # Mock data for dev mode
 │   │   ├── pages/                # Page-level components
 │   │   ├── routes/               # Route definitions (AppRoutes.tsx)
 │   │   ├── App.css               # Global app styles
@@ -186,6 +185,9 @@ The application handles authentication (JWT), background scheduling (APScheduler
 
 
 # 6. Getting Started
+
+> **For detailed setup instructions (Windows, macOS, Linux), see [`SETUP_AND_TEST_GUIDE.md`](SETUP_AND_TEST_GUIDE.md).**
+> **For deployment, see [`Deployment_Guide.md`](Deployment_Guide.md).**
 
 ### Prerequisites
 | Program | Minimum Version | Check With |
@@ -316,7 +318,7 @@ cd frontend
 ```bash
 cd backend
 source venv/bin/activate
-pytest src/app/tests/ -q          # all 394 tests
+pytest src/app/tests/ -q          # all 380 tests
 pytest src/app/tests/ -v          # verbose output
 pytest src/app/tests/test_auth.py -v   # single file
 ```

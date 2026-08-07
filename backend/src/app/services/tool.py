@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
 
 from fastapi import UploadFile
 from sqlalchemy import and_, func, or_, select
@@ -23,9 +22,6 @@ from app.models.user import User
 from app.services.admin import AdminService
 from app.services.category import CategoryService
 from app.services.photo_storage import MAX_PHOTOS_PER_TOOL, PhotoStorageService
-
-if TYPE_CHECKING:
-    pass
 
 
 class ToolService:

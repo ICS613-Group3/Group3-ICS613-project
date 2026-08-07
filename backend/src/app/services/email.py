@@ -103,7 +103,7 @@ class EmailService:
         """
         try:
             self._backend.send(to_email, subject, body)
-        except (smtplib.SMTPException, OSError) as exc:
+        except (smtplib.SMTPException, OSError, RuntimeError) as exc:
             from app.core.logging import get_logger
 
             get_logger(__name__).warning(

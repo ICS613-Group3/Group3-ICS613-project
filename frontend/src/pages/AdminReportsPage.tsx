@@ -7,7 +7,6 @@ import { Link, Navigate } from 'react-router-dom';
 
 import { authApi } from '../api/auth';
 import { ApiRequestError } from '../api/client';
-import { mockTools } from '../data/mockData';
 import { formatHstDateTime as formatReportDate } from '../utils/hstDateTime';
 
 type ReportStatus =
@@ -39,15 +38,11 @@ type AccessState =
   | 'forbidden'
   | 'error';
 
-const firstTool = mockTools[0];
-const secondTool = mockTools[1];
-const thirdTool = mockTools[2];
-
 const initialReports: AdminListingReport[] = [
   {
     id: 'report-001',
-    toolId: firstTool?.id ?? 'tool-001',
-    listingTitle: firstTool?.name ?? 'Cordless Drill',
+    toolId: 'tool-001',
+    listingTitle: 'Cordless Drill',
     ownerName: 'Daniel Kim',
     reason: 'Unsafe tool or condition',
     reporterName: 'Maya Chen',
@@ -59,8 +54,8 @@ const initialReports: AdminListingReport[] = [
   },
   {
     id: 'report-002',
-    toolId: secondTool?.id ?? 'tool-002',
-    listingTitle: secondTool?.name ?? 'Pressure Washer',
+    toolId: 'tool-002',
+    listingTitle: 'Pressure Washer',
     ownerName: 'Leilani Akana',
     reason: 'Misleading listing information',
     reporterName: 'Noah Williams',
@@ -72,8 +67,8 @@ const initialReports: AdminListingReport[] = [
   },
   {
     id: 'report-003',
-    toolId: thirdTool?.id ?? 'tool-003',
-    listingTitle: thirdTool?.name ?? 'Extension Ladder',
+    toolId: 'tool-003',
+    listingTitle: 'Extension Ladder',
     ownerName: 'Olivia Park',
     reason: 'Other concern',
     reporterName: 'Ethan Lee',

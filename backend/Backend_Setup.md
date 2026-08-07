@@ -83,7 +83,7 @@ All remaining commands run from `backend\`.
 docker compose up -d
 ```
 
-This starts the database container (`tool-share-db-1`) in the background. The FastAPI app is NOT run in Docker — you run it on the host (see section 11). Running the app on the host is faster for hot-reload during development and avoids port conflicts.
+This starts the database container (`tool-db`) in the background. The FastAPI app is NOT run in Docker — you run it on the host (see section 11). Running the app on the host is faster for hot-reload during development and avoids port conflicts.
 
 Verify the database is healthy:
 
@@ -147,7 +147,7 @@ The defaults work for local development. If you changed the PostgreSQL password 
 | `DISABLE_SCHEDULER` | `false` | Set to `true` to skip background jobs |
 
 **`SECRET_KEY` for local dev:** the placeholder value shipped in `.env.example`
-(`change-me-in-production-please-use-a-long-random-string`) is accepted as
+(`replace-with-a-long-random-string-at-least-32-characters-long`) is accepted as
 long as your `ENVIRONMENT` is set to `development`, `test`, or `dev`
 (which `.env.example` does by default). You don't need to generate a key
 to run locally.
@@ -177,7 +177,7 @@ All checks should report `[OK]`.
 ## 9. Create database schema
 
 The application uses SQLAlchemy `Base.metadata.create_all()` to create all tables
-automatically from the ORM models. There is no Alembic migration directory to run.
+automatically from the ORM models. There is no Alembic migration workflow to run — `init_db.py` uses `create_all()` instead.
 
 From the `backend/` directory, run:
 
@@ -232,11 +232,11 @@ You now have a fresh R2 database with demo data.
 python scripts\seed_dev.py
 ```
 
-Creates three demo users, 5 admin-managed tool categories, and 12 tool listings with photos:
+Creates three demo users, 5 admin-managed tool categories, 12 tool listings with photos, 7 reservations, 4 reviews, 3 notifications, and 2 invite tokens:
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@example.com` | **printed to terminal** (see below) | Admin |
+| `admin@example.com` | **from `SEED_PASSWORD` in `.env` (default `devpass123`)** | Admin |
 | `member01@example.com` | same as admin | Owner |
 | `member02@example.com` | same as admin | Borrower |
 
@@ -257,6 +257,28 @@ To pin the password for repeated runs, add to your `.env`:
 ```dotenv
 SEED_PASSWORD=my-development-password
 ```
+
+**Setting the password on the command line instead of `.env`:**
+
+```powershell
+# PowerShell — one command
+$env:SEED_PASSWORD = "devpass123"; python scripts\seed_dev.py  # pragma: allowlist secret
+```
+
+```cmd
+:: cmd.exe — set first, then run (stays set for the whole window)
+set SEED_PASSWORD=devpass123
+python scripts\seed_dev.py
+```
+
+```bash
+# Git Bash / Linux / macOS
+SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+```
+
+> `SEED_PASSWORD=... python ...` is bash syntax only. cmd.exe and PowerShell
+> cannot parse it — that is why this guide's default is `python scripts\seed_dev.py`
+> with the password taken from `.env`.
 
 **Re-running the seed script:** If you run `seed_dev.py` a second time it will fail with a `duplicate key` error because the users already exist. Clear existing data first:
 
@@ -344,7 +366,7 @@ python run.py --help    # full uvicorn CLI help
 pytest src/app/tests/ -q
 ```
 
-All 376 tests should pass. The test database (`toolsharing_test`) is created automatically by `db/init/00-create-test-db.sql` when the Docker container first starts. `pyproject.toml` configures `pythonpath = ["src"]` and the test conftest sets default env vars, so no `PYTHONPATH` or `.env` setup is needed.
+All tests should pass (366 passed, 19 skipped, 9 xfailed in the current suite). The test database (`toolsharing_test`) is created automatically by `db/init/00-create-test-db.sql` when the Docker container first starts. `pyproject.toml` configures `pythonpath = ["src"]` and the test conftest sets default env vars, so no `PYTHONPATH` or `.env` setup is needed.
 
 Run a single test file:
 
@@ -354,10 +376,10 @@ pytest src/app/tests/acceptance/test_us01_register.py -v
 
 ### What these tests cover (and what they do NOT cover)
 
-The 376 tests in `src/app/tests/` are **acceptance and auxiliary tests**. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
+The 394 tests in `src/app/tests/` are **acceptance and auxiliary tests**. They verify that each API endpoint behaves correctly — status codes, request validation, response shapes, database state changes, and business rules (e.g., overlap rejection via the EXCLUDE constraint, magic-byte photo validation, CancellerType CHECK constraint). They run automatically with pytest and do not require a separate server process.
 
 **Test breakdown:**
-- 279 acceptance tests (`src/app/tests/acceptance/`) — verify user story scenarios via API calls
+- 283 acceptance tests (`src/app/tests/acceptance/`) — verify user story scenarios via API calls
 - 97 auxiliary tests (`src/app/tests/auxiliary/`) — security/permission/edge-case coverage with no user-story mapping (rate limiting, SECRET_KEY validation, audit-log detail, admin user directory, etc.)
 
 **These tests cover user-facing acceptance scenarios.** Each acceptance test file maps 1:1 to a user story (US01–US34 + admin invite) with one class per scenario, following the convention in `src/app/tests/acceptance/__init__.py`.
@@ -366,7 +388,7 @@ In short:
 
 | Test type | Owner | Purpose | Where it lives |
 |-----------|-------|---------|----------------|
-|| Acceptance tests | QA lead | Verify user story scenarios via API calls | `src/app/tests/acceptance/` (279 tests, pytest) |
+|| Acceptance tests | QA lead | Verify user story scenarios via API calls | `src/app/tests/acceptance/` (283 tests, pytest) |
 || Auxiliary tests | QA lead | Security/permission/edge-case coverage with no user-story mapping | `src/app/tests/auxiliary/` (97 tests, pytest) |
 || E2E browser automation | QA lead | Drive a full demo path through the UI | `frontend/e2e/` (Playwright, runs in CI) |
 
@@ -449,7 +471,7 @@ mypy src/app/            # type-check (optional, not required for PRs)
   ```powershell
   docker compose up -d --remove-orphans
   ```
-  This stops and removes the orphan backend container, leaving only `tool-share-db-1`.
+  This stops and removes the orphan backend container, leaving only `tool-db`.
 
 **Docker permission denied (Linux)**
 ```bash
@@ -498,7 +520,7 @@ backend/
 │       ├── models/           # SQLAlchemy ORM models (13 models)
 │       ├── schemas/          # Pydantic request/response schemas
 │       ├── services/         # Business logic layer
-│       └── tests/            # Test suite (376 tests: 279 acceptance + 97 auxiliary)
+│       └── tests/            # Test suite (394 tests: 283 acceptance + 111 auxiliary)
 ├── .env                      # Your local environment (gitignored)
 └── .env.example              # Safe template for .env
 ```
@@ -509,6 +531,6 @@ backend/
 
 | Container name | Image | Purpose | Port |
 |----------------|-------|---------|------|
-| `tool-share-db-1` | postgres:15 | The database | 5432 → 5432 |
+| `tool-db` | postgres:15 | The database | 5432 → 5432 |
 
 The FastAPI app is run directly on the host via `python run.py` (see section 11), not as a container. If `docker ps` shows a `tool-share-backend-1` container or any `backend-*` container, your compose file is out of date — pull the latest changes.

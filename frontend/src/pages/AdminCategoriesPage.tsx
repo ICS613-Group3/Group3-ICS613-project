@@ -4,6 +4,7 @@ import { categoriesApi } from '../api/categories';
 import type { CategoryResponse } from '../api/categories';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDate } from '../utils/hstDateTime';
 
 function AdminCategoriesPage() {
   const { user } = useAuth();
@@ -16,6 +17,12 @@ function AdminCategoriesPage() {
   const [newDescription, setNewDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [searchText, setSearchText] = useState('');
+
+  // Edit state
+  const [editingCat, setEditingCat] = useState<CategoryResponse | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadCategories = useCallback(async () => {
     setIsLoading(true);
@@ -51,6 +58,45 @@ function AdminCategoriesPage() {
       setErrorMessage(err instanceof ApiRequestError ? err.detail : 'Failed to create category.');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const startEdit = (cat: CategoryResponse) => {
+    setEditingCat(cat);
+    setEditName(cat.name);
+    setEditDescription(cat.description || '');
+    setErrorMessage('');
+    setSuccessMessage('');
+  };
+
+  const cancelEdit = () => {
+    setEditingCat(null);
+    setEditName('');
+    setEditDescription('');
+  };
+
+  const handleUpdate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingCat) return;
+    setErrorMessage('');
+    setSuccessMessage('');
+    if (!editName.trim()) {
+      setErrorMessage('Category name is required.');
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      await categoriesApi.update(editingCat.id, {
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+      });
+      setSuccessMessage(`Category "${editName.trim()}" updated.`);
+      setEditingCat(null);
+      await loadCategories();
+    } catch (err) {
+      setErrorMessage(err instanceof ApiRequestError ? err.detail : 'Failed to update category.');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -90,7 +136,7 @@ function AdminCategoriesPage() {
           <p className="eyebrow">US28 — Category Management</p>
           <h1>Tool Categories</h1>
           <p className="page-description">
-            Add or remove tool categories that members can use when listing tools.
+            Add, edit, or remove tool categories that members can use when listing tools.
           </p>
         </div>
       </div>
@@ -128,6 +174,44 @@ function AdminCategoriesPage() {
         {successMessage && <p className="form-success">{successMessage}</p>}
       </form>
 
+      {/* Edit form */}
+      {editingCat && (
+        <form className="form-card" onSubmit={handleUpdate}>
+          <h2>Edit Category</h2>
+          <label htmlFor="edit-name">
+            Category Name *
+            <input
+              id="edit-name"
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              required
+              maxLength={100}
+            />
+          </label>
+          <label htmlFor="edit-desc">
+            Description
+            <input
+              id="edit-desc"
+              type="text"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Optional description"
+              maxLength={2000}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="submit" className="primary-button" disabled={isUpdating}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button type="button" className="secondary-button" onClick={cancelEdit}>
+              Cancel
+            </button>
+          </div>
+          {errorMessage && <p className="form-error">{errorMessage}</p>}
+        </form>
+      )}
+
       {/* Filter */}
       <div className="filter-panel">
         <input
@@ -159,8 +243,16 @@ function AdminCategoriesPage() {
                 <tr key={cat.id}>
                   <td>{cat.name}</td>
                   <td>{cat.description || '—'}</td>
-                  <td>{new Date(cat.created_at).toLocaleDateString()}</td>
+                  <td>{formatHstDate(cat.created_at)}</td>
                   <td>
+                    <button
+                      type="button"
+                      className="action-button"
+                      onClick={() => startEdit(cat)}
+                      style={{ marginRight: '0.5rem' }}
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       className="action-button danger-button"

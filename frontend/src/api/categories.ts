@@ -18,12 +18,20 @@ export interface CategoryCreate {
   description?: string;
 }
 
+export interface CategoryUpdate {
+  name?: string;
+  description?: string;
+}
+
 export const categoriesApi = {
   list: () =>
     apiRequest<CategoryListResponse>('GET', '/categories'),
 
   create: (data: CategoryCreate) =>
     apiRequest<CategoryResponse>('POST', '/categories', data),
+
+  update: (categoryId: string, data: CategoryUpdate) =>
+    apiRequest<CategoryResponse>('PUT', `/categories/${categoryId}`, data),
 
   remove: (categoryId: string) =>
     apiRequest<{ message: string }>('DELETE', `/categories/${categoryId}`),

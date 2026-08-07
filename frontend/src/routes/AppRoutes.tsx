@@ -8,12 +8,10 @@ import AdminCategoriesPage from '../pages/AdminCategoriesPage';
 import AdminInvitesPage from '../pages/AdminInvitesPage';
 import AdminListingsPage from '../pages/AdminListingsPage';
 import AdminMembersPage from '../pages/AdminMembersPage';
-import AdminModerationAnalyticsPage from '../pages/AdminModerationAnalyticsPage';
 import AdminModerationIndividualProfile from '../pages/AdminModerationIndividualProfile';
 import AdminModerationProfiles from '../pages/AdminModerationProfiles';
 import AdminModerationReportsPage from '../pages/AdminModerationReportsPage';
 import AdminReportedListingsPage from '../pages/AdminReportedListingsPage';
-import AdminReportsPage from '../pages/AdminReportsPage';
 import AdminReservationPage from '../pages/AdminReservationPage';
 import ModerationHistoryPage from '../pages/ModerationHistoryPage';
 
@@ -152,13 +150,14 @@ function AppRoutes() {
         <Route path="/admin/invites" element={<RequireAdmin><AdminInvitesPage /></RequireAdmin>} />
         <Route path="/admin/listings" element={<RequireAdmin><AdminListingsPage /></RequireAdmin>} />
         <Route path="/admin/reported" element={<RequireAdmin><AdminReportedListingsPage /></RequireAdmin>} />
-        <Route path="/admin/reports" element={<RequireAdmin><AdminReportsPage /></RequireAdmin>} />
+        {/* /admin/reports historically rendered a mock demo page with fake data;
+            the real flow is the reported-listings moderation page. */}
+        <Route path="/admin/reports" element={<RequireAdmin><Navigate to="/admin/reported" replace /></RequireAdmin>} />
         <Route path="/admin/categories" element={<RequireAdmin><AdminCategoriesPage /></RequireAdmin>} />
         <Route path="/admin/reservations" element={<RequireAdmin><AdminReservationPage /></RequireAdmin>} />
         <Route path="/admin/moderation" element={<RequireAdmin><AdminModerationProfiles /></RequireAdmin>} />
         <Route path="/admin/moderation/history" element={<RequireAdmin><ModerationHistoryPage /></RequireAdmin>} />
         <Route path="/admin/moderation/reports" element={<RequireAdmin><AdminModerationReportsPage /></RequireAdmin>} />
-        <Route path="/admin/moderation/analytics" element={<RequireAdmin><AdminModerationAnalyticsPage /></RequireAdmin>} />
         <Route path="/admin/moderation/:memberId" element={<RequireAdmin><AdminModerationIndividualProfile /></RequireAdmin>} />
 
         {/* Catch-all for unknown pages. */}

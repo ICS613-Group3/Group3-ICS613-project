@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { adminApi } from '../api/admin';
 import type { AuditLogEntry } from '../api/admin';
 import { ApiRequestError } from '../api/client';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 /**
  * ModerationHistoryPage
@@ -137,7 +138,7 @@ function ModerationHistoryPage() {
                   <td>{entry.target_type}</td>
                   <td><code>{entry.target_id?.slice(0, 8) || '—'}</code></td>
                   <td>{entry.reason || '—'}</td>
-                  <td>{entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'}</td>
+                  <td>{entry.created_at ? formatHstDateTime(entry.created_at) : '—'}</td>
                 </tr>
               ))}
             </tbody>

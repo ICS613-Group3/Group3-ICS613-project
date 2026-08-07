@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin_user, get_current_member_read_only, get_db
 from app.models.user import User
-from app.schemas.category import CategoryCreate, CategoryListResponse, CategoryResponse
+from app.schemas.category import (
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryResponse,
+    CategoryUpdate,
+)
 from app.services.category import CategoryService
 
 router = APIRouter()
@@ -49,6 +54,31 @@ async def create_category(
     category = await service.create_category(
         db,
         admin=admin,
+        name=request_data.name,
+        description=request_data.description,
+    )
+    return CategoryResponse.model_validate(category)
+
+
+# ── Admin: update a category (US28) ───────────────────────────────────
+@router.put(
+    "/{category_id}",
+    response_model=CategoryResponse,
+)
+async def update_category(
+    category_id: uuid.UUID,
+    request_data: CategoryUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(get_current_admin_user)],
+) -> CategoryResponse:
+    """Admin-only: update a category's name and/or description.
+
+    Raises 409 if the new name conflicts with an existing category.
+    """
+    service = CategoryService()
+    category = await service.update_category(
+        db,
+        category_id=category_id,
         name=request_data.name,
         description=request_data.description,
     )

@@ -186,40 +186,38 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Rate limiting (per-process, in-memory). Defaults match the limits a
-    # reasonable production setup would use: tight on auth endpoints to
-    # block credential stuffing and email-bombing, loose on refresh so
-    # active users don't trip it.
+    # Rate limiting (per-process, in-memory). Defaults are production-tight
+    # to block credential stuffing and email-bombing: 10/min on auth
+    # endpoints and 10/hr for registration. Raise via env vars in dev/e2e
+    # environments if tests exercise more requests than that from one IP.
     rate_limit_login_per_minute: int = Field(
-        default=50,
+        default=10,
         ge=1,
         description=(
-            "Max login attempts per client IP per minute. "
-            "(env: TOOLSHARING_RATE_LIMIT_LOGIN_PER_MINUTE)"
+            "Max login attempts per client IP per minute. (env: RATE_LIMIT_LOGIN_PER_MINUTE)"
         ),
     )
     rate_limit_forgot_password_per_minute: int = Field(
-        default=50,
+        default=10,
         ge=1,
         description=(
             "Max forgot-password requests per client IP per minute. "
-            "(env: TOOLSHARING_RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE)"
+            "(env: RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE)"
         ),
     )
     rate_limit_resend_verification_per_minute: int = Field(
-        default=50,
+        default=10,
         ge=1,
         description=(
             "Max resend-verification requests per client IP per minute. "
-            "(env: TOOLSHARING_RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE)"
+            "(env: RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE)"
         ),
     )
     rate_limit_register_per_hour: int = Field(
-        default=50,
+        default=10,
         ge=1,
         description=(
-            "Max registration attempts per client IP per hour. "
-            "(env: TOOLSHARING_RATE_LIMIT_REGISTER_PER_HOUR)"
+            "Max registration attempts per client IP per hour. (env: RATE_LIMIT_REGISTER_PER_HOUR)"
         ),
     )
 
