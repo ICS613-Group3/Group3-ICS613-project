@@ -27,9 +27,7 @@ from app.services.admin import AdminService
 router = APIRouter()
 
 
-def _parse_iso_datetime(
-    value: str | None, *, end_of_day: bool = False
-) -> datetime | None:
+def _parse_iso_datetime(value: str | None, *, end_of_day: bool = False) -> datetime | None:
     """Parse an ISO datetime query param.
 
     A date-only value (``YYYY-MM-DD``) is interpreted as an HST calendar day
@@ -44,8 +42,7 @@ def _parse_iso_datetime(
         parsed = datetime.fromisoformat(value)
     except ValueError:
         raise ValidationError(
-            f"Invalid date format: '{value}'. Use ISO format (YYYY-MM-DD or "
-            "YYYY-MM-DDTHH:MM:SS)"
+            f"Invalid date format: '{value}'. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"
         ) from None
     if len(value) == 10:  # date-only -> HST day, convert to UTC
         if end_of_day:

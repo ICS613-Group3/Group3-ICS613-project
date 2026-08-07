@@ -158,7 +158,7 @@ python scripts\seed_dev.py
 
 ```powershell
 # Windows PowerShell
-$env:SEED_PASSWORD = "devpass123"
+$env:SEED_PASSWORD = "devpass123"  # pragma: allowlist secret
 python scripts/seed_dev.py
 ```
 

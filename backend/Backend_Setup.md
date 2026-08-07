@@ -262,7 +262,7 @@ SEED_PASSWORD=my-development-password
 
 ```powershell
 # PowerShell — one command
-$env:SEED_PASSWORD = "devpass123"; python scripts\seed_dev.py
+$env:SEED_PASSWORD = "devpass123"; python scripts\seed_dev.py  # pragma: allowlist secret
 ```
 
 ```cmd
