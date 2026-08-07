@@ -70,15 +70,15 @@ def check_container() -> None:
     """Check that a PostgreSQL container is running."""
     try:
         result = subprocess.run(
-            ["docker", "ps", "--filter", "name=db", "--format", "{{.Names}} {{.Status}}"],
+            ["docker", "ps", "--filter", "name=tool-db", "--format", "{{.Names}} {{.Status}}"],
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0 and result.stdout.strip():
             check(True, "PostgreSQL container is running", result.stdout.strip())
         else:
             check(False, "PostgreSQL container is running",
-                  "No container named 'db' found.\n"
-                  "Run: docker compose up -d   (from the project root)")
+                  "No container named 'tool-db' found.\n"
+                  "Run: docker compose up -d   (from the backend/ directory)")
     except subprocess.TimeoutExpired:
         check(False, "PostgreSQL container is running", "Docker ps timed out.")
 

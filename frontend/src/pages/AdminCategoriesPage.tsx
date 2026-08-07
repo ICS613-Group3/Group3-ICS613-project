@@ -4,6 +4,7 @@ import { categoriesApi } from '../api/categories';
 import type { CategoryResponse } from '../api/categories';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDate } from '../utils/hstDateTime';
 
 function AdminCategoriesPage() {
   const { user } = useAuth();
@@ -242,7 +243,7 @@ function AdminCategoriesPage() {
                 <tr key={cat.id}>
                   <td>{cat.name}</td>
                   <td>{cat.description || '—'}</td>
-                  <td>{new Date(cat.created_at).toLocaleDateString()}</td>
+                  <td>{formatHstDate(cat.created_at)}</td>
                   <td>
                     <button
                       type="button"

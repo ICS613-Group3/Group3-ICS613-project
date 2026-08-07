@@ -12,7 +12,6 @@ import AdminModerationIndividualProfile from '../pages/AdminModerationIndividual
 import AdminModerationProfiles from '../pages/AdminModerationProfiles';
 import AdminModerationReportsPage from '../pages/AdminModerationReportsPage';
 import AdminReportedListingsPage from '../pages/AdminReportedListingsPage';
-import AdminReportsPage from '../pages/AdminReportsPage';
 import AdminReservationPage from '../pages/AdminReservationPage';
 import ModerationHistoryPage from '../pages/ModerationHistoryPage';
 
@@ -151,7 +150,9 @@ function AppRoutes() {
         <Route path="/admin/invites" element={<RequireAdmin><AdminInvitesPage /></RequireAdmin>} />
         <Route path="/admin/listings" element={<RequireAdmin><AdminListingsPage /></RequireAdmin>} />
         <Route path="/admin/reported" element={<RequireAdmin><AdminReportedListingsPage /></RequireAdmin>} />
-        <Route path="/admin/reports" element={<RequireAdmin><AdminReportsPage /></RequireAdmin>} />
+        {/* /admin/reports historically rendered a mock demo page with fake data;
+            the real flow is the reported-listings moderation page. */}
+        <Route path="/admin/reports" element={<RequireAdmin><Navigate to="/admin/reported" replace /></RequireAdmin>} />
         <Route path="/admin/categories" element={<RequireAdmin><AdminCategoriesPage /></RequireAdmin>} />
         <Route path="/admin/reservations" element={<RequireAdmin><AdminReservationPage /></RequireAdmin>} />
         <Route path="/admin/moderation" element={<RequireAdmin><AdminModerationProfiles /></RequireAdmin>} />

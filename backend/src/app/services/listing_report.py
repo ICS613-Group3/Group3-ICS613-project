@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,7 +70,7 @@ class ListingReportService:
         db.add(report)
         try:
             await db.flush()
-        except Exception:
+        except IntegrityError:
             await db.rollback()
             raise ConflictError("You have already reported this listing") from None
 
@@ -149,7 +150,7 @@ class ListingReportService:
 
         if valid and tool is not None and tool.is_active:
             tool.is_active = False
-            tool.deactivated_by = DeactivationActor.DAMAGE_REPORT
+            tool.deactivated_by = DeactivationActor.ADMIN
             tool.deactivated_at = datetime.now(UTC)
             tool.deactivation_reason = f"Deactivated due to valid listing report: {report.reason}"
             tool.updated_at = datetime.now(UTC)
@@ -206,6 +207,22 @@ class ListingReportService:
                 tool_id=tool.id,
                 reason=tool.deactivation_reason or "Valid listing report",
                 actor_role="admin",
+            )
+
+            # Notify the listing owner that their tool was deactivated (US27).
+            await NotificationService().create(
+                db,
+                user_id=tool.owner_id,
+                type_=NotificationType.TOOL_DEACTIVATED,
+                title="Your listing was deactivated",
+                body=(
+                    f'Your listing "{tool.name}" was deactivated because a '
+                    f"listing report was found valid: {report.reason}"
+                ),
+                payload={
+                    "report_id": str(report.id),
+                    "tool_id": str(tool.id),
+                },
             )
 
         await db.flush()

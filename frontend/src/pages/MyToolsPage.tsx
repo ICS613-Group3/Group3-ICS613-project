@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { toolsApi } from '../api/tools';
 import type { ToolResponse } from '../types/api';
 import { useCategories } from '../hooks/useCategories';
+import { formatHstDate } from '../utils/hstDateTime';
 const conditionLabels: Record<string, string> = {
   NEW: 'New',
   LIKE_NEW: 'Like New',
@@ -162,7 +163,7 @@ function MyToolsPage() {
                     </div>
                     <div>
                       <dt>Created</dt>
-                      <dd>{new Date(tool.created_at).toLocaleDateString()}</dd>
+                      <dd>{formatHstDate(tool.created_at)}</dd>
                     </div>
                   </dl>
                   {tool.deactivation_reason && (

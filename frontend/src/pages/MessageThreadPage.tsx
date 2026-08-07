@@ -6,6 +6,7 @@ import { reservationsApi } from '../api/reservations';
 import type { ReservationResponse } from '../types/api';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDateTime } from '../utils/hstDateTime';
 
 function MessageThreadPage() {
   const { reservationId } = useParams<{ reservationId: string }>();
@@ -144,7 +145,7 @@ function MessageThreadPage() {
               >
                 <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, opacity: 0.8 }}>
                   {msg.sender_name || 'User'} &middot;{' '}
-                  {new Date(msg.created_at).toLocaleString()}
+                  {formatHstDateTime(msg.created_at)}
                 </p>
                 <p style={{ margin: '0.25rem 0 0', whiteSpace: 'pre-wrap' }}>{msg.body}</p>
               </div>

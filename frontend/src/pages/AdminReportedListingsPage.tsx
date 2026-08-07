@@ -3,6 +3,7 @@ import { reportsApi } from '../api/reports';
 import type { ReportResponse } from '../api/reports';
 import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
+import { formatHstDate } from '../utils/hstDateTime';
 
 const reasonLabels: Record<string, string> = {
   INAPPROPRIATE_CONTENT: 'Inappropriate Content',
@@ -128,7 +129,7 @@ function AdminReportedListingsPage() {
                   <td>{r.reporter_name || r.reporter_id.slice(0, 8)}</td>
                   <td>{reasonLabels[r.reason] || r.reason}</td>
                   <td>{r.comment || '—'}</td>
-                  <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td>{formatHstDate(r.created_at)}</td>
                   <td>
                     <span className={`workflow-status status-${r.status.toLowerCase()}`}>
                       {r.status}

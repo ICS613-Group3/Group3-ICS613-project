@@ -71,6 +71,10 @@
 > **Windows Note:** The official Python installer registers `python` (not `python3`)
 > on PATH. Use `python` instead of `python3` in all commands below. Activate the
 > venv with `venv\Scripts\activate` instead of `source venv/bin/activate`.
+>
+> **Env-var syntax:** `VAR=value command` is bash-only (Linux, macOS, Git Bash).
+> Windows cmd.exe and PowerShell cannot parse it — set the variable first
+> (see §3.5 for the exact seed command in each shell).
 
 ---
 
@@ -131,10 +135,36 @@ python scripts/init_db.py
 
 ### 3.5 Load Seed Data (Optional)
 
+The seed password is already set in `.env` (`SEED_PASSWORD=devpass123`, copied
+in step 3.3), so the plain command works on every operating system:
+
 ```bash
-SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+python scripts/seed_dev.py
 # Expected: Seed data created.
 ```
+
+If you prefer to pass the password on the command line instead of using `.env`:
+
+```bash
+# Bash (Linux, macOS, Git Bash)
+SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+```
+
+```cmd
+:: Windows cmd.exe
+set SEED_PASSWORD=devpass123
+python scripts\seed_dev.py
+```
+
+```powershell
+# Windows PowerShell
+$env:SEED_PASSWORD = "devpass123"
+python scripts/seed_dev.py
+```
+
+> `SEED_PASSWORD=devpass123 python ...` is bash-only syntax. On Windows it fails
+> with "'SEED_PASSWORD' is not recognized as an internal or external command" —
+> use the cmd.exe or PowerShell form above instead.
 
 **Seed Users (all password: `devpass123`):**  <!-- pragma: allowlist secret -->
 
@@ -277,6 +307,42 @@ volumes:
 | `POSTGRES_PORT` | PostgreSQL host port | `5432` |
 | `PGADMIN_PORT` | pgAdmin host port | `5050` |
 
+### Email (SMTP) — Invite Tokens & Email Verification
+
+Admin invite tokens and new-user email verification are sent by email. SMTP is
+**optional** for local development:
+
+- **No SMTP configured (default):** The app still works. Email failures are
+  logged and never block the app. The invite and verification tokens are still
+  saved in the database, so you can complete the flow by reading the token
+  directly from the database:
+
+  ```bash
+  docker exec tool-db psql -U ics613user -d toolsharing \
+    -c "SELECT email, token FROM invite_tokens ORDER BY created_at DESC;"
+  ```
+
+  Registration verification tokens live in the `email_verification_tokens`
+  table.
+
+- **Real email (your own Gmail):** Set `SMTP_USER` to your own Gmail address
+  and `SMTP_PASSWORD` to a 16-character Gmail app password (Google Account →
+  Security → App passwords). Port 465 uses SSL; port 587 uses STARTTLS (set
+  `SMTP_TLS=true`). See Backend_Setup.md, "Configure your own SMTP
+  credentials", for the full steps.
+
+- **MailHog (local mail viewer):** Optional. Run a local mail catcher and the
+  app delivers mail there instead of sending real email:
+
+  ```bash
+  docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
+  # Open http://localhost:8025 to see outgoing mail
+  ```
+
+> The seed users (`admin@example.com`, `member01@example.com`,
+> `member02@example.com`) are pre-verified local accounts. They bypass the
+> verification email entirely.
+
 ---
 
 ## 6. Database Initialization
@@ -291,7 +357,7 @@ cd backend && docker compose up -d
 python scripts/init_db.py
 
 # 3. Seed demo data (optional)
-SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+python scripts/seed_dev.py   # password comes from .env (see §3.5)
 ```
 
 ### Reset Database
@@ -301,7 +367,7 @@ SEED_PASSWORD=devpass123 python scripts/seed_dev.py
 docker exec tool-db psql -U ics613user -d toolsharing \
   -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 python scripts/init_db.py
-SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+python scripts/seed_dev.py   # password comes from .env (see §3.5)
 ```
 
 ---
@@ -321,13 +387,15 @@ The seed script creates:
 - **4 reviews** — on RETURNED reservations (US24/US25 demo data)
 - **3 notifications** for member02 — 2 unread, 1 read
 
-**Usage:**
+**Usage (from `backend/`):**
 
 ```bash
-SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+python scripts/seed_dev.py
 ```
 
-If `SEED_PASSWORD` is unset, the script generates a random password and prints it.
+The password comes from `SEED_PASSWORD` in `.env` (default `devpass123`). If it
+is unset, the script generates a random password and prints it. See §3.5 for the
+per-shell syntax when setting `SEED_PASSWORD` on the command line instead.
 
 ---
 
@@ -378,11 +446,15 @@ docker compose down && docker compose up -d  # Restart
 **Seed script fails with duplicate key:**
 
 ```bash
-# Database already has data. Reset it:
+# Fastest: wipe all rows (keeps the tables), then re-seed:
+python scripts/clean_dev.py
+python scripts/seed_dev.py
+
+# Or, for a full schema reset:
 docker exec tool-db psql -U ics613user -d toolsharing \
   -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 python scripts/init_db.py
-SEED_PASSWORD=devpass123 python scripts/seed_dev.py
+python scripts/seed_dev.py   # password comes from .env (see §3.5)
 ```
 
 **Frontend can't reach backend (502 Bad Gateway):**
@@ -417,9 +489,9 @@ sudo apt-get install -y gcc libpq-dev python3-dev  # Ubuntu/Debian
    `backend/media/tool_photos/`. This directory is gitignored and must be created
    on first run (handled automatically by the application).
 
-4. **Rate limits are generous** — Default rate limits (50/min) are suitable for
-   development but should be tightened to 5–10/min for production via environment
-   variables.
+4. **Rate limits are moderate** — Default rate limits are 10 requests/minute on
+   auth endpoints (10/hour for registration), already production-tight (D07).
+   No changes needed for local development.
 
 5. **Scheduler runs on the host** — Background tasks (auto-cancel overdue pickups,
    auto-escalate returns) run in-process within Uvicorn. Set `DISABLE_SCHEDULER=true`
