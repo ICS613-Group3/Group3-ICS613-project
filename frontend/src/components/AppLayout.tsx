@@ -14,6 +14,8 @@ function AppLayout() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    let convergeTimer: ReturnType<typeof setTimeout> | undefined;
+
     const fetchUnread = async () => {
       try {
         const data = await notificationsApi.list({ page_size: 1 });
@@ -23,12 +25,20 @@ function AppLayout() {
       }
     };
 
-    fetchUnread();
+    const handler = () => {
+      fetchUnread();
+      // Re-verify shortly after so the badge converges even if the first
+      // fetch raced the read-state change that fired the event.
+      if (convergeTimer) clearTimeout(convergeTimer);
+      convergeTimer = setTimeout(fetchUnread, 1000);
+    };
 
-    // Listen for auth-change events to refresh counts.
-    const handler = () => fetchUnread();
+    fetchUnread();
     window.addEventListener('auth-change', handler);
-    return () => window.removeEventListener('auth-change', handler);
+    return () => {
+      if (convergeTimer) clearTimeout(convergeTimer);
+      window.removeEventListener('auth-change', handler);
+    };
   }, [isAuthenticated]);
 
   const handleLogout = async () => {

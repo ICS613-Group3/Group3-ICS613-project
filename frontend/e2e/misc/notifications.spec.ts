@@ -1,4 +1,5 @@
 import { test, expect, loginAsMockUser } from '../fixtures';
+import { apiGet } from '../api-helpers';
 
 // Covers NotificationsPage (Task 4 notification center) and its sync with
 // AppLayout's nav badge / DashboardPage's unread summary card.
@@ -11,10 +12,24 @@ test.describe.serial('NotificationsPage', () => {
   test('shows initial total/unread/read summary counts', async ({ page }) => {
     await loginAsMockUser(page, '/notifications');
 
+    // The suite runs against a live, shared backend with no per-test reset,
+    // so other spec files may have added to (or mutated) member02's
+    // notifications before this file runs. Fetch the real current counts and
+    // assert the summary cards match them, instead of hardcoding the seed
+    // fixture values (3 total / 2 unread / 1 read).
+    const data = await apiGet<{ total: number; unread_count: number }>(
+      page,
+      '/api/v1/notifications?page_size=20',
+    );
+
     const summaryCards = page.locator('.notification-summary-grid .summary-card');
-    await expect(summaryCards.nth(0).locator('.summary-number')).toHaveText('3');
-    await expect(summaryCards.nth(1).locator('.summary-number')).toHaveText('2');
-    await expect(summaryCards.nth(2).locator('.summary-number')).toHaveText('1');
+    await expect(summaryCards.nth(0).locator('.summary-number')).toHaveText(String(data.total));
+    await expect(summaryCards.nth(1).locator('.summary-number')).toHaveText(
+      String(data.unread_count),
+    );
+    await expect(summaryCards.nth(2).locator('.summary-number')).toHaveText(
+      String(data.total - data.unread_count),
+    );
   });
 
   test('filters to unread and read notifications', async ({ page }) => {
