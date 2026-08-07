@@ -82,16 +82,16 @@ class Settings(BaseSettings):
     # comma-separated env value before our custom validator runs. The
     # validator below handles both forms (str → list[str], list[str] → list[str]).
     cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:3000"],
+        default_factory=lambda: ["http://localhost:5173"],
         description=(
             "Comma-separated list of allowed CORS origins "
-            "(env: CORS_ORIGINS, e.g. 'http://localhost:3000,https://app.example.com')."
+            "(env: CORS_ORIGINS, e.g. 'http://localhost:5173,https://app.example.com')."
         ),
     )
 
     # Frontend / deployment
     base_url: str = Field(
-        default="http://localhost:3000",
+        default="http://localhost:5173",
         description="Base URL of the frontend, used in email links (env: BASE_URL).",
     )
 
