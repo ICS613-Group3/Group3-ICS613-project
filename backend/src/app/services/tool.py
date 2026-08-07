@@ -153,9 +153,20 @@ class ToolService:
     # Read
     # ------------------------------------------------------------------
     async def get_tool(
-        self, db: AsyncSession, *, tool_id: uuid.UUID, active_only: bool = True
+        self,
+        db: AsyncSession,
+        *,
+        tool_id: uuid.UUID,
+        active_only: bool = True,
+        viewer: User | None = None,
     ) -> Tool:
-        """Fetch a tool by id. Raises NotFoundError if missing/deleted/inactive."""
+        """Fetch a tool by id. Raises NotFoundError if missing/deleted/inactive.
+
+        A deactivated (but not deleted) listing is only returned when
+        ``active_only`` is False AND ``viewer`` is allowed to see it: the
+        owner, an admin, or a member with a reservation on the tool (so past
+        reservation history and message threads stay viewable).
+        """
         query = (
             select(Tool)
             .where(Tool.id == tool_id, Tool.deleted_at.is_(None))
@@ -167,6 +178,21 @@ class ToolService:
         tool = result.scalar_one_or_none()
         if tool is None:
             raise NotFoundError("Tool not found")
+        if not tool.is_active and viewer is not None:
+            # Deactivated listings are visible to the owner, admins, and
+            # members involved in a reservation on the tool.
+            if viewer.is_admin or tool.owner_id == viewer.id:
+                return tool
+            participant = await db.execute(
+                select(Reservation.id)
+                .where(
+                    Reservation.tool_id == tool.id,
+                    Reservation.borrower_id == viewer.id,
+                )
+                .limit(1)
+            )
+            if participant.scalar_one_or_none() is None:
+                raise NotFoundError("Tool not found")
         return tool
 
     async def list_tools(

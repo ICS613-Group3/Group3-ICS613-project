@@ -289,3 +289,52 @@ class TestScenario5DeactivationLoggedWithAdminIdTimestampReason:
         items = response.json()["items"]
         assert len(items) == 1
         assert items[0]["actor_id"] == str(admin_one.id)
+
+
+class TestScenario6DeactivatedListingStillViewableByInsiders:
+    async def test_owner_admin_and_participant_can_view_deactivated_listing(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        """GET /tools/{id} must not 404 for insiders of a deactivated listing.
+
+        The owner, an admin, and any member with a reservation on the tool
+        (past reservation history / message threads) can still view it,
+        showing the deactivated state and date. Unrelated members get 404.
+        """
+        owner = await UserFactory.create_async(db_session)
+        admin = await make_admin(db_session)
+        borrower = await UserFactory.create_async(db_session)
+        other = await UserFactory.create_async(db_session)
+        tool = await create_tool(client, owner)
+        await ReservationFactory.create_async(
+            db_session,
+            tool_id=tool["id"],
+            borrower_id=borrower.id,
+            state=ReservationState.APPROVED,
+        )
+        await client.post(
+            f"/api/v1/tools/{tool['id']}/deactivate",
+            json={"reason": "temporary hold"},
+            headers=auth_header(admin.id),
+        )
+
+        # Owner sees it as deactivated with the date.
+        response = await client.get(f"/api/v1/tools/{tool['id']}", headers=auth_header(owner.id))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_active"] is False
+        assert data["deactivated_at"] is not None
+        assert data["deactivated_by"] == "ADMIN"
+
+        # Admin can view it.
+        response = await client.get(f"/api/v1/tools/{tool['id']}", headers=auth_header(admin.id))
+        assert response.status_code == 200
+        assert response.json()["is_active"] is False
+
+        # Borrower with a reservation can still view it.
+        response = await client.get(f"/api/v1/tools/{tool['id']}", headers=auth_header(borrower.id))
+        assert response.status_code == 200
+
+        # Unrelated member still gets 404.
+        response = await client.get(f"/api/v1/tools/{tool['id']}", headers=auth_header(other.id))
+        assert response.status_code == 404

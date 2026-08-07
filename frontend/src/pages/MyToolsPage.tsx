@@ -146,7 +146,7 @@ function MyToolsPage() {
                           : 'admin-listing-status admin-listing-status-deactivated'
                       }
                     >
-                      {tool.is_active ? 'active' : 'inactive'}
+                      {tool.is_active ? 'active' : 'deactivated'}
                     </span>
                   </div>
                   <dl className="admin-listing-meta-grid">
@@ -165,6 +165,16 @@ function MyToolsPage() {
                       <dt>Created</dt>
                       <dd>{formatHstDate(tool.created_at)}</dd>
                     </div>
+                    {!tool.is_active && (
+                      <div>
+                        <dt>Deactivated</dt>
+                        <dd>
+                          {tool.deactivated_at
+                            ? formatHstDate(tool.deactivated_at)
+                            : '—'}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                   {tool.deactivation_reason && (
                     <p className="form-error">
