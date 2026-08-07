@@ -218,20 +218,27 @@ class UserService:
         db: AsyncSession,
         user: User,
         *,
-        full_name: str | None = None,
-        bio: str | None = None,
-        neighborhood: str | None = None,
-        photo_url: str | None = None,
+        updates: dict[str, str | None],
     ) -> User:
-        """Update a user's profile fields."""
-        if full_name is not None:
-            user.full_name = full_name
-        if bio is not None:
-            user.bio = bio
-        if neighborhood is not None:
-            user.neighborhood = neighborhood
-        if photo_url is not None:
-            user.photo_url = photo_url
+        """Update a user's profile fields.
+
+        ``updates`` maps field name -> new value for fields the client
+        explicitly submitted (``model_dump(exclude_unset=True)``). A
+        ``None`` value clears the field, which is how "Remove Current
+        Photo" and clearing bio/neighborhood work. The display name cannot
+        be cleared: an explicit ``full_name: null`` is ignored.
+        """
+        allowed = {"full_name", "bio", "neighborhood", "photo_url"}
+        for field, value in updates.items():
+            if field not in allowed:
+                continue
+            if field == "full_name":
+                if value is None:
+                    continue  # display name cannot be cleared
+                user.full_name = value
+            else:
+                # Normalize empty strings to NULL for optional text fields.
+                setattr(user, field, value if value != "" else None)
         user.updated_at = datetime.now(UTC)
         db.add(user)
         await db.flush()
