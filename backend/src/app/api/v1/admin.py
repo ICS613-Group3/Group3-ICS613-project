@@ -4,7 +4,7 @@ import csv
 import io
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +47,7 @@ def _parse_iso_datetime(value: str | None, *, end_of_day: bool = False) -> datet
     if len(value) == 10:  # date-only -> HST day, convert to UTC
         if end_of_day:
             parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
-        return hst_to_utc(parsed)
+        return cast(datetime, hst_to_utc(parsed))
     return parsed
 
 
