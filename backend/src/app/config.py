@@ -194,8 +194,7 @@ class Settings(BaseSettings):
         default=10,
         ge=1,
         description=(
-            "Max login attempts per client IP per minute. "
-            "(env: RATE_LIMIT_LOGIN_PER_MINUTE)"
+            "Max login attempts per client IP per minute. (env: RATE_LIMIT_LOGIN_PER_MINUTE)"
         ),
     )
     rate_limit_forgot_password_per_minute: int = Field(
@@ -218,8 +217,7 @@ class Settings(BaseSettings):
         default=10,
         ge=1,
         description=(
-            "Max registration attempts per client IP per hour. "
-            "(env: RATE_LIMIT_REGISTER_PER_HOUR)"
+            "Max registration attempts per client IP per hour. (env: RATE_LIMIT_REGISTER_PER_HOUR)"
         ),
     )
 
