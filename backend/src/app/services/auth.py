@@ -439,8 +439,9 @@ class AuthService:
     ) -> User:
         """Update the current user's profile.
 
-        ``updates`` contains only fields the client explicitly submitted;
-        ``None`` values clear the corresponding field.
+        ``updates`` contains only fields the client explicitly submitted.
+        ``None`` values clear optional fields (bio/neighborhood/photo_url);
+        ``full_name: null`` is ignored because the display name cannot be cleared.
         """
         return await UserService().update_profile(db, user, updates=updates)
 
