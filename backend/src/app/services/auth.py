@@ -435,20 +435,15 @@ class AuthService:
         db: AsyncSession,
         user: User,
         *,
-        full_name: str | None = None,
-        bio: str | None = None,
-        neighborhood: str | None = None,
-        photo_url: str | None = None,
+        updates: dict[str, str | None],
     ) -> User:
-        """Update the current user's profile."""
-        return await UserService().update_profile(
-            db,
-            user,
-            full_name=full_name,
-            bio=bio,
-            neighborhood=neighborhood,
-            photo_url=photo_url,
-        )
+        """Update the current user's profile.
+
+        ``updates`` contains only fields the client explicitly submitted.
+        ``None`` values clear optional fields (bio/neighborhood/photo_url);
+        ``full_name: null`` is ignored because the display name cannot be cleared.
+        """
+        return await UserService().update_profile(db, user, updates=updates)
 
     async def delete_me(
         self,

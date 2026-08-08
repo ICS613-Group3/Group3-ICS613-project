@@ -169,11 +169,17 @@ async def get_tool(
     db: Annotated[AsyncSession, Depends(get_db)],
     # Any authenticated member can view an active tool (read-only).
     # The dependency enforces auth; ownership is not required to read.
-    _current_user: Annotated[User, Depends(get_current_member_read_only)],
+    current_user: Annotated[User, Depends(get_current_member_read_only)],
 ) -> ToolResponse:
-    """Get a single active tool by ID."""
+    """Get a single tool by ID.
+
+    Active listings are visible to any authenticated member. Deactivated
+    listings stay visible to the owner, admins, and members with a
+    reservation on the tool, so past reservation history and message
+    threads remain viewable ("shown as deactivated with the date").
+    """
     service = ToolService()
-    tool = await service.get_tool(db, tool_id=tool_id)
+    tool = await service.get_tool(db, tool_id=tool_id, active_only=False, viewer=current_user)
     return ToolResponse.model_validate(tool)
 
 

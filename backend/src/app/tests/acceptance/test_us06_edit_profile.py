@@ -105,3 +105,43 @@ class TestScenario7NoChangesSubmittedIsANoOp:
         data = response.json()
         assert data["full_name"] == "Unchanged Name"
         assert data["bio"] == "Unchanged bio"
+
+
+class TestScenario8NullClearsOptionalFields:
+    async def test_null_clears_bio_neighborhood_photo(
+        self, client, db_session: AsyncSession
+    ) -> None:
+        user = await UserFactory.create_async(
+            db_session,
+            full_name="Keep Me",
+            bio="A bio",
+            neighborhood="Kaimuki",
+            photo_url="https://example.com/photo.jpg",
+        )
+
+        response = await client.put(
+            "/api/v1/auth/me",
+            json={"bio": None, "neighborhood": None, "photo_url": None},
+            headers=auth_header(user.id),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["full_name"] == "Keep Me"
+        assert data["bio"] is None
+        assert data["neighborhood"] is None
+        assert data["photo_url"] is None
+
+    async def test_null_display_name_is_ignored(self, client, db_session: AsyncSession) -> None:
+        """The display name cannot be cleared: explicit null is a no-op."""
+        user = await UserFactory.create_async(db_session, full_name="Keep Me")
+
+        response = await client.put(
+            "/api/v1/auth/me",
+            json={"full_name": None},
+            headers=auth_header(user.id),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["full_name"] == "Keep Me"

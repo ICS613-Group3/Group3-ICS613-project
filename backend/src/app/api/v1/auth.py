@@ -175,15 +175,17 @@ async def update_me(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_member)],
 ) -> UserProfile:
-    """Update the current user's profile."""
+    """Update the current user's profile.
+
+    Only fields present in the request body are applied (``exclude_unset``),
+    so an explicit ``null`` clears bio/neighborhood/photo_url while omitting
+    a field leaves it unchanged.
+    """
     service = AuthService()
     updated_user = await service.update_me(
         db,
         current_user,
-        full_name=request_data.full_name,
-        bio=request_data.bio,
-        neighborhood=request_data.neighborhood,
-        photo_url=request_data.photo_url,
+        updates=request_data.model_dump(exclude_unset=True),
     )
     return UserProfile.model_validate(updated_user)
 

@@ -9,6 +9,7 @@ import { useAuth } from '../context/useAuth';
 import { ApiRequestError } from '../api/client';
 import type { ToolResponse } from '../types/api';
 import { useCategories } from '../hooks/useCategories';
+import { formatHstDate } from '../utils/hstDateTime';
 const reportReasonOptions: { value: ReportReason; label: string }[] = [
   { value: 'INAPPROPRIATE_CONTENT', label: 'Inappropriate Content' },
   { value: 'PROHIBITED_ITEM', label: 'Prohibited Item' },
@@ -171,6 +172,17 @@ function ToolDetailPage() {
         <article className="tool-detail-card">
           <img className="tool-detail-image" src={getImageUrl()} alt={tool.name} />
           <div className="tool-detail-content">
+            {!tool.is_active && (
+              <p className="form-error">
+                <strong>Deactivated</strong>
+                {tool.deactivated_at
+                  ? ` on ${formatHstDate(tool.deactivated_at)}`
+                  : ''}
+                {tool.deactivation_reason
+                  ? ` — ${tool.deactivation_reason}`
+                  : ''}
+              </p>
+            )}
             <div className="tool-detail-title-row">
               <span className="tool-category-badge">
                 {categoryLabels[tool.category] || tool.category}
